@@ -5,7 +5,7 @@ provider "aws" {
 
 # Create S3 bucket for file upload
 resource "aws_s3_bucket" "file_upload_bucket" {
-  bucket = "email-sender-html-template"
+  bucket = "email-sender-excel"
 
   tags = {
     Name        = "file-upload-bucket"
@@ -47,7 +47,7 @@ resource "aws_iam_role" "lambda_exec_role" {
         {
           Effect   = "Allow"
           Action   = ["s3:PutObject", "s3:GetObject"]
-          Resource = ["arn:aws:s3:::email-sender-html-template/*"]
+          Resource = ["arn:aws:s3:::email-sender-excel/*"]
         },
         {
           Effect   = "Allow"
@@ -63,7 +63,7 @@ resource "aws_iam_role" "lambda_exec_role" {
   }
 
   tags = {
-    Creator = "ichie"
+    Creator = "Richie"
   }
 }
 
@@ -96,20 +96,19 @@ resource "aws_lambda_function" "email_sender_upload_file" {
 
 # Create the API Gateway REST API
 resource "aws_api_gateway_rest_api" "email_sender_upload_file_api" {
-  name        = "email-sender-upload-file"
-  description = "API for generating presigned URLs"
+  name        = "upload-file"
+  description = "API for direct file upload to S3"
 
   tags = {
     Creator = "Richie"
   }
 }
 
-# Create the /upload resource in API Gateway
+# Create the /upload-file resource in API Gateway
 resource "aws_api_gateway_resource" "upload_resource" {
   rest_api_id = aws_api_gateway_rest_api.email_sender_upload_file_api.id
   parent_id   = aws_api_gateway_rest_api.email_sender_upload_file_api.root_resource_id
-  path_part   = "upload"
-
+  path_part   = "upload-file"
 }
 
 # Set up the POST method for the /upload resource
@@ -118,7 +117,6 @@ resource "aws_api_gateway_method" "post_upload_method" {
   resource_id   = aws_api_gateway_resource.upload_resource.id
   http_method   = "POST"
   authorization = "NONE"
-
 }
 
 # Integrate the POST method with the Lambda function
@@ -129,7 +127,6 @@ resource "aws_api_gateway_integration" "lambda_integration" {
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = "arn:aws:apigateway:ap-northeast-1:lambda:path/2015-03-31/functions/${aws_lambda_function.email_sender_upload_file.arn}/invocations"
-
 }
 
 # Grant API Gateway permission to invoke the Lambda function
@@ -139,7 +136,6 @@ resource "aws_lambda_permission" "api_gateway_permission" {
   function_name = aws_lambda_function.email_sender_upload_file.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.email_sender_upload_file_api.execution_arn}/*/*"
-
 }
 
 # Create API Gateway deployment
@@ -148,7 +144,6 @@ resource "aws_api_gateway_deployment" "upload_api_deployment" {
   stage_name  = "dev"
 
   depends_on = [aws_api_gateway_integration.lambda_integration]
-
 }
 
 # Print the API Gateway URL
