@@ -241,4 +241,27 @@ $RECYCLE.BIN/
 
 */build/*
 
+# Terraform
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+*.tfvars.json
+.terraform/
+.terraform.lock.hcl
+
+# .DS_Store (macOS)
+.DS_Store
+
+# Local development files
+*.local
+
+# AWS credentials
+*.pem
+*.key
+
+# Archive files
+lambda_function.zip
+
+
 # End of https://www.gitignore.io/api/osx,linux,python,windows,pycharm,visualstudiocode
