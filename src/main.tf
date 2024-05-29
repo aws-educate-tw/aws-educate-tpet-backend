@@ -22,6 +22,32 @@ resource "aws_s3_bucket_versioning" "file_upload_bucket_versioning" {
   }
 }
 
+# Create DynamoDB and setup GSI for update_at col
+resource "aws_dynamodb_table" "file_metadata_table" {
+  name           = "file"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "file_id"
+  attribute {
+    name = "file_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "file_name"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "file_name_index"
+    hash_key        = "file_name"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Creator = "Richie"
+  }
+}
+
 # IAM role setup for Lambda function
 resource "aws_iam_role" "lambda_exec_role" {
   name = "lambda-upload-role"
@@ -40,7 +66,7 @@ resource "aws_iam_role" "lambda_exec_role" {
   })
 
   inline_policy {
-    name = "lambda_s3_policy"
+    name = "lambda_s3_dynamodb_policy"
     policy = jsonencode({
       Version = "2012-10-17"
       Statement = [
@@ -48,6 +74,20 @@ resource "aws_iam_role" "lambda_exec_role" {
           Effect   = "Allow"
           Action   = ["s3:PutObject", "s3:GetObject"]
           Resource = ["arn:aws:s3:::email-sender-excel/*"]
+        },
+        {
+          Effect   = "Allow"
+          Action   = [
+            "dynamodb:PutItem",
+            "dynamodb:UpdateItem",
+            "dynamodb:GetItem",
+            "dynamodb:Query",
+            "dynamodb:Scan"
+          ]
+          Resource = [
+            "arn:aws:dynamodb:ap-northeast-1:*:table/file",
+            "arn:aws:dynamodb:ap-northeast-1:*:table/file/index/file_name_index"
+          ]
         },
         {
           Effect   = "Allow"
@@ -70,7 +110,7 @@ resource "aws_iam_role" "lambda_exec_role" {
 # Archive the Lambda function code
 data "archive_file" "lambda_function" {
   type        = "zip"
-  source_file = "lambda_function.py"  
+  source_file = "lambda_function.py"
   output_path = "lambda_function.zip"
 }
 
@@ -86,6 +126,7 @@ resource "aws_lambda_function" "email_sender_upload_file" {
   environment {
     variables = {
       BUCKET_NAME = aws_s3_bucket.file_upload_bucket.bucket
+      TABLE_NAME  = aws_dynamodb_table.file_metadata_table.name
     }
   }
 
@@ -129,7 +170,7 @@ resource "aws_api_gateway_integration" "lambda_integration" {
   uri                     = "arn:aws:apigateway:ap-northeast-1:lambda:path/2015-03-31/functions/${aws_lambda_function.email_sender_upload_file.arn}/invocations"
 }
 
-# Grant API Gateway permission to invoke the Lambda function
+# API Gateway permission to invoke the Lambda function
 resource "aws_lambda_permission" "api_gateway_permission" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
