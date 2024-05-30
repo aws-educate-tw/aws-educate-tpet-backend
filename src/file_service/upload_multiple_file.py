@@ -1,0 +1,98 @@
+import base64
+import json
+import os
+import uuid
+from datetime import datetime, timedelta
+from urllib.parse import quote
+
+import boto3
+from botocore.exceptions import ClientError
+from requests_toolbelt.multipart import decoder
+
+# 初始化 S3 客戶端和 DynamoDB 客戶端
+s3_client = boto3.client("s3")
+dynamodb = boto3.client("dynamodb")
+BUCKET_NAME = os.environ["BUCKET_NAME"]
+TABLE_NAME = os.environ["TABLE_NAME"]
+S3_BASE_URL = f"https://{BUCKET_NAME}.s3.amazonaws.com/"
+TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
+TIMEZONE_OFFSET = "+08:00"
+
+
+def lambda_handler(event, context):
+    content_type = event["headers"]["Content-Type"]
+    body = base64.b64decode(event["body"])
+    multipart_data = decoder.MultipartDecoder(body, content_type)
+
+    files_metadata = []
+
+    for part in multipart_data.parts:
+        try:
+            disposition = part.headers[b"Content-Disposition"].decode()
+            if "filename*=" in disposition:
+                file_name = disposition.split("filename*=UTF-8''")[1]
+            else:
+                file_name = disposition.split('filename="')[1].split('"')[0]
+
+            unique_file_name = str(uuid.uuid4()) + "_" + file_name
+            content_type = part.headers.get(
+                b"Content-Type", b"application/octet-stream"
+            ).decode()
+            file_content = part.content
+
+            s3_client.put_object(
+                Bucket=BUCKET_NAME,
+                Key=unique_file_name,
+                Body=file_content,
+                ContentType=content_type,
+            )
+
+            encoded_file_name = quote(unique_file_name)
+            res_url = S3_BASE_URL + encoded_file_name
+
+            # 生成文件元數據並存儲到 DynamoDB
+            now = datetime.utcnow()
+            formatted_now = now.strftime(TIME_FORMAT) + "Z"
+            file_id = uuid.uuid4().hex
+            file_size = len(file_content)
+
+            dynamodb.put_item(
+                TableName=TABLE_NAME,
+                Item={
+                    "file_id": {"S": file_id},
+                    "create_at": {"S": formatted_now},
+                    "update_at": {"S": formatted_now},
+                    "file_url": {"S": res_url},
+                    "file_name": {"S": file_name},
+                    "file_extension": {"S": file_name.split(".")[-1]},
+                    "file_size": {"N": str(file_size)},
+                    "uploader_id": {
+                        "S": "dummy_uploader_id"
+                    },  # Replace with actual uploader ID if available
+                },
+            )
+
+            # 添加文件元數據到回應列表
+            files_metadata.append(
+                {
+                    "file_id": file_id,
+                    "created_at": formatted_now,
+                    "updated_at": formatted_now,
+                    "file_url": res_url,
+                    "file_name": file_name,
+                    "file_extension": file_name.split(".")[-1],
+                    "file_size": file_size,
+                    "uploader_id": "dummy_uploader_id",  # Replace with actual uploader ID if available
+                }
+            )
+
+        except ClientError as e:
+            print(f"Amazon S3 error: {e.response['Error']['Message']}")
+        except Exception as e:
+            print(f"Unknown error: {str(e)}")
+
+    return {
+        "statusCode": 200,
+        "body": json.dumps({"files": files_metadata}),
+        "headers": {"Content-Type": "application/json"},
+    }
