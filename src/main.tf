@@ -22,7 +22,7 @@ resource "aws_s3_bucket_versioning" "file_upload_bucket_versioning" {
   }
 }
 
-# Create DynamoDB and setup GSI for update_at col
+# Create DynamoDB
 resource "aws_dynamodb_table" "file_metadata_table" {
   name           = "file"
   billing_mode   = "PAY_PER_REQUEST"
@@ -30,17 +30,6 @@ resource "aws_dynamodb_table" "file_metadata_table" {
   attribute {
     name = "file_id"
     type = "S"
-  }
-
-  attribute {
-    name = "file_name"
-    type = "S"
-  }
-
-  global_secondary_index {
-    name            = "file_name_index"
-    hash_key        = "file_name"
-    projection_type = "ALL"
   }
 
   tags = {
