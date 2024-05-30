@@ -42,9 +42,9 @@ def lambda_handler(event, context):
         file_extension = original_file_name.split('.')[-1]
         file_content = parsed_body['fileContent']
         file_size = len(file_content)
-
+        s3_key = f'{file_name}.{file_extension}'
         # Upload file to S3
-        s3.put_object(Bucket=bucket_name, Key=file_name, Body=file_content)
+        s3.put_object(Bucket=bucket_name, Key=s3_key, Body=file_content)
         
         # Generate file metadata
         now = datetime.now() + timedelta(hours=8)
