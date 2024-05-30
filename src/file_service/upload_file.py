@@ -2,7 +2,7 @@ import base64
 import json
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from urllib.parse import quote
 
 import boto3
@@ -16,7 +16,6 @@ BUCKET_NAME = os.environ["BUCKET_NAME"]
 TABLE_NAME = os.environ["TABLE_NAME"]
 S3_BASE_URL = f"https://{BUCKET_NAME}.s3.amazonaws.com/"
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
-TIMEZONE_OFFSET = "+08:00"
 
 
 def lambda_handler(event, context):
@@ -57,7 +56,7 @@ def lambda_handler(event, context):
         res_url = S3_BASE_URL + encoded_file_name
 
         # Generate file metadata and store it in DynamoDB
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         formatted_now = now.strftime(TIME_FORMAT) + "Z"
         file_id = uuid.uuid4().hex
         file_size = len(file_content)

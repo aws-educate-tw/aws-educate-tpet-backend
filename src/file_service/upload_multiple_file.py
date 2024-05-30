@@ -2,21 +2,20 @@ import base64
 import json
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from urllib.parse import quote
 
 import boto3
 from botocore.exceptions import ClientError
 from requests_toolbelt.multipart import decoder
 
-# 初始化 S3 客戶端和 DynamoDB 客戶端
+# Initialize S3 client and DynamoDB client
 s3_client = boto3.client("s3")
 dynamodb = boto3.client("dynamodb")
 BUCKET_NAME = os.environ["BUCKET_NAME"]
 TABLE_NAME = os.environ["TABLE_NAME"]
 S3_BASE_URL = f"https://{BUCKET_NAME}.s3.amazonaws.com/"
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
-TIMEZONE_OFFSET = "+08:00"
 
 
 def lambda_handler(event, context):
@@ -50,8 +49,8 @@ def lambda_handler(event, context):
             encoded_file_name = quote(unique_file_name)
             res_url = S3_BASE_URL + encoded_file_name
 
-            # 生成文件元數據並存儲到 DynamoDB
-            now = datetime.utcnow()
+            # Generate file metadata and store it in DynamoDB
+            now = datetime.now(timezone.utc)
             formatted_now = now.strftime(TIME_FORMAT) + "Z"
             file_id = uuid.uuid4().hex
             file_size = len(file_content)
@@ -72,7 +71,7 @@ def lambda_handler(event, context):
                 },
             )
 
-            # 添加文件元數據到回應列表
+            # Append file metadata to the response
             files_metadata.append(
                 {
                     "file_id": file_id,
