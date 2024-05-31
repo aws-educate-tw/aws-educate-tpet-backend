@@ -19,7 +19,9 @@ TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
 
 def lambda_handler(event, context):
-    content_type = event["headers"]["Content-Type"]
+    content_type = event["headers"].get("Content-Type") or event["headers"].get(
+        "content-type"
+    )
     body = base64.b64decode(event["body"])
     multipart_data = decoder.MultipartDecoder(body, content_type)
 
