@@ -71,6 +71,7 @@ def lambda_handler(event, context):
                 TableName=TABLE_NAME,
                 Item={
                     "file_id": {"S": file_id},
+                    "s3_object_key": {"S": unique_file_name},
                     "created_at": {"S": formatted_now},
                     "updated_at": {"S": formatted_now},
                     "file_url": {"S": res_url},
@@ -89,6 +90,7 @@ def lambda_handler(event, context):
             files_metadata.append(
                 {
                     "file_id": file_id,
+                    "s3_object_key": unique_file_name,
                     "created_at": formatted_now,
                     "updated_at": formatted_now,
                     "file_url": res_url,
