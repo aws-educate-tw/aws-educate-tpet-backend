@@ -71,8 +71,8 @@ def lambda_handler(event, context):
                 TableName=TABLE_NAME,
                 Item={
                     "file_id": {"S": file_id},
-                    "create_at": {"S": formatted_now},
-                    "update_at": {"S": formatted_now},
+                    "created_at": {"S": formatted_now},
+                    "updated_at": {"S": formatted_now},
                     "file_url": {"S": res_url},
                     "file_name": {"S": file_name},
                     "file_extension": {"S": file_name.split(".")[-1]},
