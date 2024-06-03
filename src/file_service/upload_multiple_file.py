@@ -35,11 +35,16 @@ def lambda_handler(event, context):
             else:
                 file_name = disposition.split('filename="')[1].split('"')[0]
 
-            unique_file_name = str(uuid.uuid4()) + "_" + file_name
             content_type = part.headers.get(
                 b"Content-Type", b"application/octet-stream"
             ).decode()
             file_content = part.content
+
+            # Generate file_id without hyphens and use it as the S3 object key
+            file_id = uuid.uuid4().hex  # UUID without hyphens
+            unique_file_name = file_id + "_" + file_name
+
+            print(f"Uploading file to S3: {unique_file_name}")
 
             s3_client.put_object(
                 Bucket=BUCKET_NAME,
@@ -48,14 +53,19 @@ def lambda_handler(event, context):
                 ContentType=content_type,
             )
 
+            print(f"File uploaded successfully: {unique_file_name}")
+
             encoded_file_name = quote(unique_file_name)
             res_url = S3_BASE_URL + encoded_file_name
+
+            print(f"Generated S3 URL: {res_url}")
 
             # Generate file metadata and store it in DynamoDB
             now = datetime.now(timezone.utc)
             formatted_now = now.strftime(TIME_FORMAT) + "Z"
-            file_id = uuid.uuid4().hex
             file_size = len(file_content)
+
+            print(f"Storing file metadata in DynamoDB: {file_id}")
 
             dynamodb.put_item(
                 TableName=TABLE_NAME,
@@ -73,6 +83,8 @@ def lambda_handler(event, context):
                 },
             )
 
+            print(f"File metadata stored successfully in DynamoDB: {file_id}")
+
             # Append file metadata to the response
             files_metadata.append(
                 {
@@ -88,7 +100,9 @@ def lambda_handler(event, context):
             )
 
         except ClientError as e:
-            print(f"Amazon S3 error: {e.response['Error']['Message']}")
+            error_code = e.response["Error"]["Code"]
+            error_message = e.response["Error"]["Message"]
+            print(f"Amazon S3 ClientError ({error_code}): {error_message}")
         except Exception as e:
             print(f"Unknown error: {str(e)}")
 
