@@ -3,21 +3,34 @@ import datetime
 import io
 import json
 import os
+import requests
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, BotoCoreError
+from requests.exceptions import RequestException
 import pandas as pd
 import uuid
 
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
+# Function to call API to get file info
+def get_file_info(file_id):
+    try:
+        api_url = f"https://8um2zizr80.execute-api.ap-northeast-1.amazonaws.com/dev/files/{file_id}"
+        response = requests.get(api_url)
+        response.raise_for_status() 
+        return response.json()
+    except RequestException as e:
+        print(f"Error in get_file_info: {str(e)}")
+        raise
+
 # Get the template from S3
-def get_template(template_file_id):
+def get_template(template_file_s3_key):
     try:
         s3 = boto3.client("s3")
         bucket_name = os.environ.get("BUCKET_NAME")
-        request = s3.get_object(Bucket=bucket_name, Key=template_file_id)
+        request = s3.get_object(Bucket=bucket_name, Key=template_file_s3_key)
         template_content = request['Body'].read().decode("utf-8")
         return template_content
     except Exception as e:
@@ -25,12 +38,12 @@ def get_template(template_file_id):
         raise
 
 # Get the spreadsheet and read the data
-def read_sheet_data_from_s3(spreadsheet_file_id):
+def read_sheet_data_from_s3(spreadsheet_file_s3_key):
     try:
         s3 = boto3.client("s3")
         bucket_name = os.environ.get("BUCKET_NAME")
 
-        request = s3.get_object(Bucket=bucket_name, Key=spreadsheet_file_id)
+        request = s3.get_object(Bucket=bucket_name, Key=spreadsheet_file_s3_key)
         xlsx_content = request['Body'].read()
         excel_data = pd.read_excel(io.BytesIO(xlsx_content), engine='openpyxl')
 
@@ -135,11 +148,20 @@ def lambda_handler(event, context):
                 ),
             }
 
-        template_content = get_template(template_file_id)
-        data, columns = read_sheet_data_from_s3(spreadsheet_id)
+        # Get template file info from API
+        template_info = get_file_info(template_file_id)
+        template_s3_key = template_info["s3_object_key"]
+
+        template_content = get_template(template_s3_key)
+
+        # Get spreadsheet file info from API
+        spreadsheet_info = get_file_info(spreadsheet_id)
+        spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
+
+        data, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
 
         missing_columns = validate_template(template_content, columns)
-        if missing_columns:
+        if (missing_columns):
             return {
                 "statusCode": 400,
                 "body": json.dumps(
@@ -149,10 +171,14 @@ def lambda_handler(event, context):
 
         ses_client = boto3.client("ses", region_name="ap-northeast-1")
         failed_recipients = []
+        success_recipients = []
         for row in data:
-            _ , status = send_email(ses_client, email_title, template_content, row, display_name)
+            send_time, status = send_email(ses_client, email_title, template_content, row, display_name)
             if status == "FAILED":
                 failed_recipients.append(row.get("Email"))
+            else:
+                success_recipients.append(row.get("Email"))
+            
             save_to_dynamodb(
                 run_id,
                 email_id=uuid.uuid4().hex,  
@@ -165,8 +191,8 @@ def lambda_handler(event, context):
             )
 
         response = {
-            "status": "success",
-            "message": "Email request has been queued successfully.",
+            "status": "success" if not failed_recipients else "partial_success",
+            "message": "Email request has been processed.",
             "request_id": run_id,
             "timestamp": datetime.datetime.now().strftime(TIME_FORMAT),
             "sqs_message_id": uuid.uuid4().hex
@@ -174,6 +200,7 @@ def lambda_handler(event, context):
 
         if failed_recipients:
             response["failed_recipients"] = failed_recipients
+            response["success_recipients"] = success_recipients
             return {"statusCode": 207, "body": json.dumps(response)}
         else:
             return {"statusCode": 200, "body": json.dumps(response)}
