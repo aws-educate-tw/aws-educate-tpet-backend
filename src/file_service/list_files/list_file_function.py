@@ -1,8 +1,12 @@
 import json
+import os
 from decimal import Decimal
 
 import boto3
-from boto3.dynamodb.conditions import Attr, Or
+from boto3.dynamodb.conditions import Attr
+
+dynamodb = boto3.resource("dynamodb")
+table = dynamodb.Table(os.getenv("TABLE_NAME"))
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -17,7 +21,8 @@ def lambda_handler(event, context):
     limit = 10
     last_evaluated_key = None
     file_extension = None
-    order = "DESC"
+    sort_by = "created_at"
+    sort_order = "DESC"
 
     # Extract query parameters if they exist
     if event.get("queryStringParameters"):
@@ -25,28 +30,21 @@ def lambda_handler(event, context):
         last_evaluated_key = event["queryStringParameters"].get(
             "last_evaluated_key", None
         )
-        order = event["queryStringParameters"].get("order", order)
+        sort_by = event["queryStringParameters"].get("sort_by", "created_at")
+        sort_order = event["queryStringParameters"].get("sort_order", "DESC")
         file_extension = event["queryStringParameters"].get("file_extension", None)
-
-    dynamodb = boto3.resource("dynamodb")
-    table = dynamodb.Table("file")
 
     scan_kwargs = {
         "Limit": limit,
     }
 
     filter_expression = None
-    expression_attribute_values = {}
     if file_extension:
         extensions = file_extension.split(",")
         filter_expressions = [Attr("file_extension").eq(ext) for ext in extensions]
         filter_expression = filter_expressions[0]
         for expr in filter_expressions[1:]:
             filter_expression = filter_expression | expr
-        expression_attribute_values = {
-            f":ext{i}": ext for i, ext in enumerate(extensions)
-        }
-
         scan_kwargs["FilterExpression"] = filter_expression
 
     if last_evaluated_key:
@@ -56,6 +54,10 @@ def lambda_handler(event, context):
 
     files = response.get("Items", [])
     last_evaluated_key = response.get("LastEvaluatedKey")
+
+    # Sort the results
+    reverse_order = True if sort_order.upper() == "DESC" else False
+    files.sort(key=lambda x: x.get(sort_by, ""), reverse=reverse_order)
 
     result = {
         "data": files,
