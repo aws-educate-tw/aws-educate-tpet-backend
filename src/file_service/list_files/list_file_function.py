@@ -48,7 +48,14 @@ def lambda_handler(event, context):
         scan_kwargs["FilterExpression"] = filter_expression
 
     if last_evaluated_key:
-        scan_kwargs["ExclusiveStartKey"] = {"file_id": last_evaluated_key}
+        try:
+            # Check if last_evaluated_key is a JSON string
+            last_evaluated_key = json.loads(last_evaluated_key)
+            scan_kwargs["ExclusiveStartKey"] = last_evaluated_key
+        except json.JSONDecodeError:
+            # If not a JSON string, assume it is the file_id
+            last_evaluated_key = {"file_id": last_evaluated_key}
+            scan_kwargs["ExclusiveStartKey"] = last_evaluated_key
 
     response = table.scan(**scan_kwargs)
 
