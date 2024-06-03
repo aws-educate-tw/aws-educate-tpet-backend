@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 from decimal import Decimal
@@ -49,13 +50,20 @@ def lambda_handler(event, context):
 
     if last_evaluated_key:
         try:
-            # Check if last_evaluated_key is a JSON string
-            last_evaluated_key = json.loads(last_evaluated_key)
+            # Decode the base64 last_evaluated_key
+            last_evaluated_key = json.loads(
+                base64.b64decode(last_evaluated_key).decode("utf-8")
+            )
             scan_kwargs["ExclusiveStartKey"] = last_evaluated_key
-        except json.JSONDecodeError:
-            # If not a JSON string, assume it is the file_id
-            last_evaluated_key = {"file_id": last_evaluated_key}
-            scan_kwargs["ExclusiveStartKey"] = last_evaluated_key
+        except (json.JSONDecodeError, base64.binascii.Error):
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    {
+                        "error": "Invalid last_evaluated_key format. It must be a valid base64 encoded JSON string."
+                    }
+                ),
+            }
 
     response = table.scan(**scan_kwargs)
 
@@ -66,6 +74,12 @@ def lambda_handler(event, context):
     reverse_order = True if sort_order.upper() == "DESC" else False
     files.sort(key=lambda x: x.get(sort_by, ""), reverse=reverse_order)
 
+    # Encode last_evaluated_key to base64 if it's not null
+    if last_evaluated_key:
+        last_evaluated_key = base64.b64encode(
+            json.dumps(last_evaluated_key).encode("utf-8")
+        ).decode("utf-8")
+
     result = {
         "data": files,
         "last_evaluated_key": last_evaluated_key if last_evaluated_key else None,
@@ -75,4 +89,5 @@ def lambda_handler(event, context):
         "statusCode": 200,
         "headers": {"Content-Type": "application/json"},
         "body": json.dumps(result, cls=DecimalEncoder),
+        "headers": {"Access-Control-Allow-Origin": "*"},
     }
