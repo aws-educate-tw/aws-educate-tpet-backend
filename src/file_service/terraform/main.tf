@@ -55,6 +55,7 @@ resource "aws_api_gateway_resource" "files_resource" {
   path_part   = "files"
 }
 
+# GET Method
 resource "aws_api_gateway_method" "get_files_method" {
   rest_api_id   = aws_api_gateway_rest_api.files_api.id
   resource_id   = aws_api_gateway_resource.files_resource.id
@@ -78,7 +79,9 @@ resource "aws_api_gateway_method_response" "get_files_response_200" {
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true,
+    "method.response.header.Access-Control-Allow-Headers" = true,
+    "method.response.header.Access-Control-Allow-Methods" = true
   }
 }
 
@@ -89,15 +92,28 @@ resource "aws_api_gateway_integration_response" "lambda_integration_response_200
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin" = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'",
+    "method.response.header.Access-Control-Allow-Headers" = "'*'",
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST,PUT'"
   }
 }
 
+# OPTIONS Method
 resource "aws_api_gateway_method" "options_method" {
   rest_api_id   = aws_api_gateway_rest_api.files_api.id
   resource_id   = aws_api_gateway_resource.files_resource.id
   http_method   = "OPTIONS"
   authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_integration" {
+  rest_api_id = aws_api_gateway_rest_api.files_api.id
+  resource_id = aws_api_gateway_resource.files_resource.id
+  http_method = aws_api_gateway_method.options_method.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
 }
 
 resource "aws_api_gateway_method_response" "options_response_200" {
@@ -114,16 +130,6 @@ resource "aws_api_gateway_method_response" "options_response_200" {
 
   response_models = {
     "application/json" = "Empty"
-  }
-}
-
-resource "aws_api_gateway_integration" "options_integration" {
-  rest_api_id = aws_api_gateway_rest_api.files_api.id
-  resource_id = aws_api_gateway_resource.files_resource.id
-  http_method = aws_api_gateway_method.options_method.http_method
-  type        = "MOCK"
-  request_templates = {
-    "application/json" = "{\"statusCode\": 200}"
   }
 }
 
