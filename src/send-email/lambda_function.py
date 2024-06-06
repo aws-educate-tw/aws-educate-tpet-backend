@@ -137,42 +137,49 @@ def lambda_handler(event, context):
         template_file_id = body.get("template_file_id")
         spreadsheet_id = body.get("spreadsheet_file_id")
         email_title = body.get("subject")
-        display_name = body.get("display_name")  
+        display_name = body.get("display_name", "No Name Provided")
         run_id = body.get("run_id") if body.get("run_id") else uuid.uuid4().hex
 
-        if not template_file_id or not spreadsheet_id or not email_title or not display_name:
+        if not template_file_id or not spreadsheet_id or not email_title:
             return {
                 "statusCode": 400,
-                "body": json.dumps(
-                    "Missing template_file_id, spreadsheet_id, email_title, or display_name"
-                ),
+                "body": json.dumps("Error: Missing required parameters (template_file_id, spreadsheet_id, or email_title).")
             }
 
-        # Get template file info from API
-        template_info = get_file_info(template_file_id)
-        template_s3_key = template_info["s3_object_key"]
+        try:
+            template_info = get_file_info(template_file_id)
+            template_s3_key = template_info["s3_object_key"]
+            template_content = get_template(template_s3_key)
+        except Exception as e:
+            return {
+                "statusCode": 502,
+                "body": json.dumps(f"Error fetching or reading template: {str(e)}")
+            }
 
-        template_content = get_template(template_s3_key)
-
-        # Get spreadsheet file info from API
-        spreadsheet_info = get_file_info(spreadsheet_id)
-        spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
-
-        data, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
+        try:
+            spreadsheet_info = get_file_info(spreadsheet_id)
+            spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
+            data, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
+        except Exception as e:
+            return {
+                "statusCode": 502,
+                "body": json.dumps(f"Error fetching or reading spreadsheet: {str(e)}")
+            }
 
         missing_columns = validate_template(template_content, columns)
-        if (missing_columns):
+        if missing_columns:
             return {
                 "statusCode": 400,
-                "body": json.dumps(
-                    f"Missing columns in Excel for placeholders: {', '.join(missing_columns)}"
-                ),
+                "body": json.dumps(f"Template validation error: Missing required columns for placeholders: {', '.join(missing_columns)}")
             }
 
         ses_client = boto3.client("ses", region_name="ap-northeast-1")
         failed_recipients = []
         success_recipients = []
         for row in data:
+            if not re.match(r"[^@]+@[^@]+\.[^@]+", row.get("Email", "")):
+                failed_recipients.append(row.get("Email"))
+                continue
             send_time, status = send_email(ses_client, email_title, template_content, row, display_name)
             if status == "FAILED":
                 failed_recipients.append(row.get("Email"))
@@ -187,24 +194,29 @@ def lambda_handler(event, context):
                 recipient_email=row.get("Email"),
                 template_file_id=template_file_id,
                 spreadsheet_file_id=spreadsheet_id,
-                created_at=datetime.datetime.now().strftime(TIME_FORMAT)
+                created_at=send_time
             )
 
-        response = {
-            "status": "success" if not failed_recipients else "partial_success",
-            "message": "Email request has been processed.",
-            "request_id": run_id,
-            "timestamp": datetime.datetime.now().strftime(TIME_FORMAT),
-            "sqs_message_id": uuid.uuid4().hex
-        }
-
         if failed_recipients:
-            response["failed_recipients"] = failed_recipients
-            response["success_recipients"] = success_recipients
-            return {"statusCode": 207, "body": json.dumps(response)}
+            response = {
+                "status": "failed",
+                "message": f"Failed to send {len(failed_recipients)} emails, successfully sent {len(success_recipients)} emails.",
+                "failed_recipients": failed_recipients,
+                "success_recipients": success_recipients,
+                "request_id": run_id,
+                "timestamp": datetime.datetime.now().strftime(TIME_FORMAT),
+                "sqs_message_id": uuid.uuid4().hex
+            }
+            return {"statusCode": 500, "body": json.dumps(response)}
         else:
+            response = {
+                "status": "success",
+                "message": f"All {len(success_recipients)} emails were sent successfully.",
+                "request_id": run_id,
+                "timestamp": datetime.datetime.now().strftime(TIME_FORMAT),
+                "sqs_message_id": uuid.uuid4().hex
+            }
             return {"statusCode": 200, "body": json.dumps(response)}
 
     except Exception as e:
-        print(f"Error in lambda_handler: {str(e)}")
-        return {"statusCode": 500, "body": json.dumps(f"Internal server error: {str(e)}")}
+        return {"statusCode": 500, "body": json.dumps(f"Internal server error: Detailed error message: {str(e)}")}
