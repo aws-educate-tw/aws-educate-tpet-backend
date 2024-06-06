@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import os
 import uuid
 from datetime import datetime, timezone
@@ -8,6 +9,10 @@ from urllib.parse import quote
 import boto3
 from botocore.exceptions import ClientError
 from requests_toolbelt.multipart import decoder
+
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Initialize S3 client and DynamoDB client
 s3_client = boto3.client("s3")
@@ -19,10 +24,12 @@ TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
 
 def lambda_handler(event, context):
+    logger.info("Received event: %s", event)
     content_type = event["headers"].get("Content-Type") or event["headers"].get(
         "content-type"
     )
     body = base64.b64decode(event["body"])
+    logger.info("Decoded request body: %s", body)
     multipart_data = decoder.MultipartDecoder(body, content_type)
 
     files_metadata = []
