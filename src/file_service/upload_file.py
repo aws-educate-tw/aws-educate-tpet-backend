@@ -28,7 +28,11 @@ def lambda_handler(event, context):
     content_type = event["headers"].get("Content-Type") or event["headers"].get(
         "content-type"
     )
-    body = base64.b64decode(event["body"])
+    # Check if the body is base64 encoded
+    if event.get("isBase64Encoded", False):
+        body = base64.b64decode(event["body"])  # Decode base64-encoded body
+    else:
+        body = event["body"]  # Use the body as is
     logger.info("Decoded request body: %s", body)
     multipart_data = decoder.MultipartDecoder(body, content_type)
 
