@@ -63,7 +63,7 @@ def validate_template(template_content, columns):
         missing_columns = [placeholder for placeholder in placeholders if placeholder not in columns]
         return missing_columns
     except Exception as e:
-        logger.error(f"Error in excel column, can't find the match placeholder in template: {str(e)}")
+        logger.error("Error in excel column, can't find the match placeholder in template: %s", e)
         raise
 
 # Function to send email using the SES client
@@ -91,13 +91,13 @@ def send_email(ses_client, email_title, template_content, row, display_name):
             )
             _ = datetime.datetime.now() + datetime.timedelta(hours=8)
             formatted_send_time = _.strftime(TIME_FORMAT + "Z")
-            logger.info(f"Email sent to {row.get('Name', 'Unknown')} at {formatted_send_time}")
+            logger.info("Email sent to {row.get('Name', 'Unknown')} at %s", formatted_send_time)
             return formatted_send_time, "SUCCESS"
         except Exception as e:
-            logger.error(f"Failed to send email to {row.get('Name', 'Unknown')}: {e}")
+            logger.error("Failed to send email to %s: %s", receiver_email, e)
             return "FAILED"
     except Exception as e:
-        logger.error(f"Error in send_email: {str(e)}")
+        logger.error("Error in send_email: %s", e)
         raise
 
 # Function to save email sending records to DynamoDB
@@ -118,16 +118,16 @@ def save_to_dynamodb(run_id, email_id, display_name, status, recipient_email, te
         }   
         table.put_item(Item=item)
     except ClientError as e:
-        logger.error(f"Error saving to DynamoDB: {e}")
+        logger.error("Error in save_to_dynamodb: %s", e)
     except Exception as e:
-        logger.error(f"Error in save_to_dynamodb: {str(e)}")
+        logger.error("Error in save_to_dynamodb: %s", e)
         raise
 
 # Function to handle sending emails and saving results to DynamoDB
 def process_email(ses_client, email_title, template_content, row, display_name, run_id, template_file_id, spreadsheet_id):
     email = str(row.get("Email", ""))
     if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        logger.warning(f"Invalid email format: {email}. Skipping...") # If email is invalid, skip sending
+        logger.warning("Invalid email address provided: %s", email)
         return "FAILED", email
     send_time, status = send_email(ses_client, email_title, template_content, row, display_name)
     save_to_dynamodb(run_id, uuid.uuid4().hex, display_name, status, email, template_file_id, spreadsheet_id, send_time)
@@ -166,8 +166,10 @@ def lambda_handler(event, context):
         # Validate template against spreadsheet columns
         missing_columns = validate_template(template_content, columns)
         if missing_columns:
-            logger.error(f"Template validation error: Missing required columns for placeholders: {', '.join(missing_columns)}")
-            return {"statusCode": 400, "body": json.dumps(f"Template validation error: Missing required columns for placeholders: {', '.join(missing_columns)}")}
+            error_message = "Template validation error: Missing required columns for placeholders: %s" % ', '.join(missing_columns)
+            logger.error(error_message)
+            return {"statusCode": 400, "body": json.dumps(error_message)}
+
 
         # Send emails and save results to DynamoDB
         ses_client = boto3.client("ses", region_name="ap-northeast-1")
@@ -191,7 +193,7 @@ def lambda_handler(event, context):
                 "timestamp": datetime.datetime.now().strftime(TIME_FORMAT + "Z"),
                 "sqs_message_id": uuid.uuid4().hex
             }
-            logger.info(f"Response: {response}")
+            logger.info("Response: %s", response)
             return {"statusCode": 500, "body": json.dumps(response)}
 
         response = {
@@ -201,7 +203,7 @@ def lambda_handler(event, context):
             "timestamp": datetime.datetime.now().strftime(TIME_FORMAT + "Z"),
             "sqs_message_id": uuid.uuid4().hex
         }
-        logger.info(f"Response: {response}")
+        logger.info("Response: %s", response)
         return {"statusCode": 200, "body": json.dumps(response)}
     except Exception as e:
         logger.error(f"Internal server error: Detailed error message: {str(e)}")
