@@ -73,7 +73,7 @@ def send_email(ses_client, email_title, template_content, row, display_name):
         template_content = re.sub(r'\{\{(.*?)\}\}', r'{\1}', template_content)
         receiver_email = row.get("Email")
         if not receiver_email:
-            logger.warning(f"No email address provided for {row.get('Name', 'Unknown')}. Skipping...")
+            logger.warning("Email address not found in row: %s", row)
             return "FAILED"
         try:
             # Ensure all values in row are strings
@@ -206,5 +206,5 @@ def lambda_handler(event, context):
         logger.info("Response: %s", response)
         return {"statusCode": 200, "body": json.dumps(response)}
     except Exception as e:
-        logger.error(f"Internal server error: Detailed error message: {str(e)}")
-        return {"statusCode": 500, "body": json.dumps(f"Internal server error: Detailed error message: {str(e)}")}
+        logger.error("Internal server error: %s", e)
+        return {"statusCode": 500, "body": json.dumps("Internal server error: Detailed error message: %s" % e)}
