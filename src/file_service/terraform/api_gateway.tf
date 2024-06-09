@@ -32,6 +32,7 @@ resource "aws_api_gateway_method_response" "list_files_response_200" {
   http_method = aws_api_gateway_method.list_files_method.http_method
   status_code = "200"
 
+  # CORS Settings
   response_parameters = {
     "method.response.header.Access-Control-Allow-Origin"  = true,
     "method.response.header.Access-Control-Allow-Headers" = true,
@@ -46,7 +47,7 @@ resource "aws_api_gateway_integration_response" "list_files_integration_response
   status_code = "200"
 
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'",
+    "method.response.header.Access-Control-Allow-Origin"  = "'${var.cors_allow_origin}'",
     "method.response.header.Access-Control-Allow-Headers" = "'*'",
     "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST,PUT'"
   }
@@ -96,7 +97,7 @@ resource "aws_api_gateway_integration_response" "options_integration_response" {
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
     "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST,PUT'",
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'${var.cors_allow_origin}'"
   }
 }
 
@@ -111,13 +112,11 @@ resource "aws_api_gateway_deployment" "files_api_deployment" {
     aws_api_gateway_integration_response.options_integration_response
   ]
   rest_api_id = aws_api_gateway_rest_api.files_api.id
-  stage_name  = "dev"
+  stage_name  = var.environment
+
+  triggers = {
+    redeployment = timestamp()
+  }
 }
 
-resource "aws_lambda_permission" "api_gateway_permission" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.list_files.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.files_api.execution_arn}/*/*"
-}
+
