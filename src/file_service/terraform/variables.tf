@@ -9,3 +9,10 @@ variable "environment" {
   type        = string
   default     = "dev"
 }
+
+variable "aws_region" {
+  description = "The AWS region to deploy the service to"
+  type        = string
+  default     = "us-east-1"
+}
+

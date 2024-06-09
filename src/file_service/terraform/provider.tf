@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "us-eest-1"
+  region = var.aws_region
   default_tags {
     tags = {
       Environment = var.environment
