@@ -4,7 +4,7 @@ import os
 from decimal import Decimal
 
 import boto3
-from boto3.dynamodb.conditions import Attr
+from boto3.dynamodb.conditions import Key, Attr
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.getenv("TABLE_NAME"))
@@ -22,7 +22,6 @@ def lambda_handler(event, context):
     limit = 10
     last_evaluated_key = None
     file_extension = None
-    sort_by = "created_at"
     sort_order = "DESC"
 
     # Extract query parameters if they exist
@@ -31,48 +30,73 @@ def lambda_handler(event, context):
         last_evaluated_key = event["queryStringParameters"].get(
             "last_evaluated_key", None
         )
-        sort_by = event["queryStringParameters"].get("sort_by", "created_at")
         sort_order = event["queryStringParameters"].get("sort_order", "DESC")
         file_extension = event["queryStringParameters"].get("file_extension", None)
 
-    scan_kwargs = {
-        "Limit": limit,
-    }
-
-    filter_expression = None
     if file_extension:
-        extensions = file_extension.split(",")
-        filter_expressions = [Attr("file_extension").eq(ext) for ext in extensions]
-        filter_expression = filter_expressions[0]
-        for expr in filter_expressions[1:]:
-            filter_expression = filter_expression | expr
-        scan_kwargs["FilterExpression"] = filter_expression
+        query_kwargs = {
+            "Limit": limit,
+            "IndexName": "file_extension-created_at-gsi",
+            "ScanIndexForward": False if sort_order.upper() == "DESC" else True,
+            "KeyConditionExpression": Key("file_extension").eq(file_extension),
+        }
 
-    if last_evaluated_key:
+        if last_evaluated_key:
+            try:
+                # Decode the base64 last_evaluated_key
+                last_evaluated_key = json.loads(
+                    base64.b64decode(last_evaluated_key).decode("utf-8")
+                )
+                query_kwargs["ExclusiveStartKey"] = last_evaluated_key
+            except (json.JSONDecodeError, base64.binascii.Error):
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps(
+                        {
+                            "error": "Invalid last_evaluated_key format. It must be a valid base64 encoded JSON string."
+                        }
+                    ),
+                }
+
+        # Query the table using the provided parameters
         try:
-            # Decode the base64 last_evaluated_key
-            last_evaluated_key = json.loads(
-                base64.b64decode(last_evaluated_key).decode("utf-8")
-            )
-            scan_kwargs["ExclusiveStartKey"] = last_evaluated_key
-        except (json.JSONDecodeError, base64.binascii.Error):
-            return {
-                "statusCode": 400,
-                "body": json.dumps(
-                    {
-                        "error": "Invalid last_evaluated_key format. It must be a valid base64 encoded JSON string."
-                    }
-                ),
-            }
+            response = table.query(**query_kwargs)
+        except dynamodb.meta.client.exceptions.ValidationException as e:
+            return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+    else:
+        scan_kwargs = {
+            "Limit": limit,
+        }
 
-    response = table.scan(**scan_kwargs)
+        if last_evaluated_key:
+            try:
+                # Decode the base64 last_evaluated_key
+                last_evaluated_key = json.loads(
+                    base64.b64decode(last_evaluated_key).decode("utf-8")
+                )
+                scan_kwargs["ExclusiveStartKey"] = last_evaluated_key
+            except (json.JSONDecodeError, base64.binascii.Error):
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps(
+                        {
+                            "error": "Invalid last_evaluated_key format. It must be a valid base64 encoded JSON string."
+                        }
+                    ),
+                }
+
+        # Scan the table using the provided parameters
+        try:
+            response = table.scan(**scan_kwargs)
+        except dynamodb.meta.client.exceptions.ValidationException as e:
+            return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
 
     files = response.get("Items", [])
     last_evaluated_key = response.get("LastEvaluatedKey")
 
-    # Sort the results
+    # Sort the results by created_at
     reverse_order = True if sort_order.upper() == "DESC" else False
-    files.sort(key=lambda x: x.get(sort_by, ""), reverse=reverse_order)
+    files.sort(key=lambda x: x.get("created_at", ""), reverse=reverse_order)
 
     # Encode last_evaluated_key to base64 if it's not null
     if last_evaluated_key:
