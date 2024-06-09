@@ -4,7 +4,7 @@ import os
 from decimal import Decimal
 
 import boto3
-from boto3.dynamodb.conditions import Key, Attr
+from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.getenv("TABLE_NAME"))
