@@ -15,4 +15,8 @@ resource "aws_iam_role" "lambda_exec_role" {
     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
     "arn:aws:iam::aws:policy/AmazonDynamoDBReadOnlyAccess"
   ]
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
