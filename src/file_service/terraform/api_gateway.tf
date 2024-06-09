@@ -27,6 +27,7 @@ resource "aws_api_gateway_integration" "list_files_integration" {
 }
 
 resource "aws_api_gateway_method_response" "list_files_response_200" {
+
   rest_api_id = aws_api_gateway_rest_api.files_api.id
   resource_id = aws_api_gateway_resource.files_resource.id
   http_method = aws_api_gateway_method.list_files_method.http_method
@@ -41,6 +42,8 @@ resource "aws_api_gateway_method_response" "list_files_response_200" {
 }
 
 resource "aws_api_gateway_integration_response" "list_files_integration_response_200" {
+  depends_on = [aws_api_gateway_integration.list_files_integration]
+
   rest_api_id = aws_api_gateway_rest_api.files_api.id
   resource_id = aws_api_gateway_resource.files_resource.id
   http_method = aws_api_gateway_method.list_files_method.http_method
