@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "state" {
-  bucket_prefix = "poc-terraform-state-"
+  bucket_prefix = "terraform-state-"
 
   tags = {
     Terraform = "true"

@@ -1,11 +1,17 @@
-resource "aws_route53_record" "api_alias" {
-  zone_id = var.zone_id
-  name    = var.domain_name
-  type    = "A"
+module "records" {
+  source  = "terraform-aws-modules/route53/aws//modules/records"
+  version = "3.1.0"
 
-  alias {
-    name                   = aws_cloudfront_distribution.api_distribution.domain_name
-    zone_id                = aws_cloudfront_distribution.api_distribution.hosted_zone_id
-    evaluate_target_health = false
-  }
+  zone_id = var.zone_id
+
+  records = [
+    {
+      name = "api.tpet"
+      type = "A"
+      alias = {
+        name    = module.cloudfront.cloudfront_distribution_domain_name
+        zone_id = module.cloudfront.cloudfront_distribution_hosted_zone_id
+      }
+    }
+  ]
 }
