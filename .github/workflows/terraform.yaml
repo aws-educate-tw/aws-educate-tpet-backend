@@ -104,6 +104,7 @@ jobs:
             \`\`\`
 
             </details>
+
             *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
 
             github.rest.issues.createComment({
