@@ -61,7 +61,7 @@ jobs:
       - name: Terraform init
         id: init
         working-directory: ${{ steps.set-env.outputs.dir }}
-        run: terraform init"
+        run: terraform init
 
       - name: Terraform format
         id: fmt
