@@ -4,9 +4,8 @@ import uuid
 from datetime import datetime, timedelta
 import logging
 
-
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
+logger.setLevel("INFO")
 
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
