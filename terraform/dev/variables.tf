@@ -30,10 +30,27 @@ variable "api_gateway_origins" {
       path_pattern = "/dev/campaigns*"
     },
     {
-      # Files Service
-      domain_name  = "8um2zizr80.execute-api.ap-northeast-1.amazonaws.com"
+      # File Service - List files & Get file by ID
+      domain_name  = module.list_files.api_gateway_domain_name
       path_pattern = "/dev/files*"
+    },
+    {
+      # File Service - Upload file
+      domain_name  = "ssckvgoo10.execute-api.ap-northeast-1.amazonaws.com"
+      path_pattern = "/dev/upload-file*"
+    },
+    {
+      # File Service - Upload multiple files
+      domain_name  = "sojek1stci.execute-api.ap-northeast-1.amazonaws.com"
+      path_pattern = "/dev/upload-multiple-file*"
+    },
+
+    {
+      # Email Service - Send Email
+      domain_name  = "diyf4tafbl.execute-api.ap-northeast-1.amazonaws.com"
+      path_pattern = "/dev/send-email*"
     }
+
   ]
 }
 
