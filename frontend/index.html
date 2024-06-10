@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Email Service Form</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="form-container">
+      <h2>Email Service Form</h2>
+      <form id="emailForm">
+        <!-- Input field for Email Title (Subject) -->
+        <label for="emailTitle">Email Title (Subject):</label>
+        <input type="text" id="emailTitle" name="email_title" required />
+
+        <!-- Input field for Template File ID -->
+        <label for="templateFileId">Template File ID:</label>
+        <input
+          type="text"
+          id="templateFileId"
+          name="template_file_id"
+          required
+        />
+
+        <!-- Input field for Spreadsheet ID -->
+        <label for="spreadsheetId">Spreadsheet ID:</label>
+        <input type="text" id="spreadsheetId" name="spreadsheet_id" required />
+
+        <button type="submit">Send API Request</button>
+      </form>
+      <!-- Additional Links for resources -->
+      <div class="resource-links">
+        <h3>Resources</h3>
+        <ul>
+          <li>
+            <a
+              href="https://drive.google.com/file/d/1_N3NCb5ixAaiR9FacevmGk_FKmnP763k/view?usp=drive_link"
+              target="_blank"
+              >Sample Template File</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://docs.google.com/spreadsheets/d/1YTceY5WZWETnMXGU01aQ9R9H9ter9NkRa4FaapP-GZc/edit?usp=drive_link"
+              target="_blank"
+              >Sample Google Sheet</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://docs.google.com/document/d/1xYpT9e75aZiQV3R_05tpimgX9kfLbZiW/edit?usp=sharing&ouid=106563938419093896047&rtpof=true&sd=true"
+              target="_blank"
+              >Tutorial Document</a
+            >
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
