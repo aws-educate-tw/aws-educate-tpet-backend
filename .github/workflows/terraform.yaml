@@ -24,6 +24,11 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   # S3 bucket for the Terraform state
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
 jobs:
   terraform:
     name: "Terraform Infrastructure Change Management"
@@ -83,7 +88,7 @@ jobs:
       - uses: actions/github-script@v6
         if: github.event_name == 'pull_request'
         env:
-          GITHUB_TOKEN: ${{ secrets.AWS_EDUCATE_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
         with:
           script: |
