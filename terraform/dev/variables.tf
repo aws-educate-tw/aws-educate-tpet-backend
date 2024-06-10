@@ -31,7 +31,7 @@ variable "api_gateway_origins" {
     },
     {
       # File Service - List files & Get file by ID
-      domain_name  = module.list_files.api_gateway_domain_name
+      domain_name  = "8um2zizr80.execute-api.ap-northeast-1.amazonaws.com"
       path_pattern = "/dev/files*"
     },
     {
