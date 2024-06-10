@@ -1,27 +1,12 @@
-module "zones" {
-  source  = "terraform-aws-modules/route53/aws//modules/zones"
-  version = "3.1.0"
-
-  zones = {
-    "${var.domain_name}" = {
-      comment = "Managed by Terraform"
-    }
-  }
-
-  tags = {
-    ManagedBy = "Terraform"
-  }
-}
-
 module "records" {
   source  = "terraform-aws-modules/route53/aws//modules/records"
   version = "3.1.0"
 
-  zone_name = var.domain_name
+  zone_id = var.zone_id
 
   records = [
     {
-      name = ""
+      name = "api.tpet"
       type = "A"
       alias = {
         name    = module.cloudfront.cloudfront_distribution_domain_name
@@ -29,6 +14,4 @@ module "records" {
       }
     }
   ]
-
-  depends_on = [module.zones]
 }

@@ -1,33 +1,33 @@
-resource "aws_s3_bucket" "state" {
-  bucket_prefix = "prod-terraform-state-"
+resource "aws_s3_bucket" "cloudfront_logging" {
+  bucket = "aws-educate-tpet-cloudfront-logs"
 
   tags = {
+    Name      = "cloudfront-logs"
     Terraform = "true"
   }
 }
 
-resource "aws_s3_bucket_versioning" "state" {
-  bucket = aws_s3_bucket.state.bucket
+resource "aws_s3_bucket_policy" "cloudfront_logging_policy" {
+  bucket = aws_s3_bucket.cloudfront_logging.id
 
-  versioning_configuration {
-    status = "Enabled"
-  }
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        },
+        Action   = "s3:PutObject",
+        Resource = "${aws_s3_bucket.cloudfront_logging.arn}/*",
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/*"
+          }
+        }
+      }
+    ]
+  })
 }
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "state" {
-  bucket = aws_s3_bucket.state.bucket
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-resource "aws_s3_bucket_ownership_controls" "state" {
-  bucket = aws_s3_bucket.state.bucket
-
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
+data "aws_caller_identity" "current" {}
