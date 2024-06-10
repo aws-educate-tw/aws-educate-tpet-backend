@@ -108,7 +108,7 @@ def send_email(ses_client, email_title, template_content, row, display_name):
             return formatted_send_time, "SUCCESS"
         except Exception as e:
             logger.error("Failed to send email to %s: %s", receiver_email, e)
-            return "FAILED"
+            return None, "FAILED"
     except Exception as e:
         logger.error("Error in send_email: %s", e)
         raise
