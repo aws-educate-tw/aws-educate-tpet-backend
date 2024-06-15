@@ -1,50 +1,44 @@
-import datetime
-import io
 import json
 import logging
 import os
 import re
 import uuid
-
 import boto3
+import datetime
+from botocore.exceptions import ClientError
 import pandas as pd
 import requests
-from botocore.exceptions import ClientError
 from requests.exceptions import RequestException
+import io
 
-# Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 
-
-# Function to call API to get file information using the file ID
 def get_file_info(file_id):
     try:
         api_url = f"https://8um2zizr80.execute-api.ap-northeast-1.amazonaws.com/dev/files/{file_id}"
         response = requests.get(api_url)
         response.raise_for_status()
+        logger.info("Fetched file info for file_id: %s", file_id)
         return response.json()
     except RequestException as e:
         logger.error("Error in get_file_info: %s", e)
         raise
 
-
-# Function to retrieve the email template from an S3 bucket
 def get_template(template_file_s3_key):
     try:
         s3 = boto3.client("s3")
         request = s3.get_object(Bucket=BUCKET_NAME, Key=template_file_s3_key)
         template_content = request["Body"].read().decode("utf-8")
+        logger.info("Fetched template content from S3 key: %s", template_file_s3_key)
         return template_content
     except Exception as e:
         logger.error("Error in get_template: %s", e)
         raise
 
-
-# Function to read and parse spreadsheet data from S3
 def read_sheet_data_from_s3(spreadsheet_file_s3_key):
     try:
         s3 = boto3.client("s3")
@@ -54,30 +48,12 @@ def read_sheet_data_from_s3(spreadsheet_file_s3_key):
         rows = excel_data.to_dict(orient="records")
         if excel_data.empty:
             return [], 0
+        logger.info("Read sheet data from S3 key: %s", spreadsheet_file_s3_key)
         return rows, excel_data.columns.tolist()
     except Exception as e:
         logger.error("Error in read excel from s3: %s", e)
         raise
 
-
-# Function to validate template placeholders against spreadsheet columns
-def validate_template(template_content, columns):
-    try:
-        placeholders = re.findall(
-            r"{{(.*?)}}", template_content
-        )  # placeholder format: {{column_name}}
-        missing_columns = [
-            placeholder for placeholder in placeholders if placeholder not in columns
-        ]
-        return missing_columns
-    except Exception as e:
-        logger.error(
-            "Error in excel column, can't find the match placeholder in template: %s", e
-        )
-        raise
-
-
-# Function to send email using the SES client
 def send_email(ses_client, email_title, template_content, row, display_name):
     try:
         template_content = template_content.replace("\r", "")
@@ -85,9 +61,8 @@ def send_email(ses_client, email_title, template_content, row, display_name):
         receiver_email = row.get("Email")
         if not receiver_email:
             logger.warning("Email address not found in row: %s", row)
-            return "FAILED"
+            return None, "FAILED"
         try:
-            # Ensure all values in row are strings
             formatted_row = {k: str(v) for k, v in row.items()}
             formatted_content = template_content.format(**formatted_row)
             source_email = "awseducate.cloudambassador@gmail.com"
@@ -102,19 +77,15 @@ def send_email(ses_client, email_title, template_content, row, display_name):
             )
             _ = datetime.datetime.now() + datetime.timedelta(hours=8)
             formatted_send_time = _.strftime(TIME_FORMAT + "Z")
-            logger.info(
-                "Email sent to {row.get('Name', 'Unknown')} at %s", formatted_send_time
-            )
+            logger.info("Email sent to %s at %s", row.get('Name', 'Unknown'), formatted_send_time)
             return formatted_send_time, "SUCCESS"
         except Exception as e:
             logger.error("Failed to send email to %s: %s", receiver_email, e)
-            return "FAILED"
+            return None, "FAILED"
     except Exception as e:
         logger.error("Error in send_email: %s", e)
-        raise
+        return None, "FAILED"
 
-
-# Function to save email sending records to DynamoDB
 def save_to_dynamodb(
     run_id,
     email_id,
@@ -127,7 +98,7 @@ def save_to_dynamodb(
 ):
     try:
         dynamodb = boto3.resource("dynamodb")
-        table_name = os.environ.get("DYNAMODB_TABLE")
+        table_name = os.environ.get("TABLE_NAME")
         table = dynamodb.Table(table_name)
         item = {
             "run_id": run_id,
@@ -140,14 +111,13 @@ def save_to_dynamodb(
             "created_at": created_at,
         }
         table.put_item(Item=item)
+        logger.info("Saved email record to DynamoDB: %s", email_id)
     except ClientError as e:
         logger.error("Error in save_to_dynamodb: %s", e)
     except Exception as e:
         logger.error("Error in save_to_dynamodb: %s", e)
         raise
 
-
-# Function to handle sending emails and saving results to DynamoDB
 def process_email(
     ses_client,
     email_title,
@@ -177,108 +147,55 @@ def process_email(
     )
     return status, email
 
+def delete_sqs_message(sqs_client, queue_url, receipt_handle):
+    try:
+        sqs_client.delete_message(
+            QueueUrl=queue_url,
+            ReceiptHandle=receipt_handle
+        )
+        logger.info("Deleted message from SQS: %s", receipt_handle)
+    except Exception as e:
+        logger.error("Error deleting message from SQS: %s", e)
+        raise
 
 def lambda_handler(event, context):
+    sqs_client = boto3.client("sqs")
+    queue_url = os.environ.get("SQS_QUEUE_URL")
+    
     try:
-        body = json.loads(event.get("body", "{}"))
-        template_file_id = body.get("template_file_id")
-        spreadsheet_id = body.get("spreadsheet_file_id")
-        email_title = body.get("subject")
-        display_name = body.get("display_name", "No Name Provided")
-        run_id = body.get("run_id") if body.get("run_id") else uuid.uuid4().hex
+        for record in event['Records']:
+            body = json.loads(record['body'])
+            receipt_handle = record['receiptHandle']
+            template_file_id = body.get("template_file_id")
+            spreadsheet_id = body.get("spreadsheet_file_id")
+            email_title = body.get("email_title")
+            display_name = body.get("display_name")
+            run_id = body.get("run_id")
 
-        # Check for missing required parameters
-        if not email_title:
-            logger.error("Error: Missing required parameter: email_title (subject).")
-            return {
-                "statusCode": 400,
-                "body": json.dumps(
-                    "Error: Missing required parameter: email_title (subject)."
-                ),
-            }
-        if not template_file_id:
-            logger.error("Error: Missing required parameter: template_file_id.")
-            return {
-                "statusCode": 400,
-                "body": json.dumps(
-                    "Error: Missing required parameter: template_file_id."
-                ),
-            }
-        if not spreadsheet_id:
-            logger.error("Error: Missing required parameter: spreadsheet_file_id.")
-            return {
-                "statusCode": 400,
-                "body": json.dumps(
-                    "Error: Missing required parameter: spreadsheet_file_id."
-                ),
-            }
+            logger.info("Processing message with run_id: %s", run_id)
 
-        # Fetch and validate template content
-        template_info = get_file_info(template_file_id)
-        template_s3_key = template_info["s3_object_key"]
-        template_content = get_template(template_s3_key)
+            template_info = get_file_info(template_file_id)
+            template_s3_key = template_info["s3_object_key"]
+            template_content = get_template(template_s3_key)
 
-        # Fetch and read spreadsheet data
-        spreadsheet_info = get_file_info(spreadsheet_id)
-        spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
-        data, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
+            spreadsheet_info = get_file_info(spreadsheet_id)
+            spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
+            data, _ = read_sheet_data_from_s3(spreadsheet_s3_key)
 
-        # Validate template against spreadsheet columns
-        missing_columns = validate_template(template_content, columns)
-        if missing_columns:
-            error_message = (
-                "Template validation error: Missing required columns for placeholders: %s"
-                % ", ".join(missing_columns)
-            )
-            logger.error(error_message)
-            return {"statusCode": 400, "body": json.dumps(error_message)}
+            ses_client = boto3.client("ses", region_name="ap-northeast-1")
+            for row in data:
+                process_email(
+                    ses_client,
+                    email_title,
+                    template_content,
+                    row,
+                    display_name,
+                    run_id,
+                    template_file_id,
+                    spreadsheet_id,
+                )
+            delete_sqs_message(sqs_client, queue_url, receipt_handle)
 
-        # Send emails and save results to DynamoDB
-        ses_client = boto3.client("ses", region_name="ap-northeast-1")
-        failed_recipients = []
-        success_recipients = []
-        for row in data:
-            status, email = process_email(
-                ses_client,
-                email_title,
-                template_content,
-                row,
-                display_name,
-                run_id,
-                template_file_id,
-                spreadsheet_id,
-            )
-            if status == "FAILED":
-                failed_recipients.append(email)
-            else:
-                success_recipients.append(email)
-
-        # Return final response
-        if failed_recipients:
-            response = {
-                "status": "FAILED",
-                "message": f"Failed to send {len(failed_recipients)} emails, successfully sent {len(success_recipients)} emails.",
-                "failed_recipients": failed_recipients,
-                "success_recipients": success_recipients,
-                "request_id": run_id,
-                "timestamp": datetime.datetime.now().strftime(TIME_FORMAT + "Z"),
-                "sqs_message_id": uuid.uuid4().hex,
-            }
-            logger.info("Response: %s", response)
-            return {"statusCode": 500, "body": json.dumps(response)}
-
-        response = {
-            "status": "SUCCESS",
-            "message": f"All {len(success_recipients)} emails were sent successfully.",
-            "request_id": run_id,
-            "timestamp": datetime.datetime.now().strftime(TIME_FORMAT + "Z"),
-            "sqs_message_id": uuid.uuid4().hex,
-        }
-        logger.info("Response: %s", response)
-        return {"statusCode": 200, "body": json.dumps(response)}
     except Exception as e:
         logger.error("Internal server error: %s", e)
-        return {
-            "statusCode": 500,
-            "body": json.dumps("Internal server error: Detailed error message: %s" % e),
-        }
+        raise
