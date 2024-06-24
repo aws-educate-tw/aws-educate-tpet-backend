@@ -1,14 +1,15 @@
+import io
 import json
 import logging
 import os
 import re
+import uuid
+
 import boto3
 import pandas as pd
 import requests
 from botocore.exceptions import ClientError
 from requests.exceptions import RequestException
-import uuid
-import io
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
