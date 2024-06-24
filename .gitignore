@@ -294,4 +294,7 @@ lambda_function.zip
 
 tests/files/*
 
+# SAM CLI build directory
+src/**/.aws-sam/*
+
 # End of https://www.gitignore.io/api/osx,linux,python,windows,pycharm,visualstudiocode

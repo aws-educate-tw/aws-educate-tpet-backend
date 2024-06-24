@@ -1,5 +1,5 @@
-resource "aws_iam_role" "lambda_exec_role" {
-  name = "lambda_exec_role"
+resource "aws_iam_role" "list_files_lambda_exec_role" {
+  name = "list_files_lambda_exec_role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -16,7 +16,4 @@ resource "aws_iam_role" "lambda_exec_role" {
     "arn:aws:iam::aws:policy/AmazonDynamoDBReadOnlyAccess"
   ]
 
-  lifecycle {
-    prevent_destroy = true
-  }
 }
