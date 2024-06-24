@@ -57,7 +57,7 @@ Resources:
         Variables:
           BUCKET_NAME: "email-sender-excel"
           TABLE_NAME: "email"
-          QUEUE_URL: !Ref SQSEmailQueue
+          SQS_QUEUE_URL: !Ref SQSEmailQueue
       Timeout: 30
       Events:
         SQSTrigger:
@@ -73,11 +73,12 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: email-queue
+      ReceiveMessageWaitTimeSeconds: 20
 
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: lambda_execution_role
+      RoleName: !Sub "lambda_execution_role-${AWS::AccountId}-${AWS::Region}"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -86,7 +87,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: LambdaPolicy
+        - PolicyName: !Sub "LambdaPolicy-${AWS::AccountId}-${AWS::Region}"
           PolicyDocument:
             Version: "2012-10-17"
             Statement:

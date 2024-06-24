@@ -3,8 +3,8 @@ version = 0.1
 stack_name = "send-email"
 resolve_s3 = true
 s3_prefix = "send-email"
-region = "ap-northeast-1"
+region = "us-east-1"
 capabilities = "CAPABILITY_NAMED_IAM"
-parameter_overrides = "AwsRegion=\"ap-northeast-1\""
+parameter_overrides = "AwsRegion=\"us-east-1\""
 disable_rollback = true
-image_repositories = ["EmailSenderFunction=070576557102.dkr.ecr.ap-northeast-1.amazonaws.com/sendemail85dd8659/emailsenderfunction7d7f7d1crepo"]
+image_repositories = ["EmailSenderFunction=070576557102.dkr.ecr.us-east-1.amazonaws.com/sendemail85dd8659/emailsenderfunction7d7f7d1crepo"]

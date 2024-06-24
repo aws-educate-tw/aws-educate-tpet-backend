@@ -19,7 +19,7 @@ BUCKET_NAME = os.getenv("BUCKET_NAME")
 
 def get_file_info(file_id):
     try:
-        api_url = f"https://8um2zizr80.execute-api.ap-northeast-1.amazonaws.com/dev/files/{file_id}"
+        api_url = f"https://api.tpet.awseducate.systems/dev/files/{file_id}"
         response = requests.get(api_url)
         response.raise_for_status()
         logger.info("Fetched file info for file_id: %s", file_id)
@@ -162,8 +162,8 @@ def lambda_handler(event, context):
     sqs_client = boto3.client("sqs")
     queue_url = os.environ.get("SQS_QUEUE_URL")
     
-    try:
-        for record in event['Records']:
+    for record in event['Records']:
+        try:
             body = json.loads(record['body'])
             receipt_handle = record['receiptHandle']
             template_file_id = body.get("template_file_id")
@@ -194,8 +194,15 @@ def lambda_handler(event, context):
                     template_file_id,
                     spreadsheet_id,
                 )
-            delete_sqs_message(sqs_client, queue_url, receipt_handle)
-
-    except Exception as e:
-        logger.error("Internal server error: %s", e)
-        raise
+            logger.info("Processed all emails for run_id: %s", run_id)
+        except Exception as e:
+            logger.error(f"Error processing message: {e}")
+        finally:
+            if queue_url:
+                try:
+                    delete_sqs_message(sqs_client, queue_url, receipt_handle)
+                    logger.info("Deleted message from SQS: %s", receipt_handle)
+                except Exception as e:
+                    logger.error(f"Error deleting SQS message: {e}")
+            else:
+                logger.error("SQS_QUEUE_URL is not available")

@@ -19,7 +19,8 @@ sqs_client = boto3.client("sqs")
 
 def get_file_info(file_id):
     try:
-        api_url = f"https://8um2zizr80.execute-api.ap-northeast-1.amazonaws.com/dev/files/{file_id}"
+        # ! Update the API URL
+        api_url = f"https://api.tpet.awseducate.systems/dev/files/{file_id}"
         response = requests.get(api_url)
         response.raise_for_status()
         return response.json()
@@ -103,7 +104,7 @@ def lambda_handler(event, context):
             QueueUrl=os.environ['SQS_QUEUE_URL'],
             MessageBody=json.dumps(message_body)
         )
-        
+        logger.info("Message sent to SQS: %s", message_body)
         response = {
             "status": "SUCCESS",
             "message": "Input message accepted for processing",
@@ -113,7 +114,7 @@ def lambda_handler(event, context):
             "email_title": email_title,
             "display_name": display_name
         }
-
+    
         return {"statusCode": 202, "body": json.dumps(response)}
 
     except Exception as e:

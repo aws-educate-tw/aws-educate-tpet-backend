@@ -3,7 +3,7 @@ version = 0.1
 stack_name = "validate-input"
 resolve_s3 = true
 s3_prefix = "validate-input"
-region = "ap-northeast-1"
-capabilities = "CAPABILITY_IAM"
-parameter_overrides = "AwsRegion=\"ap-northeast-1\""
-image_repositories = ["ValidateInputFunction=070576557102.dkr.ecr.ap-northeast-1.amazonaws.com/samapp7427b055/validateinputfunction28c7d7d1repo"]
+region = "us-east-1"
+capabilities = "CAPABILITY_NAMED_IAM"
+parameter_overrides = "AwsRegion=\"us-east-1\""
+image_repositories = ["ValidateInputFunction=070576557102.dkr.ecr.us-east-1.amazonaws.com/validateinput0ae3ea30/validateinputfunction28c7d7d1repo"]
