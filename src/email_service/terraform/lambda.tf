@@ -90,6 +90,16 @@ module "lambda_container_image" {
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}"
       ]
+    },
+    ses_send_email = {
+      effect = "Allow",
+      actions = [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+      ],
+      resources = [
+        "arn:aws:ses:ap-northeast-1:${data.aws_caller_identity.this.account_id}:identity/awseducate.cloudambassador@gmail.com"
+      ]
     }
   }
 }
