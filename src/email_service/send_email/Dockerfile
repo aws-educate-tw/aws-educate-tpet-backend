@@ -1,11 +1,11 @@
 FROM public.ecr.aws/lambda/python:3.11
 
-# 安裝依賴項
+# Install dependencies
 COPY requirements.txt /var/task/
 RUN pip install -r /var/task/requirements.txt
 
-# 複製函數代碼
+# Copy function code
 COPY lambda_function.py /var/task/
 
-# 設定運行 Lambda 函數的命令
+# Set the command to run the Lambda function
 CMD ["lambda_function.lambda_handler"]
