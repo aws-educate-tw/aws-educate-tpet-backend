@@ -120,7 +120,7 @@ module "docker_image" {
     ]
   })
 
-  docker_file_path = "${local.source_path}/context/Dockerfile"
+  docker_file_path = "${local.source_path}/../send_email/Dockerfile"
   source_path      = local.source_path
   triggers = {
     dir_sha = local.dir_sha
