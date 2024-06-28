@@ -50,8 +50,10 @@ module "lambda_container_image" {
 
 
   environment_variables = {
-    "ENVIRONMENT" = var.environment,
-    "SERVICE"     = var.service_underscore
+    "ENVIRONMENT"    = var.environment,
+    "SERVICE"        = var.service_underscore
+    "DYNAMODB_TABLE" = var.dynamodb_table
+    "BUCKET_NAME"    = "${var.environment}-aws-educate-tpet-storage"
   }
 
   allowed_triggers = {

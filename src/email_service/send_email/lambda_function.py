@@ -18,12 +18,16 @@ logger.setLevel(logging.INFO)
 
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 BUCKET_NAME = os.getenv("BUCKET_NAME")
+ENVIRONMENT = os.getenv("ENVIRONMENT")
+FILE_SERVICE_API_BASE_URL = (
+    f"https://{ENVIRONMENT}-file-service-internal-api-tpet.awseducate.systems"
+)
 
 
 # Function to call API to get file information using the file ID
 def get_file_info(file_id):
     try:
-        api_url = f"https://8um2zizr80.execute-api.ap-northeast-1.amazonaws.com/dev/files/{file_id}"
+        api_url = f"{FILE_SERVICE_API_BASE_URL}/{file_id}"
         response = requests.get(api_url)
         response.raise_for_status()
         return response.json()
