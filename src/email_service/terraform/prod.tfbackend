@@ -1,4 +1,4 @@
 bucket = "terraform-state-20240618152116874600000001"
 region = "us-west-2"
-key    = "api_gateway_to_lambda_docker_to_dynamodb/prod/terraform.tfstate"
+key    = "email_service/prod/terraform.tfstate"
 dynamodb_table = "terraform-locks"
