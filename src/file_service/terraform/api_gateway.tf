@@ -62,6 +62,18 @@ module "api_gateway" {
       }
     }
 
+    "GET /files/{file_id}" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+      integration = {
+        uri                    = module.lambda_container_image.lambda_function_arn
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
+
 
 
     "$default" = {
