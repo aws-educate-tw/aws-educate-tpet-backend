@@ -162,7 +162,7 @@ module "docker_image" {
 ####################################
 ####################################
 
-module "lambda_get_file" {
+module "get_file_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
@@ -175,8 +175,8 @@ module "lambda_get_file" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
-  image_uri     = module.docker_image.image_uri
+  architectures = ["x86_64"]                             # or ["arm64"]
+  image_uri     = module.get_file_docker_image.image_uri # Remember to change
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -244,7 +244,7 @@ module "lambda_get_file" {
   }
 }
 
-module "docker_image" {
+module "get_file_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
