@@ -11,7 +11,7 @@ resource "random_string" "this" {
 }
 
 locals {
-  source_path                     = path.module # Path to folder containing application code
+  source_path                     = "${path.module}/.."
   function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-from_terraform_module_function-${random_string.this.result}"
   path_include                    = ["**"]
   path_exclude                    = ["**/__pycache__/**"]
@@ -120,8 +120,8 @@ module "docker_image" {
     ]
   })
 
-  docker_file_path = "${local.source_path}/../send_email/Dockerfile"
-  source_path      = local.source_path
+  # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
+  source_path = "${local.source_path}/send_email/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }
