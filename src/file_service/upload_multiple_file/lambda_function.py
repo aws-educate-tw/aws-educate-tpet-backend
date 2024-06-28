@@ -18,7 +18,7 @@ logger.setLevel(logging.INFO)
 s3_client = boto3.client("s3")
 dynamodb = boto3.client("dynamodb")
 BUCKET_NAME = os.environ["BUCKET_NAME"]
-TABLE_NAME = os.environ["TABLE_NAME"]
+DYNAMODB_TABLE = os.environ["DYNAMODB_TABLE"]
 S3_BASE_URL = f"https://{BUCKET_NAME}.s3.amazonaws.com/"
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
@@ -79,7 +79,7 @@ def lambda_handler(event, context):
             print(f"Storing file metadata in DynamoDB: {file_id}")
 
             dynamodb.put_item(
-                TableName=TABLE_NAME,
+                TableName=DYNAMODB_TABLE,
                 Item={
                     "file_id": {"S": file_id},
                     "s3_object_key": {"S": unique_file_name},

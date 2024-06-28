@@ -35,7 +35,7 @@ module "api_gateway" {
   subdomains            = [local.sub_domain_name]
   create_domain_records = true
   create_certificate    = true
-  create_domain_name    = true
+  create_domain_name    = false
 
 
   # Routes & Integration(s)
