@@ -159,6 +159,7 @@ jobs:
           else
             echo "Unsupported branch: ${{ github.ref }}"
             exit 1
+          fi
 
       - name: Terraform Init
         id: init

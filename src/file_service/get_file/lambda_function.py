@@ -17,7 +17,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 def lambda_handler(event, context):
     file_id = event["pathParameters"]["file_id"]
-
+    print("test")
     response = table.get_item(Key={"file_id": file_id})
 
     if "Item" not in response:
