@@ -2,7 +2,8 @@ name: "File Service Infrastructure Change Management Pipeline with GitHub Action
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    paths:
+      - src/file_service/**
   push:
     branches:
       - main

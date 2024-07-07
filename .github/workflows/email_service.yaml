@@ -2,7 +2,8 @@ name: "Email Service Infrastructure Change Management Pipeline with GitHub Actio
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    paths:
+      - src/email_service/**
   push:
     branches:
       - main
