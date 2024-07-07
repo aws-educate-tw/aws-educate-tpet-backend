@@ -20,7 +20,7 @@ Resources:
           TABLE_NAME: !Ref CampaignTable
           BUCKET_NAME: local-dev-aws-educate-tpet-storage
           SQS_QUEUE_URL: !Sub "https://sqs.${AwsRegion}.amazonaws.com/070576557102/email-queue"
-      Timeout: 20
+      Timeout: 10
       Events:
         CampaignApi:
           Type: Api
@@ -97,6 +97,7 @@ Resources:
           AttributeType: S
         - AttributeName: participant_id
           AttributeType: S
+
       KeySchema:
         - AttributeName: campaign_id
           KeyType: HASH
