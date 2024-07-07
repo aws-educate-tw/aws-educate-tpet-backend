@@ -43,6 +43,12 @@ jobs:
       - name: List working directory
         run: ls -al $GITHUB_WORKSPACE
 
+      - name: List src directory
+        run: ls -al $GITHUB_WORKSPACE/src
+
+      - name: List email_service directory
+        run: ls -al $GITHUB_WORKSPACE/src/email_service
+
       - name: List specific directory
         run: ls -al ${{ env.TF_DIR }}
 
