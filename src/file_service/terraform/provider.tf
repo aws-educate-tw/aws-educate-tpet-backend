@@ -2,9 +2,12 @@ provider "aws" {
   region = var.aws_region
   default_tags {
     tags = {
-      "Terraform"   = "true",
-      "Environment" = var.environment,
-      "Project"     = "AWS Educate TPET"
+      Environment = var.environment
+      Terraform   = "true"
+      Service     = "file-service"
     }
+
   }
 }
+
+data "aws_region" "current" {}

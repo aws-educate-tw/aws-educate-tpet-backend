@@ -1,4 +1,0 @@
-bucket = "terraform-state-20240618152116874600000001"
-region = "us-west-2"
-key    = "acm_shared_cert/local-dev/terraform.tfstate"
-dynamodb_table = "terraform-locks"

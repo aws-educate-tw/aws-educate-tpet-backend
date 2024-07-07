@@ -1,5 +1,0 @@
-aws_region         = "ap-northeast-1"
-environment        = "prod"
-service_underscore = "example_service"
-service_hyphen     = "email-service"
-dynamodb_table     = "email"

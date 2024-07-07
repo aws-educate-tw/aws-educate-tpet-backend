@@ -1,23 +1,18 @@
-variable "aws_region" {
-  description = "aws region"
+variable "cors_allow_origin" {
+  description = "The origin that is allowed to access the API"
+  type        = string
+  default     = "*"
 }
 
 variable "environment" {
-  description = "Current environtment: prod(ap-northeast-1)/dev(us-east-1)/local-dev(us-west-2), default dev(us-east-1)"
+  description = "The environment to deploy the service to"
+  type        = string
+  default     = "dev"
 }
 
-variable "service_underscore" {
-  description = "Current service name"
+variable "aws_region" {
+  description = "The AWS region to deploy the service to"
+  type        = string
+  default     = "us-east-1"
 }
 
-variable "service_hyphen" {
-  description = "This variable contains the current service name, but with hyphens instead of underscores. For example: demo-service."
-}
-variable "domain_name" {
-  description = "Domain name, for example: example.com"
-  default     = "awseducate.systems"
-}
-
-variable "dynamodb_table" {
-  description = "Current service's DynamoDB table name"
-}

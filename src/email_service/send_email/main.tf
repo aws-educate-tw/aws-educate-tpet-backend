@@ -7,7 +7,49 @@ variable "aws_region" {
   default = "ap-northeast-1"
 }
 
+resource "aws_dynamodb_table" "email" {
+  name           = "email"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "run_id"
+  range_key      = "email_id"
 
+  attribute {
+    name = "run_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "email_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "status"
+    type = "S"
+  }
+
+  attribute {
+    name = "created_at"
+    type = "S"
+  }
+
+  local_secondary_index {
+    name            = "status_lsi"
+    projection_type = "ALL"
+    range_key       = "status"
+  }
+
+  local_secondary_index {
+    name            = "create_at_lsi"
+    projection_type = "ALL"
+    range_key       = "created_at"
+  }
+
+  tags = {
+    Name    = "email"
+    Creator = "Richie"
+  }
+}
 
 resource "aws_iam_role" "lambda_role" {
   name = "lambda_execution_role"
@@ -32,11 +74,11 @@ resource "aws_iam_role" "lambda_role" {
 resource "aws_iam_policy" "ecr_policy" {
   name = "ECRPolicy"
   policy = jsonencode({
-    "Version" : "2012-10-17",
-    "Statement" : [
+    "Version": "2012-10-17",
+    "Statement": [
       {
-        "Effect" : "Allow",
-        "Action" : [
+        "Effect": "Allow",
+        "Action": [
           "ecr:BatchCheckLayerAvailability",
           "ecr:CompleteLayerUpload",
           "ecr:GetDownloadUrlForLayer",
@@ -44,7 +86,7 @@ resource "aws_iam_policy" "ecr_policy" {
           "ecr:PutImage",
           "ecr:UploadLayerPart"
         ],
-        "Resource" : "arn:aws:ecr:ap-northeast-1:070576557102:repository/email-sender-repo"
+        "Resource": "arn:aws:ecr:ap-northeast-1:070576557102:repository/email-sender-repo"
       }
     ]
   })

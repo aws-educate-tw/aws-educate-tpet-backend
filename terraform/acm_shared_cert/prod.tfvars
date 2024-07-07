@@ -1,5 +1,0 @@
-aws_region         = "ap-northeast-1"
-environment        = "prod"
-service_underscore = "acm_shared_cert"
-service_hyphen     = "acm-shared-cert"
-domain_name        = "awseducate.systems"
