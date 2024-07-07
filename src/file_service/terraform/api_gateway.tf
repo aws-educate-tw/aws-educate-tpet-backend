@@ -57,7 +57,7 @@ module "api_gateway" {
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
       integration = {
-        uri                    = module.lambda_container_image.lambda_function_arn # Remember to change
+        uri                    = module.upload_multiple_file_lambda.lambda_function_arn # Remember to change
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000

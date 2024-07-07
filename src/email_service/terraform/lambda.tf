@@ -11,14 +11,14 @@ resource "random_string" "this" {
 }
 
 locals {
-  source_path                     = "${path.module}/.."
-  function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-from_terraform_module_function-${random_string.this.result}"
-  path_include                    = ["**"]
-  path_exclude                    = ["**/__pycache__/**"]
-  files_include                   = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
-  files_exclude                   = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
-  files                           = sort(setsubtract(local.files_include, local.files_exclude))
-  dir_sha                         = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
+  source_path                                = "${path.module}/.."
+  send_email_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-send_email-${random_string.this.result}"
+  path_include                               = ["**"]
+  path_exclude                               = ["**/__pycache__/**"]
+  files_include                              = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
+  files_exclude                              = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
+  files                                      = sort(setsubtract(local.files_include, local.files_exclude))
+  dir_sha                                    = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
 }
 
 provider "docker" {
@@ -30,12 +30,12 @@ provider "docker" {
 }
 
 
-module "lambda_container_image" {
+module "send_email_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET email service, for lambda container image"
+  function_name  = local.send_email_function_name_and_ecr_repo_name
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /send-email"
   create_package = false
   timeout        = 300
 
@@ -112,7 +112,7 @@ module "docker_image" {
   keep_remotely        = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = local.function_name_and_ecr_repo_name
+  ecr_repo             = local.send_email_function_name_and_ecr_repo_name
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
