@@ -13,6 +13,7 @@ resource "random_string" "this" {
 locals {
   source_path                                          = "${path.module}/.."
   upload_multiple_file_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-upload_multiple_file-${random_string.this.result}"
+  list_files_function_name_and_ecr_repo_name           = "${var.environment}-${var.service_underscore}-list_files-${random_string.this.result}"
   get_file_function_name_and_ecr_repo_name             = "${var.environment}-${var.service_underscore}-get_file-${random_string.this.result}"
   path_include                                         = ["**"]
   path_exclude                                         = ["**/__pycache__/**"]
@@ -147,6 +148,131 @@ module "docker_image" {
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/upload_multiple_file/" # Remember to change
+  triggers = {
+    dir_sha = local.dir_sha
+  }
+
+}
+
+
+####################################
+####################################
+####################################
+# GET /files #######################
+####################################
+####################################
+####################################
+
+module "list_files_lambda" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "7.7.0"
+
+  function_name  = local.list_files_function_name_and_ecr_repo_name                           # Remember to change
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /files" # Remember to change
+  create_package = false
+  timeout        = 30
+
+  ##################
+  # Container Image
+  ##################
+  package_type  = "Image"
+  architectures = ["x86_64"]                               # or ["arm64"]
+  image_uri     = module.list_files_docker_image.image_uri # Remember to change
+
+  publish = true # Whether to publish creation/change as new Lambda Function Version.
+
+
+  environment_variables = {
+    "ENVIRONMENT"    = var.environment,
+    "SERVICE"        = var.service_underscore
+    "DYNAMODB_TABLE" = var.dynamodb_table
+    "BUCKET_NAME"    = "${var.environment}-aws-educate-tpet-storage"
+  }
+
+  allowed_triggers = {
+    AllowExecutionFromAPIGateway = {
+      service    = "apigateway"
+      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+    }
+  }
+
+  tags = {
+    "Terraform"   = "true",
+    "Environment" = var.environment,
+    "Service"     = var.service_underscore
+  }
+  ######################
+  # Additional policies
+  ######################
+
+  attach_policy_statements = true
+  policy_statements = {
+    dynamodb_crud = {
+      effect = "Allow",
+      actions = [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+      ],
+      resources = [
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}"
+      ]
+    },
+    s3_crud = {
+      effect = "Allow",
+      actions = [
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucketMultipartUploads",
+        "s3:ListMultipartUploadParts",
+        "s3:AbortMultipartUpload"
+      ],
+      resources = [
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+      ]
+    }
+  }
+}
+
+module "list_files_docker_image" {
+  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version = "7.7.0"
+
+  create_ecr_repo      = true
+  keep_remotely        = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = local.list_files_function_name_and_ecr_repo_name # Remember to change
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
+  source_path = "${local.source_path}/list_files/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }

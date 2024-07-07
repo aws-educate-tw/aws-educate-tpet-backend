@@ -64,6 +64,18 @@ module "api_gateway" {
       }
     }
 
+    "GET /files" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+      integration = {
+        uri                    = module.list_files_lambda.lambda_function_arn # Remember to change
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
+
     "GET /files/{file_id}" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
@@ -75,6 +87,7 @@ module "api_gateway" {
         timeout_milliseconds   = 29000
       }
     }
+
 
 
     "$default" = {
