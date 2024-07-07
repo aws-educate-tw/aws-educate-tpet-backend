@@ -1,0 +1,5 @@
+aws_region         = "us-east-1"
+environment        = "dev"
+service_underscore = "file_service"
+service_hyphen     = "file-service"
+dynamodb_table     = "file"
