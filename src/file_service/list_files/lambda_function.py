@@ -5,6 +5,7 @@ import os
 from decimal import Decimal
 
 import boto3
+import botocore.exceptions
 from boto3.dynamodb.conditions import Key
 
 # Configure logging
@@ -81,9 +82,13 @@ def lambda_handler(event, context):
         try:
             response = table.query(**query_kwargs)
             logger.info("Query successful")
-        except dynamodb.meta.client.exceptions.ValidationException as e:
-            logger.error("Query failed: %s", str(e))
-            return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+        except botocore.exceptions.ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            if error_code == "ValidationException":
+                logger.error("Query failed: %s", str(e))
+                return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+            else:
+                raise e
     else:
         scan_kwargs = {
             "Limit": limit,
@@ -112,9 +117,13 @@ def lambda_handler(event, context):
         try:
             response = table.scan(**scan_kwargs)
             logger.info("Scan successful")
-        except dynamodb.meta.client.exceptions.ValidationException as e:
-            logger.error("Scan failed: %s", str(e))
-            return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+        except botocore.exceptions.ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            if error_code == "ValidationException":
+                logger.error("Scan failed: %s", str(e))
+                return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+            else:
+                raise e
 
     files = response.get("Items", [])
     last_evaluated_key = response.get("LastEvaluatedKey")
