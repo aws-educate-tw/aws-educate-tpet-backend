@@ -31,6 +31,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check current directory
+        run: pwd
+
+      - name: List root directory
+        run: ls -al /
+
+      - name: List home directory
+        run: ls -al /home/runner/
+
+      - name: List working directory
+        run: ls -al $GITHUB_WORKSPACE
+
+      - name: List specific directory
+        run: ls -al ${{ env.TF_DIR }}
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.8.3
