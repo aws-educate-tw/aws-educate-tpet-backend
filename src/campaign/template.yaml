@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: AWS SAM template for attendance confirmation
+
+Parameters:
+  AwsRegion:
+    Type: String
+    Default: "us-east-1"
+    Description: AWS region
+
+Resources:
+  CampaignFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: confirm-attendance
+      Role: !GetAtt LambdaExecutionRole.Arn
+      PackageType: Image
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref CampaignTable
+          BUCKET_NAME: local-dev-aws-educate-tpet-storage
+          SQS_QUEUE_URL: !Sub "https://sqs.${AwsRegion}.amazonaws.com/070576557102/email-queue"
+      Timeout: 20
+      Events:
+        CampaignApi:
+          Type: Api
+          Properties:
+            Path: /attendances
+            Method: get
+            RestApiId: !Ref CampaignApi
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: python3.11
+
+  CampaignApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: CampaignAPI
+      StageName: dev
+      EndpointConfiguration: REGIONAL
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      RoleName: !Sub "LambdaExecutionRole-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+      Policies:
+        - PolicyName: !Sub "LambdaPolicy-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource: "arn:aws:s3:::email-sender-excel/*"
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: "arn:aws:s3:::email-sender-excel"
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:GetItem
+                Resource: !Sub "arn:aws:dynamodb:${AwsRegion}:${AWS::AccountId}:table/${CampaignTable}"
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !Sub "arn:aws:sqs:${AwsRegion}:070576557102:email-queue"
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource: "*"
+
+  CampaignTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: campaign
+      AttributeDefinitions:
+        - AttributeName: campaign_id
+          AttributeType: S
+        - AttributeName: participant_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: campaign_id
+          KeyType: HASH
+        - AttributeName: participant_id
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+Outputs:
+  CampaignApiUrl:
+    Description: URL of the API Gateway for campaign function
+    Value: !Sub "https://${CampaignApi}.execute-api.${AwsRegion}.amazonaws.com/dev/attendances"
+  SQSQueueUrl:
+    Description: URL of the SQS Queue
+    Value: !Sub "arn:aws:sqs:${AwsRegion}:070576557102:email-queue"

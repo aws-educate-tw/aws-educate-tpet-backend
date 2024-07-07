@@ -1,0 +1,9 @@
+version = 0.1
+[default.deploy.parameters]
+stack_name = "confirm-attendence"
+resolve_s3 = true
+s3_prefix = "confirm-attendence"
+region = "us-east-1"
+capabilities = "CAPABILITY_NAMED_IAM"
+parameter_overrides = "AwsRegion=\"us-east-1\""
+image_repositories = ["CampaignFunction=070576557102.dkr.ecr.us-east-1.amazonaws.com/confirmattendence01cecb19/campaignfunction708cd7aerepo"]
