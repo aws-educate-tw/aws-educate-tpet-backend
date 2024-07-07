@@ -28,7 +28,7 @@ def get_file_info(file_id):
         api_url = f"{FILE_SERVICE_API_BASE_URL}/files/{file_id}"
         response = requests.get(api_url)
         response.raise_for_status()
-        print("test3")
+        print("test4")
         return response.json()
     except RequestException as e:
         logger.error("Error in get_file_info: %s", e)
