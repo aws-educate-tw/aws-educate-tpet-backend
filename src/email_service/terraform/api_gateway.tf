@@ -1,11 +1,22 @@
 locals {
   region             = var.aws_region
-  custom_domain_name = "${var.environment}.${var.service_hyphen}.internal.api.tpet.awseducate.systems"
+  custom_domain_name = "${var.environment}-${var.service_hyphen}-internal-api-tpet.awseducate.systems"
   sub_domain_name    = "${var.environment}-${var.service_hyphen}-internal-api-tpet"
 
   tags = {
     Service = var.service_underscore
   }
+}
+
+# Find a certificate that is issued
+data "aws_acm_certificate" "issued" {
+  domain   = "*.${var.domain_name}"
+  statuses = ["ISSUED"]
+}
+
+data "aws_route53_zone" "awseducate_systems" {
+  name         = var.domain_name
+  private_zone = false
 }
 
 ################################################################################
@@ -31,25 +42,16 @@ module "api_gateway" {
 
 
   # Custom Domain Name
-  domain_name           = "*.${var.domain_name}"
-  subdomains            = [local.sub_domain_name]
-  create_domain_records = true
-  create_certificate    = true
-  create_domain_name    = true
+  domain_name                 = local.custom_domain_name
+  domain_name_certificate_arn = data.aws_acm_certificate.issued.arn
+  api_mapping_key             = var.environment
+  create_domain_records       = false
+  create_certificate          = false
+  create_domain_name          = true
 
 
   # Routes & Integration(s)
   routes = {
-    "ANY /" = {
-      detailed_metrics_enabled = false
-
-      integration = {
-        uri                    = module.lambda_container_image.lambda_function_arn
-        payload_format_version = "1.0"
-        timeout_milliseconds   = 29000
-      }
-    }
-
     "POST /send-email" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
@@ -108,4 +110,16 @@ module "api_gateway" {
   }
 
   tags = local.tags
+}
+
+resource "aws_route53_record" "api_gateway_custom_domain_record" {
+  zone_id = data.aws_route53_zone.awseducate_systems.zone_id
+  name    = local.custom_domain_name
+  type    = "A"
+
+  alias {
+    name                   = module.api_gateway.domain_name_target_domain_name
+    zone_id                = module.api_gateway.domain_name_hosted_zone_id
+    evaluate_target_health = false
+  }
 }

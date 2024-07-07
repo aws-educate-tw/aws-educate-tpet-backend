@@ -10,7 +10,7 @@ locals {
 
 # Find a certificate that is issued
 data "aws_acm_certificate" "issued" {
-  domain   = var.domain_name
+  domain   = "*.${var.domain_name}"
   statuses = ["ISSUED"]
 }
 
@@ -52,16 +52,6 @@ module "api_gateway" {
 
   # Routes & Integration(s)
   routes = {
-    "ANY /" = {
-      detailed_metrics_enabled = false
-
-      integration = {
-        uri                    = module.lambda_container_image.lambda_function_arn
-        payload_format_version = "1.0"
-        timeout_milliseconds   = 29000
-      }
-    }
-
     "POST /upload-multiple-file" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
@@ -87,10 +77,10 @@ module "api_gateway" {
     }
 
 
-
     "$default" = {
       integration = {
-        uri = module.lambda_container_image.lambda_function_arn
+        uri                  = module.get_file_lambda.lambda_function_arn
+        passthrough_behavior = "WHEN_NO_MATCH"
       }
     }
   }
