@@ -18,12 +18,14 @@ logger.setLevel(logging.INFO)
 
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 BUCKET_NAME = os.getenv("BUCKET_NAME")
+ENVIRONMENT = os.getenv("ENVIRONMENT")
+FILE_SERVICE_API_BASE_URL = f"https://{ENVIRONMENT}-file-service-internal-api-tpet.awseducate.systems/{ENVIRONMENT}"
 
 
 # Function to call API to get file information using the file ID
 def get_file_info(file_id):
     try:
-        api_url = f"https://8um2zizr80.execute-api.ap-northeast-1.amazonaws.com/dev/files/{file_id}"
+        api_url = f"{FILE_SERVICE_API_BASE_URL}/files/{file_id}"
         response = requests.get(api_url)
         response.raise_for_status()
         return response.json()
@@ -108,7 +110,7 @@ def send_email(ses_client, email_title, template_content, row, display_name):
             return formatted_send_time, "SUCCESS"
         except Exception as e:
             logger.error("Failed to send email to %s: %s", receiver_email, e)
-            return "FAILED"
+            return None, "FAILED"
     except Exception as e:
         logger.error("Error in send_email: %s", e)
         raise
