@@ -14,8 +14,7 @@ module "api_tpet_cert" {
   validation_method = "DNS"
 
   subject_alternative_names = [
-    "*.api.tpet.${var.domain_name}",
-    "api.tpet.${var.domain_name}",
+    "api.tpet.${var.domain_name}"
   ]
 
   wait_for_validation = true
