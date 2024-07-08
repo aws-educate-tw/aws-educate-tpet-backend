@@ -1,9 +1,3 @@
-data "aws_route53_zone" "awseducate_systems" {
-  name         = var.domain_name
-  private_zone = false
-}
-
-
 module "api_tpet_cert" {
   source  = "terraform-aws-modules/acm/aws"
   version = "~> 5.0.0"
