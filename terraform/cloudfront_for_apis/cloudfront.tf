@@ -2,7 +2,7 @@ module "cloudfront" {
   source  = "terraform-aws-modules/cloudfront/aws"
   version = "3.4.0"
 
-  aliases = [var.domain_name]
+  aliases = ["api.tpet.${var.domain_name}"]
 
   comment             = "CloudFront distribution for multiple API Gateways"
   enabled             = true
