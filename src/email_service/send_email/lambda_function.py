@@ -17,17 +17,21 @@ logger.setLevel(logging.INFO)
 
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 BUCKET_NAME = os.getenv("BUCKET_NAME")
+ENVIRONMENT = os.getenv("ENVIRONMENT")
+FILE_SERVICE_API_BASE_URL = f"https://{ENVIRONMENT}-file-service-internal-api-tpet.awseducate.systems/{ENVIRONMENT}"
+
 
 def get_file_info(file_id):
     try:
-        api_url = f"https://api.tpet.awseducate.systems/dev/files/{file_id}"
+        api_url = f"{FILE_SERVICE_API_BASE_URL}/files/{file_id}"
         response = requests.get(api_url)
         response.raise_for_status()
-        logger.info("Fetched file info for file_id: %s", file_id)
+        print("test4")
         return response.json()
     except RequestException as e:
         logger.error("Error in get_file_info: %s", e)
         raise
+
 
 def get_template(template_file_s3_key):
     try:
@@ -39,6 +43,7 @@ def get_template(template_file_s3_key):
     except Exception as e:
         logger.error("Error in get_template: %s", e)
         raise
+
 
 def read_sheet_data_from_s3(spreadsheet_file_s3_key):
     try:
@@ -54,6 +59,7 @@ def read_sheet_data_from_s3(spreadsheet_file_s3_key):
     except Exception as e:
         logger.error("Error in read excel from s3: %s", e)
         raise
+
 
 def send_email(ses_client, email_title, template_content, row, display_name):
     try:
@@ -78,7 +84,11 @@ def send_email(ses_client, email_title, template_content, row, display_name):
             )
             _ = datetime.datetime.now() + datetime.timedelta(hours=8)
             formatted_send_time = _.strftime(TIME_FORMAT + "Z")
-            logger.info("Email sent to %s at %s", row.get('Name', 'Unknown'), formatted_send_time)
+            logger.info(
+                "Email sent to %s at %s",
+                row.get("Name", "Unknown"),
+                formatted_send_time,
+            )
             return formatted_send_time, "SUCCESS"
         except Exception as e:
             logger.error("Failed to send email to %s: %s", receiver_email, e)
@@ -86,6 +96,7 @@ def send_email(ses_client, email_title, template_content, row, display_name):
     except Exception as e:
         logger.error("Error in send_email: %s", e)
         return None, "FAILED"
+
 
 def save_to_dynamodb(
     run_id,
@@ -119,6 +130,7 @@ def save_to_dynamodb(
         logger.error("Error in save_to_dynamodb: %s", e)
         raise
 
+
 def process_email(
     ses_client,
     email_title,
@@ -148,25 +160,24 @@ def process_email(
     )
     return status, email
 
+
 def delete_sqs_message(sqs_client, queue_url, receipt_handle):
     try:
-        sqs_client.delete_message(
-            QueueUrl=queue_url,
-            ReceiptHandle=receipt_handle
-        )
+        sqs_client.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)
         logger.info("Deleted message from SQS: %s", receipt_handle)
     except Exception as e:
         logger.error("Error deleting message from SQS: %s", e)
         raise
 
+
 def lambda_handler(event, context):
     sqs_client = boto3.client("sqs")
     queue_url = os.environ.get("SQS_QUEUE_URL")
-    
-    for record in event['Records']:
+
+    for record in event["Records"]:
         try:
-            body = json.loads(record['body'])
-            receipt_handle = record['receiptHandle']
+            body = json.loads(record["body"])
+            receipt_handle = record["receiptHandle"]
             template_file_id = body.get("template_file_id")
             spreadsheet_id = body.get("spreadsheet_file_id")
             email_title = body.get("email_title")
