@@ -57,7 +57,7 @@ module "api_gateway" {
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
       integration = {
-        uri                    = module.send_email_lambda.lambda_function_arn
+        uri                    = module.validate_input_lambda.lambda_function_arn
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
