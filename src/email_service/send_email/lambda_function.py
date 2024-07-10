@@ -16,18 +16,28 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
+DYNAMODB_TABLE = os.getenv("DYNAMODB_TABLE")
 BUCKET_NAME = os.getenv("BUCKET_NAME")
+SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
 ENVIRONMENT = os.getenv("ENVIRONMENT")
 FILE_SERVICE_API_BASE_URL = f"https://{ENVIRONMENT}-file-service-internal-api-tpet.awseducate.systems/{ENVIRONMENT}"
 
 
 def get_file_info(file_id):
+    """
+    Retrieve file information from the file service API.
+
+    :param file_id: ID of the file to retrieve information for
+    :return: JSON response containing file information
+    """
     try:
         api_url = f"{FILE_SERVICE_API_BASE_URL}/files/{file_id}"
-        response = requests.get(api_url)
+        response = requests.get(url=api_url, timeout=25)
         response.raise_for_status()
-        print("test4")
         return response.json()
+    except requests.exceptions.Timeout:
+        logger.error("Request timed out for file_id: %s", file_id)
+        raise
     except RequestException as e:
         logger.error("Error in get_file_info: %s", e)
         raise
@@ -110,7 +120,7 @@ def save_to_dynamodb(
 ):
     try:
         dynamodb = boto3.resource("dynamodb")
-        table_name = os.environ.get("TABLE_NAME")
+        table_name = DYNAMODB_TABLE
         table = dynamodb.Table(table_name)
         item = {
             "run_id": run_id,
@@ -172,7 +182,7 @@ def delete_sqs_message(sqs_client, queue_url, receipt_handle):
 
 def lambda_handler(event, context):
     sqs_client = boto3.client("sqs")
-    queue_url = os.environ.get("SQS_QUEUE_URL")
+    queue_url = SQS_QUEUE_URL
 
     for record in event["Records"]:
         try:
@@ -208,13 +218,13 @@ def lambda_handler(event, context):
                 )
             logger.info("Processed all emails for run_id: %s", run_id)
         except Exception as e:
-            logger.error(f"Error processing message: {e}")
+            logger.error("Error processing message: %s", e)
         finally:
             if queue_url:
                 try:
                     delete_sqs_message(sqs_client, queue_url, receipt_handle)
                     logger.info("Deleted message from SQS: %s", receipt_handle)
                 except Exception as e:
-                    logger.error(f"Error deleting SQS message: {e}")
+                    logger.error("Error deleting SQS message: %s", e)
             else:
                 logger.error("SQS_QUEUE_URL is not available")
