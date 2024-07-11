@@ -34,6 +34,7 @@ def lambda_handler(event, context):
             email_title = body.get("email_title")
             display_name = body.get("display_name")
             run_id = body.get("run_id")
+            attachment_file_ids = body.get("attachment_file_ids", [])
 
             logger.info("Processing message with run_id: %s", run_id)
 
@@ -96,6 +97,7 @@ def lambda_handler(event, context):
                     template_file_id,
                     spreadsheet_id,
                     email_id,
+                    attachment_file_ids,
                 )
             logger.info("Processed all emails for run_id: %s", run_id)
         except Exception as e:

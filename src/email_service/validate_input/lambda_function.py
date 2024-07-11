@@ -118,6 +118,7 @@ def lambda_handler(event, context):
         email_title = body.get("subject")
         display_name = body.get("display_name", "No Name Provided")
         run_id = body.get("run_id") if body.get("run_id") else uuid.uuid4().hex
+        attachment_file_ids = body.get("attachment_file_ids", [])
 
         # Validate required inputs
         if not email_title:
@@ -155,6 +156,7 @@ def lambda_handler(event, context):
             "spreadsheet_file_id": spreadsheet_id,
             "email_title": email_title,
             "display_name": display_name,
+            "attachment_file_ids": attachment_file_ids,
         }
 
         # Send message to SQS
@@ -172,6 +174,7 @@ def lambda_handler(event, context):
             "spreadsheet_file_id": spreadsheet_id,
             "email_title": email_title,
             "display_name": display_name,
+            "attachment_file_ids": attachment_file_ids,
         }
 
         return {"statusCode": 202, "body": json.dumps(response)}
