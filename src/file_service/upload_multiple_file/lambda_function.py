@@ -4,7 +4,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timezone
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import boto3
 from botocore.exceptions import ClientError
@@ -28,6 +28,7 @@ def lambda_handler(event, context):
     content_type = event["headers"].get("Content-Type") or event["headers"].get(
         "content-type"
     )
+
     # Check if the body is base64 encoded
     if event.get("isBase64Encoded", False):
         body = base64.b64decode(event["body"])  # Decode base64-encoded body
@@ -43,6 +44,7 @@ def lambda_handler(event, context):
             disposition = part.headers[b"Content-Disposition"].decode()
             if "filename*=" in disposition:
                 file_name = disposition.split("filename*=UTF-8''")[1]
+                file_name = unquote(file_name)
             else:
                 file_name = disposition.split('filename="')[1].split('"')[0]
 
