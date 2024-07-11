@@ -1,0 +1,5 @@
+aws_region         = "us-east-1"
+environment        = "dev"
+service_underscore = "email_service"
+service_hyphen     = "email-service"
+dynamodb_table     = "email"

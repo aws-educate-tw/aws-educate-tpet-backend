@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: AWS SAM template for email input validation
+
+Parameters:
+  AwsRegion:
+    Type: String
+    Default: "us-east-1"
+    Description: AWS region
+
+Resources:
+  ValidateInputFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: validate-input
+      Role: !GetAtt LambdaExecutionRole.Arn
+      PackageType: Image
+      CodeUri: .
+      Environment:
+        Variables:
+          BUCKET_NAME: "email-sender-excel"
+          SQS_QUEUE_URL: !Sub "https://sqs.${AwsRegion}.amazonaws.com/070576557102/email-queue"
+      Timeout: 20
+      Events:
+        ValidateInputApi:
+          Type: Api
+          Properties:
+            Path: /send-email
+            Method: post
+            RestApiId: !Ref ValidateInputApi
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: python3.11
+
+  ValidateInputApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: ValidateInputAPI
+      StageName: dev
+      EndpointConfiguration: REGIONAL
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      RoleName: !Sub "LambdaExecutionRole-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+      Policies:
+        - PolicyName: !Sub "LambdaPolicy-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: "arn:aws:s3:::email-sender-excel/*"
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !Sub "arn:aws:sqs:${AwsRegion}:070576557102:email-queue"
+
+Outputs:
+  ApiGatewayUrl:
+    Description: URL of the API Gateway for validating input
+    Value: !Sub "https://${ValidateInputApi}.execute-api.${AwsRegion}.amazonaws.com/dev/send-email"
+  SQSQueueUrl:
+    Description: URL of the SQS Queue
+    Value: !Sub "arn:aws:sqs:${AwsRegion}:070576557102:email-queue"

@@ -1,0 +1,5 @@
+aws_region         = "us-east-1"
+environment        = "dev"
+service_underscore = "acm_shared_cert"
+service_hyphen     = "acm-shared-cert"
+domain_name        = "awseducate.systems"
