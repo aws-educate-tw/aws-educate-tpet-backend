@@ -52,7 +52,7 @@ module "upload_multiple_file_lambda" {
   ##################
   package_type  = "Image"
   architectures = ["x86_64"] # or ["arm64"]
-  image_uri     = module.docker_image.image_uri
+  image_uri     = module.upload_multiple_file_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -120,7 +120,7 @@ module "upload_multiple_file_lambda" {
   }
 }
 
-module "docker_image" {
+module "upload_multiple_file_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
