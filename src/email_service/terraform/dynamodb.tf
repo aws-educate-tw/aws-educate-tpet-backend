@@ -24,16 +24,18 @@ resource "aws_dynamodb_table" "email" {
     type = "S"
   }
 
-  local_secondary_index {
-    name            = "status_lsi"
-    projection_type = "ALL"
+  global_secondary_index {
+    name            = "run_id-status-gsi"
+    hash_key        = "run_id"
     range_key       = "status"
+    projection_type = "ALL"
   }
 
-  local_secondary_index {
-    name            = "create_at_lsi"
-    projection_type = "ALL"
+  global_secondary_index {
+    name            = "run_id-created_at-gsi"
+    hash_key        = "run_id"
     range_key       = "created_at"
+    projection_type = "ALL"
   }
 
   tags = {
