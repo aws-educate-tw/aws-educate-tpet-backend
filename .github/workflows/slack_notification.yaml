@@ -1,0 +1,26 @@
+name: Slack Deployment Notification
+
+on:
+  workflow_run:
+    workflows:
+      - "Terraform Infrastructure Change Management Pipeline with GitHub Actions"
+    types:
+      - completed
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.conclusion == 'success' ||
+      github.event.workflow_run.conclusion == 'failure'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Slack Notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ github.event.workflow_run.conclusion }}
+          fields: repo,message,commit,author
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

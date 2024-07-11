@@ -1,0 +1,5 @@
+aws_region         = "us-west-2"
+environment        = "local-dev"
+service_underscore = "api_gateway_custom_domain"
+service_hyphen     = "api-gateway-custom-domain"
+domain_name        = "awseducate.systems"
