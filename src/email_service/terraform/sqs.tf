@@ -4,4 +4,11 @@ module "send_email_sqs" {
 
   name                       = "${var.environment}-send-email-sqs"
   visibility_timeout_seconds = 320 # Second, make sure it is larger than the Lambda timeout
+
+  # Dead letter queue
+  create_dlq = true
+  redrive_policy = {
+    # One failure to receive a message would cause the message to move to the DLQ
+    maxReceiveCount = 1
+  }
 }

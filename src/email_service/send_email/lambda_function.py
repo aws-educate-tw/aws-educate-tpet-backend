@@ -24,12 +24,6 @@ FILE_SERVICE_API_BASE_URL = f"https://{ENVIRONMENT}-file-service-internal-api-tp
 
 
 def get_file_info(file_id):
-    """
-    Retrieve file information from the file service API.
-
-    :param file_id: ID of the file to retrieve information for
-    :return: JSON response containing file information
-    """
     try:
         api_url = f"{FILE_SERVICE_API_BASE_URL}/files/{file_id}"
         response = requests.get(url=api_url, timeout=25)
@@ -92,14 +86,15 @@ def send_email(ses_client, email_title, template_content, row, display_name):
                     "Body": {"Html": {"Data": formatted_content}},
                 },
             )
-            _ = datetime.datetime.now() + datetime.timedelta(hours=8)
-            formatted_send_time = _.strftime(TIME_FORMAT + "Z")
+            sent_time = datetime.datetime.now(datetime.timezone.utc).strftime(
+                TIME_FORMAT + "Z"
+            )
             logger.info(
                 "Email sent to %s at %s",
                 row.get("Name", "Unknown"),
-                formatted_send_time,
+                sent_time,
             )
-            return formatted_send_time, "SUCCESS"
+            return sent_time, "SUCCESS"
         except Exception as e:
             logger.error("Failed to send email to %s: %s", receiver_email, e)
             return None, "FAILED"
@@ -117,6 +112,8 @@ def save_to_dynamodb(
     template_file_id,
     spreadsheet_file_id,
     created_at,
+    sent_at=None,
+    updated_at=None,
 ):
     try:
         dynamodb = boto3.resource("dynamodb")
@@ -131,7 +128,10 @@ def save_to_dynamodb(
             "template_file_id": template_file_id,
             "spreadsheet_file_id": spreadsheet_file_id,
             "created_at": created_at,
+            "updated_at": updated_at,
         }
+        if sent_at:
+            item["sent_at"] = sent_at
         table.put_item(Item=item)
         logger.info("Saved email record to DynamoDB: %s", email_id)
     except ClientError as e:
@@ -150,25 +150,32 @@ def process_email(
     run_id,
     template_file_id,
     spreadsheet_id,
+    email_id,
 ):
-    email = str(row.get("Email", ""))
-    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        logger.warning("Invalid email address provided: %s", email)
-        return "FAILED", email
-    send_time, status = send_email(
+    recipient_email = str(row.get("Email", ""))
+    if not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email):
+        logger.warning("Invalid email address provided: %s", recipient_email)
+        return "FAILED", email_id
+
+    sent_time, status = send_email(
         ses_client, email_title, template_content, row, display_name
+    )
+    updated_at = datetime.datetime.now(datetime.timezone.utc).strftime(
+        TIME_FORMAT + "Z"
     )
     save_to_dynamodb(
         run_id,
-        uuid.uuid4().hex,
+        email_id,
         display_name,
         status,
-        email,
+        recipient_email,
         template_file_id,
         spreadsheet_id,
-        send_time,
+        datetime.datetime.now(datetime.timezone.utc).strftime(TIME_FORMAT + "Z"),
+        sent_at=sent_time,
+        updated_at=updated_at,
     )
-    return status, email
+    return status, email_id
 
 
 def delete_sqs_message(sqs_client, queue_url, receipt_handle):
@@ -183,6 +190,8 @@ def delete_sqs_message(sqs_client, queue_url, receipt_handle):
 def lambda_handler(event, context):
     sqs_client = boto3.client("sqs")
     queue_url = SQS_QUEUE_URL
+    dynamodb = boto3.resource("dynamodb")
+    table = dynamodb.Table(DYNAMODB_TABLE)
 
     for record in event["Records"]:
         try:
@@ -196,16 +205,57 @@ def lambda_handler(event, context):
 
             logger.info("Processing message with run_id: %s", run_id)
 
-            template_info = get_file_info(template_file_id)
-            template_s3_key = template_info["s3_object_key"]
-            template_content = get_template(template_s3_key)
+            # Check if the run_id already exists in DynamoDB
+            response = table.query(
+                KeyConditionExpression=boto3.dynamodb.conditions.Key("run_id").eq(
+                    run_id
+                )
+            )
+            if response["Count"] == 0:
+                # Run ID does not exist, save all emails to DynamoDB with PENDING status
+                template_info = get_file_info(template_file_id)
+                template_s3_key = template_info["s3_object_key"]
+                template_content = get_template(template_s3_key)
 
-            spreadsheet_info = get_file_info(spreadsheet_id)
-            spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
-            data, _ = read_sheet_data_from_s3(spreadsheet_s3_key)
+                spreadsheet_info = get_file_info(spreadsheet_id)
+                spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
+                data, _ = read_sheet_data_from_s3(spreadsheet_s3_key)
+
+                for row in data:
+                    email_id = str(uuid.uuid4())
+                    save_to_dynamodb(
+                        run_id,
+                        email_id,
+                        display_name,
+                        "PENDING",
+                        row.get("Email"),
+                        template_file_id,
+                        spreadsheet_id,
+                        datetime.datetime.now(datetime.timezone.utc).strftime(
+                            TIME_FORMAT + "Z"
+                        ),
+                    )
+
+            # Fetch emails with PENDING status and process them
+            pending_emails = table.query(
+                IndexName="run_id-status-gsi",
+                KeyConditionExpression=boto3.dynamodb.conditions.Key("run_id").eq(
+                    run_id
+                )
+                & boto3.dynamodb.conditions.Key("status").eq("PENDING"),
+            )
 
             ses_client = boto3.client("ses", region_name="ap-northeast-1")
-            for row in data:
+            template_content = get_template(
+                template_s3_key
+            )  # Load the template content
+            for item in pending_emails["Items"]:
+                recipient_email = item["recipient_email"]
+                email_id = item["email_id"]
+                row = {
+                    "Email": recipient_email,
+                    "Name": item.get("Name"),
+                }  # Assuming the spreadsheet has these fields
                 process_email(
                     ses_client,
                     email_title,
@@ -215,6 +265,7 @@ def lambda_handler(event, context):
                     run_id,
                     template_file_id,
                     spreadsheet_id,
+                    email_id,
                 )
             logger.info("Processed all emails for run_id: %s", run_id)
         except Exception as e:
@@ -227,4 +278,4 @@ def lambda_handler(event, context):
                 except Exception as e:
                     logger.error("Error deleting SQS message: %s", e)
             else:
-                logger.error("SQS_QUEUE_URL is not available")
+                logger.error("SQS_QUEUE_URL is not available: %s", SQS_QUEUE_URL)
