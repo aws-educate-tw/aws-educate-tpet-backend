@@ -5,6 +5,7 @@ import uuid
 
 import boto3
 import time_util
+from data_util import convert_float_to_decimal
 from dynamodb import save_to_dynamodb
 from s3 import get_template, read_sheet_data_from_s3
 from ses import process_email
@@ -56,15 +57,19 @@ def lambda_handler(event, context):
 
                 for row in data:
                     email_id = str(uuid.uuid4().hex)
+                    row = convert_float_to_decimal(row)
+                    created_at = time_util.get_current_utc_time()
+                    logger.info("Converted row data: %s", row)
                     save_to_dynamodb(
-                        run_id,
-                        email_id,
-                        display_name,
-                        "PENDING",
-                        row.get("Email"),
-                        template_file_id,
-                        spreadsheet_id,
-                        time_util.get_current_utc_time(),
+                        run_id=run_id,
+                        email_id=email_id,
+                        display_name=display_name,
+                        status="PENDING",
+                        recipient_email=row.get("Email"),
+                        template_file_id=template_file_id,
+                        spreadsheet_file_id=spreadsheet_id,
+                        created_at=created_at,
+                        row_data=row,
                     )
 
             # Fetch emails with PENDING status and process them
@@ -83,19 +88,19 @@ def lambda_handler(event, context):
             for item in pending_emails["Items"]:
                 recipient_email = item["recipient_email"]
                 email_id = item["email_id"]
-                row = {
-                    "Email": recipient_email,
-                    "Name": item.get("Name"),
-                }  # Assuming the spreadsheet has these fields
+                row = item.get("row_data")
+                created_at = item.get("created_at")
                 process_email(
                     ses_client,
                     email_title,
                     template_content,
+                    recipient_email,
                     row,
                     display_name,
                     run_id,
                     template_file_id,
                     spreadsheet_id,
+                    created_at,
                     email_id,
                     attachment_file_ids,
                 )

@@ -22,6 +22,7 @@ def save_to_dynamodb(
     template_file_id,
     spreadsheet_file_id,
     created_at,
+    row_data,
     sent_at=None,
     updated_at=None,
 ):
@@ -35,6 +36,7 @@ def save_to_dynamodb(
             "recipient_email": recipient_email,
             "template_file_id": template_file_id,
             "spreadsheet_file_id": spreadsheet_file_id,
+            "row_data": row_data,
             "created_at": created_at,
             "updated_at": updated_at,
         }
