@@ -52,15 +52,15 @@ def add_hours_to_time(iso8601_str: str, hours: int) -> str:
 # Example usage
 if __name__ == "__main__":
     current_time = get_current_utc_time()
-    print("Current UTC Time:", current_time)
+    print("Current UTC Time: ", current_time)
 
     formatted_time = format_time_to_iso8601(
         datetime.datetime.now(datetime.timezone.utc)
     )
-    print("Formatted Time:", formatted_time)
+    print("Formatted Time: ", formatted_time)
 
     parsed_time = parse_iso8601_to_datetime("2024-07-11T12:00:00Z")
-    print("Parsed Time:", parsed_time)
+    print("Parsed Time: ", parsed_time)
 
     new_time = add_hours_to_time("2024-07-11T12:00:00Z", 3)
-    print("New Time:", new_time)
+    print("New Time: ", new_time)
