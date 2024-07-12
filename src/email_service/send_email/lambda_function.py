@@ -64,6 +64,7 @@ def fetch_and_process_pending_emails(
     template_file_id,
     spreadsheet_id,
     attachment_file_ids,
+    is_generate_certificate,
 ):
     """
     Fetch emails with 'PENDING' status from DynamoDB and process them.
@@ -75,6 +76,7 @@ def fetch_and_process_pending_emails(
     :param template_file_id: File ID of the email template.
     :param spreadsheet_id: File ID of the spreadsheet.
     :param attachment_file_ids: List of file IDs for attachments.
+    :param is_generate_certificate: Boolean flag indicating whether to generate a certificate.
     """
     pending_emails = table.query(
         IndexName="run_id-status-gsi",
@@ -101,6 +103,7 @@ def fetch_and_process_pending_emails(
             created_at,
             email_id,
             attachment_file_ids,
+            is_generate_certificate,
         )
 
 
@@ -115,6 +118,7 @@ def lambda_handler(event, context):
         try:
             msg = process_sqs_message(record)
             run_id = msg["run_id"]
+            is_generate_certificate = msg.get("is_generate_certificate", False)
             # Check if the run_id already exists in DynamoDB
             response = table.query(
                 KeyConditionExpression=boto3.dynamodb.conditions.Key("run_id").eq(
@@ -148,6 +152,7 @@ def lambda_handler(event, context):
                 msg["template_file_id"],
                 msg["spreadsheet_id"],
                 msg["attachment_file_ids"],
+                is_generate_certificate,
             )
             logger.info("Processed all emails for run_id: %s", run_id)
         except Exception as e:
