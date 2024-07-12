@@ -167,7 +167,7 @@ module "send_email_lambda" {
   }
   create_package = false
   timeout        = 180
-  memory_size    = 256
+  memory_size    = 1024
 
   ##################
   # Container Image
