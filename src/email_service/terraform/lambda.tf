@@ -166,7 +166,7 @@ module "send_email_lambda" {
     }
   }
   create_package = false
-  timeout        = 300
+  timeout        = 180
 
   ##################
   # Container Image
@@ -179,11 +179,12 @@ module "send_email_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore
-    "DYNAMODB_TABLE" = var.dynamodb_table
-    "BUCKET_NAME"    = "${var.environment}-aws-educate-tpet-storage"
-    "SQS_QUEUE_URL"  = module.send_email_sqs.queue_url
+    "ENVIRONMENT"         = var.environment,
+    "SERVICE"             = var.service_underscore
+    "DYNAMODB_TABLE"      = var.dynamodb_table
+    "BUCKET_NAME"         = "${var.environment}-aws-educate-tpet-storage"
+    "PRIVATE_BUCKET_NAME" = "${var.environment}-aws-educate-tpet-private-storage"
+    "SQS_QUEUE_URL"       = module.send_email_sqs.queue_url
   }
 
   allowed_triggers = {
@@ -241,6 +242,27 @@ module "send_email_lambda" {
       ],
       resources = [
         "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.send_email_sqs.queue_name}"
+      ]
+    },
+    s3_crud = {
+      effect = "Allow",
+      actions = [
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucketMultipartUploads",
+        "s3:ListMultipartUploadParts",
+        "s3:AbortMultipartUpload"
+      ],
+      resources = [
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-private-storage",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-private-storage/*"
       ]
     }
   }
