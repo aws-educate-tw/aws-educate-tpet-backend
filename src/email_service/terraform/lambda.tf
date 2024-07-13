@@ -166,7 +166,7 @@ module "send_email_lambda" {
     }
   }
   create_package = false
-  timeout        = 180
+  timeout        = 600
   memory_size    = 1024
 
   ##################
