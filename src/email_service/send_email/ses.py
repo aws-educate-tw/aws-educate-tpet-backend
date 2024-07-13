@@ -24,6 +24,7 @@ logger.setLevel(logging.INFO)
 ses_client = boto3.client("ses", region_name="ap-northeast-1")
 
 SENDER_EMAIL = "cloudambassador@aws-educate.tw"
+REPLY_TO_EMAIL = "awseducate.cloudambassador@gmail.com"
 CHARSET = "utf-8"
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 PRIVATE_BUCKET_NAME = os.getenv("PRIVATE_BUCKET_NAME")
@@ -44,7 +45,9 @@ def download_file_content(file_url):
     return response.content
 
 
-def create_email_message(email_title, formatted_content, recipient_email, display_name):
+def create_email_message(
+    subject, formatted_content, recipient_email, display_name, reply_to
+):
     """
     Create an email message with the given title, content, recipient, and display name.
 
@@ -57,9 +60,10 @@ def create_email_message(email_title, formatted_content, recipient_email, displa
 
     # Create a multipart/mixed parent container.
     msg = MIMEMultipart("mixed")
-    msg["Subject"] = email_title
+    msg["Subject"] = subject
     msg["From"] = formataddr((display_name, SENDER_EMAIL))
     msg["To"] = recipient_email
+    msg["Reply-To"] = reply_to
 
     # Create a multipart/alternative child container.
     msg_body = MIMEMultipart("alternative")
@@ -137,6 +141,7 @@ def send_email(
     template_content: str,
     row: dict[str, any],
     display_name: str,
+    reply_to: str,
     attachment_file_ids: list[str] = None,
     is_generate_certificate: bool = False,
     run_id: str = None,
@@ -171,7 +176,7 @@ def send_email(
 
         # Create the email message object
         msg = create_email_message(
-            subject, formatted_content, recipient_email, display_name
+            subject, formatted_content, recipient_email, display_name, reply_to
         )
 
         # Attach any specified files to the email
@@ -266,6 +271,7 @@ def process_email(
         template_content,
         row,
         email_data.get("display_name"),
+        REPLY_TO_EMAIL,
         email_data.get("attachment_file_ids"),
         email_data.get("is_generate_certificate"),
         email_data.get("run_id"),
