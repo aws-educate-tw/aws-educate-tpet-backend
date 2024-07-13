@@ -114,19 +114,19 @@ def lambda_handler(event, context):
         # Parse input from the event body
         body = json.loads(event.get("body", "{}"))
         template_file_id = body.get("template_file_id")
-        spreadsheet_id = body.get("spreadsheet_file_id")
-        email_title = body.get("subject")
+        spreadsheet_file_id = body.get("spreadsheet_file_id")
+        subject = body.get("subject")
         display_name = body.get("display_name", "No Name Provided")
         run_id = body.get("run_id") if body.get("run_id") else uuid.uuid4().hex
         attachment_file_ids = body.get("attachment_file_ids", [])
         is_generate_certificate = body.get("is_generate_certificate", False)
 
         # Validate required inputs
-        if not email_title:
+        if not subject:
             return {"statusCode": 400, "body": json.dumps("Missing email title")}
         if not template_file_id:
             return {"statusCode": 400, "body": json.dumps("Missing template file ID")}
-        if not spreadsheet_id:
+        if not spreadsheet_file_id:
             return {
                 "statusCode": 400,
                 "body": json.dumps("Missing spreadsheet file ID"),
@@ -138,7 +138,7 @@ def lambda_handler(event, context):
         template_content = get_template(template_s3_key)
 
         # Get spreadsheet file information and columns
-        spreadsheet_info = get_file_info(spreadsheet_id)
+        spreadsheet_info = get_file_info(spreadsheet_file_id)
         spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
         _, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
 
@@ -152,7 +152,7 @@ def lambda_handler(event, context):
 
         # Validate required columns for certificate generation
         if is_generate_certificate:
-            required_columns = ["Name", "EventText"]
+            required_columns = ["Name", "Certificate Text"]
             missing_required_columns = [
                 col for col in required_columns if col not in columns
             ]
@@ -167,8 +167,8 @@ def lambda_handler(event, context):
         message_body = {
             "run_id": run_id,
             "template_file_id": template_file_id,
-            "spreadsheet_file_id": spreadsheet_id,
-            "email_title": email_title,
+            "spreadsheet_file_id": spreadsheet_file_id,
+            "subject": subject,
             "display_name": display_name,
             "attachment_file_ids": attachment_file_ids,
             "is_generate_certificate": is_generate_certificate,
@@ -186,8 +186,8 @@ def lambda_handler(event, context):
             "message": "Input message accepted for processing",
             "run_id": run_id,
             "template_file_id": template_file_id,
-            "spreadsheet_file_id": spreadsheet_id,
-            "email_title": email_title,
+            "spreadsheet_file_id": spreadsheet_file_id,
+            "subject": subject,
             "display_name": display_name,
             "attachment_file_ids": attachment_file_ids,
             "is_generate_certificate": is_generate_certificate,

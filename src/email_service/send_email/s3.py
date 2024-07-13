@@ -11,10 +11,10 @@ logger.setLevel(logging.INFO)
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 
 
-def get_template(template_file_s3_key):
+def read_html_template_file_from_s3(bucket, template_file_s3_key):
     try:
         s3 = boto3.client("s3")
-        request = s3.get_object(Bucket=BUCKET_NAME, Key=template_file_s3_key)
+        request = s3.get_object(Bucket=bucket, Key=template_file_s3_key)
         template_content = request["Body"].read().decode("utf-8")
         logger.info("Fetched template content from S3 key: %s", template_file_s3_key)
         return template_content
