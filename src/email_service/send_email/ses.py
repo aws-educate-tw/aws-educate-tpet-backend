@@ -23,7 +23,7 @@ logger.setLevel(logging.INFO)
 
 ses_client = boto3.client("ses", region_name="ap-northeast-1")
 
-SENDER_EMAIL = "awseducate.cloudambassador@gmail.com"
+SENDER_EMAIL = "cloudambassador@aws-educate.tw"
 CHARSET = "utf-8"
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 PRIVATE_BUCKET_NAME = os.getenv("PRIVATE_BUCKET_NAME")
