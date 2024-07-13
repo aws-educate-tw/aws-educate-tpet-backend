@@ -17,15 +17,16 @@ def delete_sqs_message(sqs_client, queue_url, receipt_handle):
         raise
 
 
-def process_sqs_message(record):
+def get_sqs_message(record):
     body = json.loads(record["body"])
     receipt_handle = record["receiptHandle"]
     template_file_id = body.get("template_file_id")
-    spreadsheet_id = body.get("spreadsheet_file_id")
-    email_title = body.get("email_title")
+    spreadsheet_file_id = body.get("spreadsheet_file_id")
+    subject = body.get("subject")
     display_name = body.get("display_name")
     run_id = body.get("run_id")
     attachment_file_ids = body.get("attachment_file_ids", [])
+    is_generate_certificate = body.get("is_generate_certificate", False)
 
     logger.info("Processing message with run_id: %s", run_id)
 
@@ -33,9 +34,10 @@ def process_sqs_message(record):
         "body": body,
         "receipt_handle": receipt_handle,
         "template_file_id": template_file_id,
-        "spreadsheet_id": spreadsheet_id,
-        "email_title": email_title,
+        "spreadsheet_file_id": spreadsheet_file_id,
+        "subject": subject,
         "display_name": display_name,
         "run_id": run_id,
         "attachment_file_ids": attachment_file_ids,
+        "is_generate_certificate": is_generate_certificate,
     }

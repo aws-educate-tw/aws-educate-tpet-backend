@@ -1,21 +1,35 @@
 import logging
+import os
 import re
+import uuid
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formataddr
+from pathlib import Path
 
+import boto3
 import requests
 import time_util
 from botocore.exceptions import ClientError
+from certificate_generator import generate_certificate
 from dynamodb import save_to_dynamodb
+from s3 import read_html_template_file_from_s3
 
 from file_service import get_file_info
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+ses_client = boto3.client("ses", region_name="ap-northeast-1")
+
 SENDER_EMAIL = "awseducate.cloudambassador@gmail.com"
 CHARSET = "utf-8"
+BUCKET_NAME = os.getenv("BUCKET_NAME")
+PRIVATE_BUCKET_NAME = os.getenv("PRIVATE_BUCKET_NAME")
+CERTIFICATE_TEMPLATE_FILE_S3_OBJECT_KEY = (
+    "templates/[template] AWS Educate certificate.pdf"
+)
 
 
 def download_file_content(file_url):
@@ -40,12 +54,11 @@ def create_email_message(email_title, formatted_content, recipient_email, displa
     :param display_name: Display name of the sender.
     :return: A MIMEMultipart email message.
     """
-    formatted_source_email = f"{display_name} <{SENDER_EMAIL}>"
 
     # Create a multipart/mixed parent container.
     msg = MIMEMultipart("mixed")
     msg["Subject"] = email_title
-    msg["From"] = formatted_source_email
+    msg["From"] = formataddr((display_name, SENDER_EMAIL))
     msg["To"] = recipient_email
 
     # Create a multipart/alternative child container.
@@ -120,119 +133,161 @@ def replace_placeholders(template, values):
 
 
 def send_email(
-    ses_client, email_title, template_content, row, display_name, file_ids=None
-):
+    subject: str,
+    template_content: str,
+    row: dict[str, any],
+    display_name: str,
+    attachment_file_ids: list[str] = None,
+    is_generate_certificate: bool = False,
+    run_id: str = None,
+) -> tuple:
     """
-    Send an email using AWS SES.
+    Send an email to the recipient with the provided details.
 
-    :param ses_client: Boto3 SES client.
-    :param email_title: Title of the email.
-    :param template_content: Content of the email template.
-    :param row: A dictionary representing a single row of data from Excel, containing email recipient and placeholder values.
-    :param display_name: Display name of the sender.
-    :param file_ids: List of file IDs to be attached.
-    :return: Sent time and status of the email sending operation.
+    :param subject: The subject of the email.
+    :param template_content: The content template of the email with placeholders.
+    :param row: A dictionary containing recipient and email details.
+    :param display_name: The display name of the sender.
+    :param attachment_file_ids: A list of file IDs for attachments (optional).
+    :param is_generate_certificate: A boolean flag to indicate if a certificate should be generated (optional).
+    :param run_id: The run ID for tracking the operation (optional).
+    :return: A tuple containing the sent time (or None) and the status ("SUCCESS" or "FAILED").
     """
     try:
         logger.info("Row data before formatting: %s", row)
-        logger.info("Template content before replacements: %s", template_content)
         template_content = template_content.replace("\r", "")
-        logger.info("Template content after replacements: %s", template_content)
 
         recipient_email = row.get("Email")
         if not recipient_email:
             logger.warning("Email address not found in row: %s", row)
             return None, "FAILED"
 
+        # Convert all values in the row to strings for consistent formatting
         formatted_row = {k: str(v) for k, v in row.items()}
         logger.info("Formatted row: %s", formatted_row)
 
+        # Replace placeholders in the template content with actual data
         formatted_content = replace_placeholders(template_content, formatted_row)
-        logger.info("Formatted content: %s", formatted_content)
 
+        # Create the email message object
         msg = create_email_message(
-            email_title, formatted_content, recipient_email, display_name
+            subject, formatted_content, recipient_email, display_name
         )
 
-        attach_files_to_message(msg, file_ids)
+        # Attach any specified files to the email
+        attach_files_to_message(msg, attachment_file_ids)
+        logger.info("Will generate certificate: %s", str(is_generate_certificate))
+        certificate_path = None
 
-        # Send the email using SES
+        # Generate a certificate if required and attach it to the email
+        if is_generate_certificate:
+            participant_name = row.get("Name")
+            certificate_text = row.get("Certificate Text")
+            certificate_path = generate_certificate(
+                run_id, participant_name, certificate_text
+            )
+
+            # Attach the generated certificate to the email
+            with open(certificate_path, "rb") as cert_file:
+                attachment = MIMEApplication(cert_file.read())
+                attachment.add_header(
+                    "Content-Disposition",
+                    "attachment",
+                    filename=f"{participant_name}_certificate.pdf",
+                )
+                msg.attach(attachment)
+                logger.info("Attached certificate for: %s", participant_name)
+
         try:
+            # Send the email using the AWS SES client
             response = ses_client.send_raw_email(
                 Source=msg["From"],
                 Destinations=[recipient_email],
                 RawMessage={"Data": msg.as_string()},
             )
             logger.info("Email sent. Message ID: %s", response["MessageId"])
+
+            sent_time = time_util.get_current_utc_time()
+            logger.info(
+                "Email sent to %s at %s",
+                row.get("Email", "Unknown"),
+                sent_time,
+            )
+
+            # Delete the certificate file after successful email sending
+            if certificate_path:
+                Path(certificate_path).unlink()
+
+            return sent_time, "SUCCESS"
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             error_message = e.response["Error"]["Message"]
             logger.error("Failed to send email: %s - %s", error_code, error_message)
-            return None, "FAILED"
-
-        sent_time = time_util.get_current_utc_time()
-        logger.info(
-            "Email sent to %s at %s",
-            row.get("Email", "Unknown"),
-            sent_time,
-        )
-        return sent_time, "SUCCESS"
+        except Exception as e:
+            logger.error("Failed to send email to %s: %s", recipient_email, e)
     except Exception as e:
-        logger.error("Failed to send email to %s: %s", recipient_email, e)
-        return None, "FAILED"
+        logger.error("Failed to process email for %s: %s", recipient_email, e)
+
+    # Delete the certificate file if sending the email failed
+    if certificate_path:
+        try:
+            Path(certificate_path).unlink()
+        except Exception as e:
+            logger.error("Failed to delete certificate file: %s", e)
+
+    return None, "FAILED"
 
 
 def process_email(
-    ses_client,
-    email_title,
-    template_content,
-    recipient_email,
-    row,
-    display_name,
-    run_id,
-    template_file_id,
-    spreadsheet_id,
-    created_at,
-    email_id,
-    file_ids=None,
-):
+    email_data: dict,
+    row: list[dict[str, any]],
+) -> tuple:
     """
     Process email sending for a given row of data.
 
-    :param ses_client: Boto3 SES client.
-    :param email_title: Title of the email.
-    :param template_content: Content of the email template.
-    :param recipient_email: Email address of the recipient.
+    :param email_data: Dictionary containing email metadata such as subject, display_name, template_file_id, etc.
     :param row: A dictionary representing a single row of data from Excel, containing email recipient and placeholder values.
-    :param display_name: Display name of the sender.
-    :param run_id: Run ID for tracking the email sending operation.
-    :param template_file_id: File ID of the email template.
-    :param spreadsheet_id: File ID of the spreadsheet.
-    :param created_at: Timestamp of when the email was created.
-    :param email_id: Unique email ID.
-    :param file_ids: List of file IDs to be attached.
     :return: Status and email ID of the email sending operation.
     """
+    recipient_email = row.get("Email")
+    email_id = str(uuid.uuid4().hex)
+
     logger.info("Row data: %s", row)
     if not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email):
         logger.warning("Invalid email address provided: %s", recipient_email)
         return "FAILED", email_id
-
+    template_file_info = get_file_info(email_data.get("template_file_id"))
+    template_file_s3_object_key = template_file_info["s3_object_key"]
+    template_content = read_html_template_file_from_s3(
+        bucket=BUCKET_NAME, template_file_s3_key=template_file_s3_object_key
+    )
     sent_time, status = send_email(
-        ses_client, email_title, template_content, row, display_name, file_ids
+        email_data.get("subject"),
+        template_content,
+        row,
+        email_data.get("display_name"),
+        email_data.get("attachment_file_ids"),
+        email_data.get("is_generate_certificate"),
+        email_data.get("run_id"),
     )
     updated_at = time_util.get_current_utc_time()
-    save_to_dynamodb(
-        run_id=run_id,
-        email_id=email_id,
-        display_name=display_name,
-        status=status,
-        recipient_email=recipient_email,
-        template_file_id=template_file_id,
-        spreadsheet_file_id=spreadsheet_id,
-        created_at=created_at,
-        row_data=row,
-        sent_at=sent_time,
-        updated_at=updated_at,
-    )
+
+    # Create the item dictionary
+    item = {
+        "run_id": email_data.get("run_id"),
+        "email_id": email_id,
+        "display_name": email_data.get("display_name"),
+        "status": status,
+        "recipient_email": recipient_email,
+        "template_file_id": email_data.get("template_file_id"),
+        "spreadsheet_file_id": email_data.get("spreadsheet_file_id"),
+        "created_at": email_data.get("created_at"),
+        "row_data": row,
+        "sent_at": sent_time,
+        "updated_at": updated_at,
+        "is_generate_certificate": email_data.get("is_generate_certificate"),
+    }
+
+    # Save to DynamoDB
+    save_to_dynamodb(item)
     return status, email_id
