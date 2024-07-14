@@ -1,74 +1,56 @@
 import json
-import boto3
-import uuid
-from datetime import datetime, timedelta
 import logging
+
+from dynamodb import create_campaign
+from time_util import get_current_utc_time, parse_iso8601_to_datetime
 
 logger = logging.getLogger()
 logger.setLevel("INFO")
 
-TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
-dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("campaign")
+def get_campaign_status(start_date: str, end_date: str) -> str:
+    """
+    Determine the event status based on the current date and time.
+
+    :param start_date: Event start date in ISO 8601 format.
+    :param end_date: Event end date in ISO 8601 format.
+    :return: Event status as a string.
+    """
+    # Parse the start and end dates
+    start_time = parse_iso8601_to_datetime(start_date)
+    end_time = parse_iso8601_to_datetime(end_date)
+
+    # Get the current time in UTC
+    current_time = parse_iso8601_to_datetime(get_current_utc_time())
+
+    # Determine the status based on the current date and time
+    if current_time < start_time:
+        return "UPCOMING"
+    elif current_time <= end_time:
+        return "ACTIVE"
+    else:
+        return "COMPLETED"
+
 
 def lambda_handler(event, context):
     try:
         body = json.loads(event["body"])
 
-        campaign_id = uuid.uuid4().hex
-        campaign_name = body["campaign_name"]
-        description = body["description"]
-        start_date = body["start_date"]
-        end_date = body["end_date"]
-        participant_limit = body["participant_limit"]
-        locations = body["locations"]
+        # Calculate the campaign status
+        body["status"] = get_campaign_status(
+            start_date=body["start_date"], end_date=body["end_date"]
+        )
 
-        # Determine the status based on the current date and time
-        current_time = datetime.now()
-        start_time = datetime.fromisoformat(start_date[:-1])
-        end_time = datetime.fromisoformat(end_date[:-1])
-
-        if current_time < start_time:
-            status = "UPCOMING"
-        elif start_time <= current_time <= end_time:
-            status = "ACTIVE"
-        else:
-            status = "COMPLETED"
-
-        created_at = (datetime.now() + timedelta(hours=8)).strftime(TIME_FORMAT + "Z")
-        updated_at = (datetime.now() + timedelta(hours=8)).strftime(TIME_FORMAT + "Z")
-
-        item = {
-            "campaign_id": campaign_id,
-            "start_date": start_date,
-            "end_date": end_date,
-            "participant_limit": participant_limit,
-            "campaign_name": campaign_name,
-            "description": description,
-            "locations": json.dumps(locations),
-            "created_at": created_at,
-            "updated_at": updated_at,
-            "status": status,
-        }
-
-        table.put_item(Item=item)
-        logger.info("Campaign created successfully with ID: %s", campaign_id)
+        # Create the campaign with the given body including status
+        campaign_details = create_campaign(body)
 
         return {
             "statusCode": 200,
             "body": json.dumps(
-                {"message": "Campaign created successfully", 
-                 "campaign_id": campaign_id,
-                 "campaign_name": campaign_name,
-                 "description": description,
-                 "start_date": start_date,
-                 "end_date": end_date,
-                 "participant_limit": participant_limit,
-                 "locations": locations,
-                 "created_at": created_at,
-                 "updated_at": updated_at,
-                 "status": status}
+                {
+                    "message": "Campaign created successfully",
+                    **campaign_details,
+                }
             ),
         }
     except json.JSONDecodeError:
