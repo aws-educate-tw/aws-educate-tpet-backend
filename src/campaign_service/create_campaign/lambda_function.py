@@ -4,7 +4,7 @@ import logging
 from dynamodb import create_campaign
 from time_util import get_current_utc_time, parse_iso8601_to_datetime
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 logger.setLevel("INFO")
 
 

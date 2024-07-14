@@ -61,7 +61,6 @@ module "create_campaign_lambda" {
     "ENVIRONMENT"    = var.environment,
     "SERVICE"        = var.service_underscore
     "DYNAMODB_TABLE" = var.dynamodb_table
-    "BUCKET_NAME"    = "${var.environment}-aws-educate-tpet-storage"
   }
 
   allowed_triggers = {
@@ -96,25 +95,6 @@ module "create_campaign_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}"
-      ]
-    },
-    s3_crud = {
-      effect = "Allow",
-      actions = [
-        "s3:ListBucket",
-        "s3:GetBucketLocation",
-        "s3:CreateBucket",
-        "s3:DeleteBucket",
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject",
-        "s3:ListBucketMultipartUploads",
-        "s3:ListMultipartUploadParts",
-        "s3:AbortMultipartUpload"
-      ],
-      resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
       ]
     }
   }

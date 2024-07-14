@@ -1,15 +1,16 @@
 import json
 import logging
+import os
 import uuid
 
 import boto3
 from time_util import get_current_utc_time
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 logger.setLevel("INFO")
 
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("campaign")
+table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
 
 
 def create_campaign(body: dict) -> dict:
