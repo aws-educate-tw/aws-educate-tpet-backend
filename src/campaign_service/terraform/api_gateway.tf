@@ -27,7 +27,7 @@ module "api_gateway" {
   source  = "terraform-aws-modules/apigateway-v2/aws"
   version = "5.0.0"
 
-  description = "campaign service api gateway to lambda container image"
+  description = "AWS Educate TPET, Campaign service api gateway in ${var.environment} environment"
   name        = "${var.environment}-${var.service_underscore}"
   stage_name  = var.environment
 
@@ -64,35 +64,11 @@ module "api_gateway" {
       }
     }
 
-    "GET /campaigns" = {
-      detailed_metrics_enabled = true
-      throttling_rate_limit    = 80
-      throttling_burst_limit   = 40
-      integration = {
-        uri                    = module.list_campaigns_lambda.lambda_function_arn # Remember to change
-        type                   = "AWS_PROXY"
-        payload_format_version = "1.0"
-        timeout_milliseconds   = 29000
-      }
-    }
-
-    "GET /campaigns/{campaign_id}" = {
-      detailed_metrics_enabled = true
-      throttling_rate_limit    = 80
-      throttling_burst_limit   = 40
-      integration = {
-        uri                    = module.get_campaign_lambda.lambda_function_arn # Remember to change
-        type                   = "AWS_PROXY"
-        payload_format_version = "1.0"
-        timeout_milliseconds   = 29000
-      }
-    }
-
 
 
     "$default" = {
       integration = {
-        uri                  = module.get_campaign_lambda.lambda_function_arn
+        uri                  = module.create_campaign_lambda.lambda_function_arn
         passthrough_behavior = "WHEN_NO_MATCH"
       }
     }

@@ -9,18 +9,13 @@ resource "aws_dynamodb_table" "campaign" {
   }
 
   attribute {
-    name = "campaign_extension"
-    type = "S"
-  }
-
-  attribute {
     name = "created_at"
     type = "S"
   }
 
   global_secondary_index {
-    name            = "campaign_extension-created_at-gsi"
-    hash_key        = "campaign_extension"
+    name            = "campaign_id-created_at-gsi"
+    hash_key        = "campaign_id"
     range_key       = "created_at"
     projection_type = "ALL"
   }
