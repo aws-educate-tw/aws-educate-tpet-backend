@@ -1,3 +1,11 @@
+####################################
+####################################
+####################################
+# Public bucket ####################
+####################################
+####################################
+####################################
+
 resource "aws_s3_bucket" "aws_educate_tpet_storage" {
   bucket = "${var.environment}-aws-educate-tpet-storage"
 
@@ -29,4 +37,21 @@ resource "aws_s3_bucket_policy" "aws_educate_tpet_storage_policy" {
       }
     ]
   })
+}
+
+####################################
+####################################
+####################################
+# Private bucket ####################
+####################################
+####################################
+####################################
+
+resource "aws_s3_bucket" "aws_educate_tpet_private_storage" {
+  bucket = "${var.environment}-aws-educate-tpet-private-storage"
+
+  tags = {
+    Name        = "${var.environment}-aws-educate-tpet-private-storage"
+    Environment = var.environment
+  }
 }

@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -14,3 +15,29 @@ def delete_sqs_message(sqs_client, queue_url, receipt_handle):
     except Exception as e:
         logger.error("Error deleting message from SQS: %s", e)
         raise
+
+
+def get_sqs_message(record):
+    body = json.loads(record["body"])
+    receipt_handle = record["receiptHandle"]
+    template_file_id = body.get("template_file_id")
+    spreadsheet_file_id = body.get("spreadsheet_file_id")
+    subject = body.get("subject")
+    display_name = body.get("display_name")
+    run_id = body.get("run_id")
+    attachment_file_ids = body.get("attachment_file_ids", [])
+    is_generate_certificate = body.get("is_generate_certificate", False)
+
+    logger.info("Processing message with run_id: %s", run_id)
+
+    return {
+        "body": body,
+        "receipt_handle": receipt_handle,
+        "template_file_id": template_file_id,
+        "spreadsheet_file_id": spreadsheet_file_id,
+        "subject": subject,
+        "display_name": display_name,
+        "run_id": run_id,
+        "attachment_file_ids": attachment_file_ids,
+        "is_generate_certificate": is_generate_certificate,
+    }

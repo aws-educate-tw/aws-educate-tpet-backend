@@ -2,8 +2,7 @@ name: Slack Deployment Notification
 
 on:
   workflow_run:
-    workflows:
-      - "Terraform Infrastructure Change Management Pipeline with GitHub Actions"
+    workflows: ["*"]
     types:
       - completed
 
