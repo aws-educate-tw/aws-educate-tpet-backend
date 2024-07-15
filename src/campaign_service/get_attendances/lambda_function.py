@@ -1,7 +1,8 @@
 import json
 import logging
-from ses import SES
+
 from dynamodb import DynamoDB
+from ses import SES
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -21,7 +22,7 @@ def lambda_handler(event, context):
         ]
 
         participant = next((p for p in dummy_participants if p['code'] == code), None)
-        logger.info(f"Participant found: {participant}")
+        logger.info("Participant: %s", participant)
 
         if participant:
             # * 這邊就把display_name寫死
@@ -54,11 +55,11 @@ def lambda_handler(event, context):
             }
         }
 
-        logger.info(f"Response status: {status}, message: {message}")
+        logger.info("Response: %s", response)
         return response
 
     except Exception as e:
-        logger.error(f"Error occurred: {str(e)}", exc_info=True)
+        logger.error("Error in lambda_handler: %s", e, exc_info=True)
         return {
             'statusCode': 500,
             'body': json.dumps({
@@ -100,10 +101,10 @@ def send_confirmation_email(display_name, name, email, is_attend):
             email_title=email_title,
             formatted_content=formatted_content
         )
-        logger.info(f"Confirmation email sent to {email}")
+        logger.info("Confirmation email sent to %s", email)
 
     except Exception as e:
-        logger.error(f"Failed to send email: {str(e)}", exc_info=True)
+        logger.error("Failed to send confirmation email to %s: %s", email, e)
         raise
 
 def save_to_dynamodb(name, campaign_id, participant_id, email, is_attend):
@@ -117,8 +118,8 @@ def save_to_dynamodb(name, campaign_id, participant_id, email, is_attend):
             'is_attend':  is_attend
         }
         dynamodb.put_item('campaign', item)
-        logger.info(f"Record saved to DynamoDB: {item}")
+        logger.info("Record saved to DynamoDB: %s", item)
 
     except Exception as e:
-        logger.error(f"Failed to save to DynamoDB: {str(e)}")
+        logger.error("Failed to save record to DynamoDB: %s", e)
         raise

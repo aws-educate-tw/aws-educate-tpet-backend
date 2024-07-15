@@ -1,13 +1,8 @@
-import logging
-import os
-
 import boto3
-from dotenv import load_dotenv
+import logging
 
-load_dotenv()
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 class SQS:
@@ -16,8 +11,7 @@ class SQS:
     """
     def __init__(self):
         self.sqs_client = boto3.client(
-            'sqs',
-            region_name=os.getenv('REGION_NAME')
+            'sqs'
         )
 
     def delete_message(self, queue_url: str, receipt_handle: str):
@@ -28,5 +22,5 @@ class SQS:
             )
             logger.info("Deleted message from SQS: %s", receipt_handle)
         except Exception as e:
-            logger.error(f"Error deleting message from SQS: {e}")
+            logger.error("Error deleting message from SQS: %s", e)
             raise

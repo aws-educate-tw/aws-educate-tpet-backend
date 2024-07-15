@@ -134,3 +134,104 @@ module "create_campaign_docker_image" {
 
 }
 
+####################################
+####################################
+####################################
+# GET /attendances #######
+####################################
+####################################
+####################################
+
+module "get_attendances_lambda" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "7.7.0"
+
+  function_name  = "${var.environment}-${var.service_underscore}-get_attendances-${random_string.this.result}"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /attendances"
+  create_package = false
+  timeout        = 300
+
+  ##################
+  # Container Image
+  ##################
+  package_type  = "Image"
+  architectures = ["x86_64"] # or ["arm64"]
+  image_uri     = module.get_attendances_docker_image.image_uri
+
+  publish = true # Whether to publish creation/change as new Lambda Function Version.
+
+  environment_variables = {
+    "ENVIRONMENT"    = var.environment,
+    "SERVICE"        = var.service_underscore,
+    "DYNAMODB_TABLE" = var.dynamodb_table
+  }
+
+  allowed_triggers = {
+    AllowExecutionFromAPIGateway = {
+      service    = "apigateway"
+      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+    }
+  }
+
+  tags = {
+    "Terraform"   = "true",
+    "Environment" = var.environment,
+    "Service"     = var.service_underscore
+  }
+
+  ######################
+  # Additional policies
+  ######################
+  attach_policy_statements = true
+  policy_statements = {
+    dynamodb_crud = {
+      effect = "Allow",
+      actions = [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+      ],
+      resources = [
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}"
+      ]
+    }
+  }
+}
+
+module "get_attendances_docker_image" {
+  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version = "7.7.0"
+
+  create_ecr_repo      = true
+  keep_remotely        = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = "${var.environment}-${var.service_underscore}-get_attendances-${random_string.this.result}"
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  # docker_campaign_path = "${local.source_path}/path/to/Dockercampaign" # set `docker_campaign_path` If your Dockercampaign is not in `source_path`
+  source_path = "${local.source_path}/get_attendances/" # Remember to change
+  triggers = {
+    dir_sha = local.dir_sha
+  }
+}
