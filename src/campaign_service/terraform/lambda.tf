@@ -33,7 +33,7 @@ provider "docker" {
 ####################################
 ####################################
 ####################################
-# POST /campaigns #######
+# POST /campaigns ##################
 ####################################
 ####################################
 ####################################
@@ -137,16 +137,16 @@ module "create_campaign_docker_image" {
 ####################################
 ####################################
 ####################################
-# GET /attendances #######
+# GET /attendances #################
 ####################################
 ####################################
 ####################################
 
-module "get_attendances_lambda" {
+module "list_attendances_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = "${var.environment}-${var.service_underscore}-get_attendances-${random_string.this.result}"
+  function_name  = "${var.environment}-${var.service_underscore}-list_attendancess-${random_string.this.result}"
   description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /attendances"
   create_package = false
   timeout        = 300
@@ -156,7 +156,7 @@ module "get_attendances_lambda" {
   ##################
   package_type  = "Image"
   architectures = ["x86_64"] # or ["arm64"]
-  image_uri     = module.get_attendances_docker_image.image_uri
+  image_uri     = module.list_attendances_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -203,7 +203,7 @@ module "get_attendances_lambda" {
   }
 }
 
-module "get_attendances_docker_image" {
+module "list_attendances_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
@@ -211,7 +211,7 @@ module "get_attendances_docker_image" {
   keep_remotely        = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = "${var.environment}-${var.service_underscore}-get_attendances-${random_string.this.result}"
+  ecr_repo             = "${var.environment}-${var.service_underscore}-list_attendances-${random_string.this.result}"
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
@@ -230,7 +230,7 @@ module "get_attendances_docker_image" {
   })
 
   # docker_campaign_path = "${local.source_path}/path/to/Dockercampaign" # set `docker_campaign_path` If your Dockercampaign is not in `source_path`
-  source_path = "${local.source_path}/get_attendances/" # Remember to change
+  source_path = "${local.source_path}/list_attendances/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }

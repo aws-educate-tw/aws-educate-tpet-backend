@@ -69,7 +69,7 @@ module "api_gateway" {
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
       integration = {
-        uri                    = module.get_attendances_lambda.lambda_function_arn # Remember to change
+        uri                    = module.list_attendances_lambda.lambda_function_arn # Remember to change
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
@@ -121,4 +121,16 @@ module "api_gateway" {
   }
 
   tags = local.tags
+}
+
+resource "aws_route53_record" "api_gateway_custom_domain_record" {
+  zone_id = data.aws_route53_zone.awseducate_systems.zone_id
+  name    = local.custom_domain_name
+  type    = "A"
+
+  alias {
+    name                   = module.api_gateway.domain_name_target_domain_name
+    zone_id                = module.api_gateway.domain_name_hosted_zone_id
+    evaluate_target_health = false
+  }
 }
