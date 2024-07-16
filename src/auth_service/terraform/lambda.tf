@@ -433,14 +433,6 @@ module "get_user_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}"
       ]
     },
-    cognito_get_user = {
-      effect = "Allow"
-      actions = [
-        "cognito-idp:AdminGetUser",
-        "cognito-idp:ListUsers"
-      ]
-      resources = ["arn:aws:cognito-idp:${var.aws_region}:${data.aws_caller_identity.this.account_id}:userpool/us-west-2_SLeq1xRmU"]
-    }
   }
 }
 
