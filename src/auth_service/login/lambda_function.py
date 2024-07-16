@@ -7,23 +7,19 @@ from botocore.exceptions import ClientError
 def lambda_handler(event, context):
     client = boto3.client("cognito-idp")
     try:
-        # 解析 event['body'] 為字典
         body = json.loads(event["body"])
-
         response = client.initiate_auth(
             ClientId="4hu6irac6o43n9ug67o6a9vahk",
             AuthFlow="USER_PASSWORD_AUTH",
             AuthParameters={"USERNAME": body["username"], "PASSWORD": body["password"]},
         )
+        access_token = response["AuthenticationResult"]["AccessToken"]
         return {
             "statusCode": 200,
-            "body": json.dumps(
-                {
-                    "access_token": response["AuthenticationResult"]["AccessToken"],
-                    "id_token": response["AuthenticationResult"]["IdToken"],
-                    "refresh_token": response["AuthenticationResult"]["RefreshToken"],
-                }
-            ),
+            "headers": {
+                "Set-Cookie": f"accessToken={access_token}; Path=/; Secure; HttpOnly; SameSite=None; Domain=.awseducate.systems"
+            },
+            "body": json.dumps({"message": "Login successful"}),
         }
     except ClientError as e:
         return {
