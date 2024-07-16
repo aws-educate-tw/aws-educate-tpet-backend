@@ -1,7 +1,8 @@
 locals {
-  region             = var.aws_region
-  custom_domain_name = "${var.environment}-${var.service_hyphen}-internal-api-tpet.awseducate.systems"
-  sub_domain_name    = "${var.environment}-${var.service_hyphen}-internal-api-tpet"
+  region                          = var.aws_region
+  custom_domain_name              = "${var.environment}-${var.service_hyphen}-internal-api-tpet.awseducate.systems"
+  sub_domain_name                 = "${var.environment}-${var.service_hyphen}-internal-api-tpet"
+  lambda_authorizer_function_name = "local-dev-auth_service-lambda_authorizer-ynad"
 
   tags = {
     Service = var.service_underscore
@@ -17,6 +18,10 @@ data "aws_acm_certificate" "issued" {
 data "aws_route53_zone" "awseducate_systems" {
   name         = var.domain_name
   private_zone = false
+}
+
+data "aws_lambda_function" "lambda_authorizer_lambda" {
+  function_name = local.lambda_authorizer_function_name
 }
 
 # data "aws_cognito_user_pool" "aws_educate_tpet_cognito_user_pool" {
@@ -46,16 +51,19 @@ module "api_gateway" {
 
   # Authorizer(s)
   authorizers = {
-    cognito = {
-      authorizer_type  = "JWT"
-      identity_sources = ["$request.header.Authorization"]
-      name             = "cognito"
-      jwt_configuration = {
-        audience = ["4hu6irac6o43n9ug67o6a9vahk"]
-        issuer   = "https://cognito-idp.${var.aws_region}.amazonaws.com/us-west-2_bDwjqc0Gv"
-      }
+    lambda_authorizer = {
+      name                              = "lambda_authorizer"
+      authorizer_type                   = "REQUEST"
+      authorizer_uri                    = data.aws_lambda_function.lambda_authorizer_lambda.invoke_arn
+      authorizer_payload_format_version = "1.0"
+      # jwt_configuration = {
+      #   audience = ["4hu6irac6o43n9ug67o6a9vahk"]
+      #   issuer   = "https://cognito-idp.${var.aws_region}.amazonaws.com/us-west-2_bDwjqc0Gv"
+      # }
     }
   }
+
+
 
 
   # Custom Domain Name
@@ -86,8 +94,8 @@ module "api_gateway" {
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
 
-      authorization_type = "JWT"
-      authorizer_key     = "cognito"
+      authorization_type = "CUSTOM"
+      authorizer_key     = "lambda_authorizer"
       integration = {
         uri                    = module.list_files_lambda.lambda_function_arn # Remember to change
         type                   = "AWS_PROXY"
