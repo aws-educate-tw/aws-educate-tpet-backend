@@ -1,0 +1,6 @@
+aws_region         = "us-west-2"
+environment        = "local-dev"
+service_underscore = "cognito"
+service_hyphen     = "cognito"
+dynamodb_table     = "auth"
+domain_name        = "aws-educate.tw"
