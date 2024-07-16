@@ -13,7 +13,7 @@ resource "random_string" "this" {
 locals {
   source_path                                     = "${path.module}/.."
   create_campaign_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-create_campaign-${random_string.this.result}"
-  list_campaigns_function_name_and_ecr_repo_name  = "${var.environment}-${var.service_underscore}-list_campaigns-${random_string.this.result}"
+  confirm_attendance_function_name_and_ecr_repo_name  = "${var.environment}-${var.service_underscore}-confirm_attendance-${random_string.this.result}"
   get_campaign_function_name_and_ecr_repo_name    = "${var.environment}-${var.service_underscore}-get_campaign-${random_string.this.result}"
   path_include                                    = ["**"]
   path_exclude                                    = ["**/__pycache__/**"]
@@ -137,17 +137,17 @@ module "create_campaign_docker_image" {
 ####################################
 ####################################
 ####################################
-# GET /attendances #################
+# GET /confirm_attendance #################
 ####################################
 ####################################
 ####################################
 
-module "list_attendances_lambda" {
+module "confirm_attendance_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = "${var.environment}-${var.service_underscore}-list_attendancess-${random_string.this.result}"
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /attendances"
+  function_name  = "${var.environment}-${var.service_underscore}-confirm_attendance-${random_string.this.result}"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /confirm_attendance"
   create_package = false
   timeout        = 300
 
@@ -156,7 +156,7 @@ module "list_attendances_lambda" {
   ##################
   package_type  = "Image"
   architectures = ["x86_64"] # or ["arm64"]
-  image_uri     = module.list_attendances_docker_image.image_uri
+  image_uri     = module.confirm_attendance_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -199,11 +199,20 @@ module "list_attendances_lambda" {
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}"
       ]
+    },
+    ses_send_email = {
+      effect = "Allow",
+      actions = [
+        "ses:SendEmail"
+      ],
+      resources = [
+        "*"
+      ]
     }
   }
 }
 
-module "list_attendances_docker_image" {
+module "confirm_attendance_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
@@ -211,7 +220,7 @@ module "list_attendances_docker_image" {
   keep_remotely        = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = "${var.environment}-${var.service_underscore}-list_attendances-${random_string.this.result}"
+  ecr_repo             = "${var.environment}-${var.service_underscore}-confirm_attendance-${random_string.this.result}"
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
@@ -230,8 +239,9 @@ module "list_attendances_docker_image" {
   })
 
   # docker_campaign_path = "${local.source_path}/path/to/Dockercampaign" # set `docker_campaign_path` If your Dockercampaign is not in `source_path`
-  source_path = "${local.source_path}/list_attendances/" # Remember to change
+  source_path = "${local.source_path}/confirm_attendance/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }
 }
+
