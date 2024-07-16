@@ -19,10 +19,6 @@ data "aws_route53_zone" "awseducate_systems" {
   private_zone = false
 }
 
-# data "aws_cognito_user_pool" "aws_educate_tpet_cognito_user_pool" {
-#   user_pool_id = "us-west-2_bDwjqc0Gv"
-# }
-
 ################################################################################
 # API Gateway Module
 ################################################################################
@@ -31,7 +27,7 @@ module "api_gateway" {
   source  = "terraform-aws-modules/apigateway-v2/aws"
   version = "5.0.0"
 
-  description = "File service api gateway to lambda container image"
+  description = "AWS Educate TPET, Campaign service api gateway in ${var.environment} environment"
   name        = "${var.environment}-${var.service_underscore}"
   stage_name  = var.environment
 
@@ -43,19 +39,6 @@ module "api_gateway" {
   }
 
   fail_on_warnings = false
-
-  # Authorizer(s)
-  authorizers = {
-    cognito = {
-      authorizer_type  = "JWT"
-      identity_sources = ["$request.header.Authorization"]
-      name             = "cognito"
-      jwt_configuration = {
-        audience = ["4hu6irac6o43n9ug67o6a9vahk"]
-        issuer   = "https://cognito-idp.${var.aws_region}.amazonaws.com/us-west-2_bDwjqc0Gv"
-      }
-    }
-  }
 
 
   # Custom Domain Name
@@ -69,39 +52,12 @@ module "api_gateway" {
 
   # Routes & Integration(s)
   routes = {
-    "POST /upload-multiple-file" = {
+    "POST /login" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
       integration = {
-        uri                    = module.upload_multiple_file_lambda.lambda_function_arn # Remember to change
-        type                   = "AWS_PROXY"
-        payload_format_version = "1.0"
-        timeout_milliseconds   = 29000
-      }
-    }
-
-    "GET /files" = {
-      detailed_metrics_enabled = true
-      throttling_rate_limit    = 80
-      throttling_burst_limit   = 40
-
-      authorization_type = "JWT"
-      authorizer_key     = "cognito"
-      integration = {
-        uri                    = module.list_files_lambda.lambda_function_arn # Remember to change
-        type                   = "AWS_PROXY"
-        payload_format_version = "1.0"
-        timeout_milliseconds   = 29000
-      }
-    }
-
-    "GET /files/{file_id}" = {
-      detailed_metrics_enabled = true
-      throttling_rate_limit    = 80
-      throttling_burst_limit   = 40
-      integration = {
-        uri                    = module.get_file_lambda.lambda_function_arn # Remember to change
+        uri                    = module.login_lambda.lambda_function_arn # Remember to change
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
@@ -112,7 +68,7 @@ module "api_gateway" {
 
     "$default" = {
       integration = {
-        uri                  = module.get_file_lambda.lambda_function_arn
+        uri                  = module.login_lambda.lambda_function_arn
         passthrough_behavior = "WHEN_NO_MATCH"
       }
     }
