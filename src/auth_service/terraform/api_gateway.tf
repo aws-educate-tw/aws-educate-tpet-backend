@@ -53,7 +53,7 @@ module "api_gateway" {
   # Routes & Integration(s)
   routes = {
 
-    "POST /login" = {
+    "POST /auth/login" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -77,7 +77,7 @@ module "api_gateway" {
       }
     }
 
-    "GET /users/{user_id}" = {
+    "GET /auth/users/{user_id}" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -89,7 +89,7 @@ module "api_gateway" {
       }
     }
 
-    "GET /users/me" = {
+    "GET /auth/users/me" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
