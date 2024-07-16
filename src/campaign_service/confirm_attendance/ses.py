@@ -12,7 +12,8 @@ class SES:
     """
     def __init__(self):
         self.ses_client = boto3.client(
-            'ses'
+            'ses',
+            region_name='ap-northeast-1'
         )
 
     def send_email(self, formatted_source_email: str, receiver_email: str, email_title: str, formatted_content: str):
