@@ -231,7 +231,8 @@ module "send_email_lambda" {
         "ses:SendRawEmail"
       ],
       resources = [
-        "arn:aws:ses:ap-northeast-1:${data.aws_caller_identity.this.account_id}:identity/awseducate.cloudambassador@gmail.com"
+        "arn:aws:ses:ap-northeast-1:${data.aws_caller_identity.this.account_id}:identity/awseducate.cloudambassador@gmail.com",
+        "arn:aws:ses:ap-northeast-1:${data.aws_caller_identity.this.account_id}:identity/aws-educate.tw"
       ]
     },
     sqs_receive_message = {

@@ -15,7 +15,7 @@ variable "service_hyphen" {
 }
 variable "domain_name" {
   description = "Domain name, for example: example.com"
-  default     = "awseducate.systems"
+  default     = "aws-educate.tw"
 }
 
 variable "dynamodb_table" {

@@ -9,7 +9,7 @@ provider "aws" {
 }
 
 data "aws_route53_zone" "awseducate_systems" {
-  name         = "awseducate.systems"
+  name         = "aws-educate.tw"
   private_zone = false
 }
 
@@ -32,7 +32,7 @@ resource "aws_route53_record" "file_service_record" {
 
 
 resource "aws_acm_certificate" "cert" {
-  domain_name       = "file-service.awseducate.systems"
+  domain_name       = "file-service.aws-educate.tw"
   validation_method = "DNS"
 
   lifecycle {
