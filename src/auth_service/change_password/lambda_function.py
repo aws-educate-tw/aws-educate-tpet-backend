@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 import boto3
 from botocore.exceptions import ClientError
@@ -7,6 +8,10 @@ from botocore.exceptions import ClientError
 # Initialize logger
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+client = boto3.client("cognito-idp")
+
+COGNITO_CLIENT_ID = os.getenv("COGNITO_CLIENT_ID")
 
 
 def lambda_handler(event, context):
@@ -20,14 +25,13 @@ def lambda_handler(event, context):
     Returns:
         dict: Response object with status code, headers, and body.
     """
-    client = boto3.client("cognito-idp")
     try:
         # Parse the request body
         body = json.loads(event["body"])
 
         # Respond to the new password required challenge
         response = client.respond_to_auth_challenge(
-            ClientId="2hd882ob3m7kjb5bjrklejjiu4",
+            ClientId=COGNITO_CLIENT_ID,
             ChallengeName="NEW_PASSWORD_REQUIRED",
             Session=body["session"],
             ChallengeResponses={

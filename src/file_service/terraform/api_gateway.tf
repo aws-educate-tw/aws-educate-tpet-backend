@@ -24,9 +24,12 @@ data "aws_lambda_function" "lambda_authorizer_lambda" {
   function_name = local.lambda_authorizer_function_name
 }
 
-# data "aws_cognito_user_pool" "aws_educate_tpet_cognito_user_pool" {
-#   user_pool_id = "us-west-2_bDwjqc0Gv"
-# }
+
+
+# Get Lambda authorizer lambda
+data "aws_ssm_parameter" "lambda_authorizer_lambda_invoke_arn" {
+  name = "${var.environment}-lambda_authorizer_lambda_invoke_arn"
+}
 
 ################################################################################
 # API Gateway Module
@@ -54,7 +57,7 @@ module "api_gateway" {
     lambda_authorizer = {
       name                              = "lambda_authorizer"
       authorizer_type                   = "REQUEST"
-      authorizer_uri                    = data.aws_lambda_function.lambda_authorizer_lambda.invoke_arn
+      authorizer_uri                    = data.aws_ssm_parameter.lambda_authorizer_lambda_invoke_arn.value
       authorizer_payload_format_version = "1.0"
     }
   }

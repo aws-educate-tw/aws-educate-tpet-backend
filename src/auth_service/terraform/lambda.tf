@@ -3,6 +3,15 @@ data "aws_ecr_authorization_token" "token" {
 
 data "aws_caller_identity" "this" {}
 
+# Get cognito info
+data "aws_ssm_parameter" "aws_educate_tpet_cognito_user_pool_id" {
+  name = "${var.environment}-aws_educate_tpet_cognito_user_pool_id"
+}
+
+data "aws_ssm_parameter" "aws_educate_tpet_cognito_client_id" {
+  name = "${var.environment}-aws_educate_tpet_cognito_client_id"
+}
+
 resource "random_string" "this" {
   length  = 4
   special = false
@@ -60,9 +69,10 @@ module "login_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore
-    "DYNAMODB_TABLE" = var.dynamodb_table
+    "ENVIRONMENT"       = var.environment,
+    "SERVICE"           = var.service_underscore
+    "DYNAMODB_TABLE"    = var.dynamodb_table
+    "COGNITO_CLIENT_ID" = data.aws_ssm_parameter.aws_educate_tpet_cognito_client_id.value
   }
 
   allowed_triggers = {
@@ -165,9 +175,10 @@ module "change_password_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore
-    "DYNAMODB_TABLE" = var.dynamodb_table
+    "ENVIRONMENT"       = var.environment,
+    "SERVICE"           = var.service_underscore
+    "DYNAMODB_TABLE"    = var.dynamodb_table
+    "COGNITO_CLIENT_ID" = data.aws_ssm_parameter.aws_educate_tpet_cognito_client_id.value
   }
 
   allowed_triggers = {
@@ -271,9 +282,11 @@ module "lambda_authorizer_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore
-    "DYNAMODB_TABLE" = var.dynamodb_table
+    "ENVIRONMENT"          = var.environment,
+    "SERVICE"              = var.service_underscore
+    "CURRENT_AWS_REGION"   = var.aws_region
+    "COGNITO_USER_POOL_ID" = data.aws_ssm_parameter.aws_educate_tpet_cognito_user_pool_id.value
+    "COGNITO_CLIENT_ID"    = data.aws_ssm_parameter.aws_educate_tpet_cognito_client_id.value
   }
 
 

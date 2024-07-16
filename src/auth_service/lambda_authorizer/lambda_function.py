@@ -12,10 +12,12 @@ from jose.utils import base64url_decode
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-COGNITO_POOL_ID = "us-west-2_SLeq1xRmU"
-COGNITO_CLIENT_ID = "2hd882ob3m7kjb5bjrklejjiu4"
-AWS_REGION = "us-west-2"
-COGNITO_ISSUER = f"https://cognito-idp.{AWS_REGION}.amazonaws.com/{COGNITO_POOL_ID}"
+COGNITO_USER_POOL_ID = os.getenv("COGNITO_USER_POOL_ID")
+COGNITO_CLIENT_ID = os.getenv("COGNITO_CLIENT_ID")
+CURRENT_AWS_REGION = os.getenv("CURRENT_AWS_REGION")
+COGNITO_ISSUER = (
+    f"https://cognito-idp.{CURRENT_AWS_REGION}.amazonaws.com/{COGNITO_USER_POOL_ID}"
+)
 JWKS_URL = f"{COGNITO_ISSUER}/.well-known/jwks.json"
 
 # Global variable for caching JWKS
