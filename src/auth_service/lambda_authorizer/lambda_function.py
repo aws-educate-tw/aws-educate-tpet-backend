@@ -12,8 +12,8 @@ from jose.utils import base64url_decode
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-COGNITO_POOL_ID = "us-west-2_cvOUHeHKh"
-COGNITO_CLIENT_ID = "4hu6irac6o43n9ug67o6a9vahk"
+COGNITO_POOL_ID = "us-west-2_SLeq1xRmU"
+COGNITO_CLIENT_ID = "2hd882ob3m7kjb5bjrklejjiu4"
 AWS_REGION = "us-west-2"
 COGNITO_ISSUER = f"https://cognito-idp.{AWS_REGION}.amazonaws.com/{COGNITO_POOL_ID}"
 JWKS_URL = f"{COGNITO_ISSUER}/.well-known/jwks.json"

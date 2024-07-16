@@ -26,7 +26,15 @@ resource "aws_cognito_user_pool_client" "aws_educate_tpet_cognito_client" {
   explicit_auth_flows                  = ["ADMIN_NO_SRP_AUTH", "USER_PASSWORD_AUTH"]
   supported_identity_providers         = ["COGNITO"]
 
-  user_pool_id  = aws_cognito_user_pool.aws_educate_tpet_cognito_user_pool.id
-  callback_urls = ["https://tpet.aws-educate.tw"]
-  logout_urls   = ["https://tpet.aws-educate.tw"]
+  user_pool_id                         = aws_cognito_user_pool.aws_educate_tpet_cognito_user_pool.id
+  callback_urls                        = ["https://tpet.aws-educate.tw"]
+  logout_urls                          = ["https://tpet.aws-educate.tw"]
+
+  access_token_validity                = 24
+  id_token_validity                    = 24
+  token_validity_units {
+    access_token  = "hours"
+    id_token      = "hours"
+    refresh_token = "days"
+  }
 }
