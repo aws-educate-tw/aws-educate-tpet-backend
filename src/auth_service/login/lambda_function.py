@@ -27,12 +27,26 @@ def lambda_handler(event, context):
 
         # Initiate authentication with Cognito
         response = client.initiate_auth(
-            ClientId="1elmeebe63429tcjdvgoedl343",
+            ClientId="2hd882ob3m7kjb5bjrklejjiu4",
             AuthFlow="USER_PASSWORD_AUTH",
             AuthParameters={"USERNAME": body["username"], "PASSWORD": body["password"]},
         )
 
         logger.info("Cognito auth response: %s", response)
+
+        # Check if a new password is required
+        if response.get("ChallengeName") == "NEW_PASSWORD_REQUIRED":
+            return {
+                "statusCode": 200,
+                "body": json.dumps(
+                    {
+                        "message": "New password required",
+                        "challengeName": response["ChallengeName"],
+                        "session": response["Session"],
+                        "challengeParameters": response["ChallengeParameters"],
+                    }
+                ),
+            }
 
         # Extract access token from the response
         access_token = response["AuthenticationResult"]["AccessToken"]
