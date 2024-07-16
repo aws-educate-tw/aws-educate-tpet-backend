@@ -18,9 +18,10 @@ logger.setLevel(logging.INFO)
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 BUCKET_NAME = "aws_educate_tpet_storage"
 
+
 def get_file_info(file_id):
     try:
-        api_url = f"https://api.tpet.awseducate.systems/dev/files/{file_id}"
+        api_url = f"https://api.tpet.aws-educate.tw/dev/files/{file_id}"
         response = requests.get(api_url)
         response.raise_for_status()
         logger.info("Fetched file info for file_id: %s", file_id)
@@ -80,7 +81,11 @@ def send_email(email_title, template_content, row, display_name):
             )
             _ = datetime.datetime.now() + datetime.timedelta(hours=8)
             formatted_send_time = _.strftime(TIME_FORMAT + "Z")
-            logger.info("Email sent to %s at %s", row.get('Name', 'Unknown'), formatted_send_time)
+            logger.info(
+                "Email sent to %s at %s",
+                row.get("Name", "Unknown"),
+                formatted_send_time,
+            )
             return formatted_send_time, "SUCCESS"
         except Exception as e:
             logger.error("Failed to send email to %s: %s", receiver_email, e)
@@ -134,9 +139,7 @@ def process_email(
     if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
         logger.warning("Invalid email address provided: %s", email)
         return "FAILED", email
-    send_time, status = send_email(
-        email_title, template_content, row, display_name
-    )
+    send_time, status = send_email(email_title, template_content, row, display_name)
     save_to_dynamodb(
         run_id,
         uuid.uuid4().hex,

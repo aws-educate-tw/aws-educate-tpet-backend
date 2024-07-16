@@ -1,7 +1,7 @@
 variable "domain_name" {
   description = "The custom domain name for CloudFront"
   type        = string
-  default     = "api.tpet.awseducate.systems"
+  default     = "api.tpet.aws-educate.tw"
 }
 
 
