@@ -58,7 +58,8 @@ module "api_gateway" {
       name                              = "lambda_authorizer"
       authorizer_type                   = "REQUEST"
       authorizer_uri                    = data.aws_ssm_parameter.lambda_authorizer_lambda_invoke_arn.value
-      authorizer_payload_format_version = "1.0"
+      authorizer_payload_format_version = "2.0"
+      enable_simple_responses           = true
     }
   }
 
@@ -80,6 +81,10 @@ module "api_gateway" {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
+
+      authorization_type = "CUSTOM"
+      authorizer_key     = "lambda_authorizer"
+
       integration = {
         uri                    = module.upload_multiple_file_lambda.lambda_function_arn # Remember to change
         type                   = "AWS_PROXY"
@@ -95,6 +100,7 @@ module "api_gateway" {
 
       authorization_type = "CUSTOM"
       authorizer_key     = "lambda_authorizer"
+
       integration = {
         uri                    = module.list_files_lambda.lambda_function_arn # Remember to change
         type                   = "AWS_PROXY"
@@ -107,6 +113,10 @@ module "api_gateway" {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
+
+      authorization_type = "CUSTOM"
+      authorizer_key     = "lambda_authorizer"
+
       integration = {
         uri                    = module.get_file_lambda.lambda_function_arn # Remember to change
         type                   = "AWS_PROXY"
