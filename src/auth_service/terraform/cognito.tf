@@ -12,8 +12,6 @@ resource "aws_cognito_user_pool_client" "aws_educate_tpet_cognito_client" {
   supported_identity_providers         = ["COGNITO"]
 
   user_pool_id  = aws_cognito_user_pool.aws_educate_tpet_cognito_user_pool.id
-  callback_urls = ["https://example.com"]
-  logout_urls   = ["https://sumeet.life"]
+  callback_urls = ["https://tpet.aws-educate.tw"]
+  logout_urls   = ["https://tpet.aws-educate.tw"]
 }
-
-
