@@ -14,7 +14,7 @@ def lambda_handler(event, context):
     AWS Lambda handler function to authenticate a user with Cognito.
 
     Args:
-        event (dict): Event data containing the request body with username and password.
+        event (dict): Event data containing the request body with account and password.
         context (dict): Context data (unused).
 
     Returns:
@@ -29,7 +29,7 @@ def lambda_handler(event, context):
         response = client.initiate_auth(
             ClientId="2hd882ob3m7kjb5bjrklejjiu4",
             AuthFlow="USER_PASSWORD_AUTH",
-            AuthParameters={"USERNAME": body["username"], "PASSWORD": body["password"]},
+            AuthParameters={"USERNAME": body["account"], "PASSWORD": body["password"]},
         )
 
         logger.info("Cognito auth response: %s", response)

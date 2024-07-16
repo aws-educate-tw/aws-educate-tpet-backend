@@ -14,7 +14,7 @@ def lambda_handler(event, context):
     AWS Lambda handler function to change the password for a user with Cognito.
 
     Args:
-        event (dict): Event data containing the request body with username, new password, session, and any required attributes.
+        event (dict): Event data containing the request body with account, new password, session, and any required attributes.
         context (dict): Context data (unused).
 
     Returns:
@@ -31,7 +31,7 @@ def lambda_handler(event, context):
             ChallengeName="NEW_PASSWORD_REQUIRED",
             Session=body["session"],
             ChallengeResponses={
-                "USERNAME": body["username"],
+                "USERNAME": body["account"],
                 "NEW_PASSWORD": body["new_password"],
                 # Add any required attributes here if necessary
             },
