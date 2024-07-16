@@ -9,7 +9,9 @@ logger.setLevel(logging.INFO)
 
 
 ENVIRONMENT = os.getenv("ENVIRONMENT")
-FILE_SERVICE_API_BASE_URL = f"https://{ENVIRONMENT}-file-service-internal-api-tpet.awseducate.systems/{ENVIRONMENT}"
+FILE_SERVICE_API_BASE_URL = (
+    f"https://{ENVIRONMENT}-file-service-internal-api-tpet.aws-educate.tw/{ENVIRONMENT}"
+)
 
 
 def get_file_info(file_id):
