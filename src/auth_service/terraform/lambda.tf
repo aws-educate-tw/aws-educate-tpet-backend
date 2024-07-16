@@ -148,7 +148,7 @@ module "lambda_authorizer_lambda" {
   version = "7.7.0"
 
   function_name  = local.lambda_authorizer_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /lambda_authorizer"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: API Gateway custom Authorizer"
   create_package = false
   timeout        = 300
 
@@ -168,10 +168,16 @@ module "lambda_authorizer_lambda" {
     "DYNAMODB_TABLE" = var.dynamodb_table
   }
 
+
+
   allowed_triggers = {
     AllowExecutionFromAPIGateway = {
       service    = "apigateway"
-      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+      source_arn = "arn:aws:execute-api:${var.aws_region}:${data.aws_caller_identity.this.account_id}:*/*/*/*"
+    }
+    AllowExecutionFromAPIGatewayAuthorizer = {
+      service    = "apigateway"
+      source_arn = "arn:aws:execute-api:${var.aws_region}:${data.aws_caller_identity.this.account_id}:*/authorizers/*"
     }
   }
 

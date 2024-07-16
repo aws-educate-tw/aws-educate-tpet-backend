@@ -1,6 +1,6 @@
 locals {
   region                          = var.aws_region
-  custom_domain_name              = "${var.environment}-${var.service_hyphen}-internal-api-tpet.awseducate.systems"
+  custom_domain_name              = "${var.environment}-${var.service_hyphen}-internal-api-tpet.aws-educate.tw"
   sub_domain_name                 = "${var.environment}-${var.service_hyphen}-internal-api-tpet"
   lambda_authorizer_function_name = "local-dev-auth_service-lambda_authorizer-ynad"
 
@@ -56,10 +56,6 @@ module "api_gateway" {
       authorizer_type                   = "REQUEST"
       authorizer_uri                    = data.aws_lambda_function.lambda_authorizer_lambda.invoke_arn
       authorizer_payload_format_version = "1.0"
-      # jwt_configuration = {
-      #   audience = ["4hu6irac6o43n9ug67o6a9vahk"]
-      #   issuer   = "https://cognito-idp.${var.aws_region}.amazonaws.com/us-west-2_bDwjqc0Gv"
-      # }
     }
   }
 

@@ -9,7 +9,7 @@ def lambda_handler(event, context):
     try:
         body = json.loads(event["body"])
         response = client.initiate_auth(
-            ClientId="4hu6irac6o43n9ug67o6a9vahk",
+            ClientId="1elmeebe63429tcjdvgoedl343",
             AuthFlow="USER_PASSWORD_AUTH",
             AuthParameters={"USERNAME": body["username"], "PASSWORD": body["password"]},
         )
@@ -17,7 +17,7 @@ def lambda_handler(event, context):
         return {
             "statusCode": 200,
             "headers": {
-                "Set-Cookie": f"accessToken={access_token}; Path=/; Secure; HttpOnly; SameSite=None; Domain=.awseducate.systems"
+                "Set-Cookie": f"accessToken={access_token}; Path=/; Secure; HttpOnly; SameSite=None; Domain=.aws-educate.tw"
             },
             "body": json.dumps({"message": "Login successful"}),
         }
