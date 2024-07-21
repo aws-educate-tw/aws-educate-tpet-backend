@@ -1,8 +1,7 @@
 locals {
-  region                          = var.aws_region
-  custom_domain_name              = "${var.environment}-${var.service_hyphen}-internal-api-tpet.aws-educate.tw"
-  sub_domain_name                 = "${var.environment}-${var.service_hyphen}-internal-api-tpet"
-  lambda_authorizer_function_name = "local-dev-auth_service-lambda_authorizer-ynad"
+  region             = var.aws_region
+  custom_domain_name = "${var.environment}-${var.service_hyphen}-internal-api-tpet.aws-educate.tw"
+  sub_domain_name    = "${var.environment}-${var.service_hyphen}-internal-api-tpet"
 
   tags = {
     Service = var.service_underscore
@@ -19,11 +18,6 @@ data "aws_route53_zone" "awseducate_systems" {
   name         = var.domain_name
   private_zone = false
 }
-
-data "aws_lambda_function" "lambda_authorizer_lambda" {
-  function_name = local.lambda_authorizer_function_name
-}
-
 
 
 # Get Lambda authorizer lambda
@@ -82,8 +76,8 @@ module "api_gateway" {
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
 
-      authorization_type = "CUSTOM"
-      authorizer_key     = "lambda_authorizer"
+      # authorization_type = "CUSTOM"
+      # authorizer_key     = "lambda_authorizer"
 
       integration = {
         uri                    = module.upload_multiple_file_lambda.lambda_function_arn # Remember to change
@@ -114,8 +108,8 @@ module "api_gateway" {
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
 
-      authorization_type = "CUSTOM"
-      authorizer_key     = "lambda_authorizer"
+      # authorization_type = "CUSTOM"
+      # authorizer_key     = "lambda_authorizer"
 
       integration = {
         uri                    = module.get_file_lambda.lambda_function_arn # Remember to change
