@@ -44,8 +44,6 @@ def lambda_handler(event, context):
             </body>
             </html>
             """
-            status = "success"
-            message = f"參與者 {participant['name']} 的出席狀態已更新為{is_attend}."
 
         response = {
             'statusCode': 200,

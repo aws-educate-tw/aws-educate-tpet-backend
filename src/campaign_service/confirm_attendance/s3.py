@@ -64,21 +64,6 @@ class S3:
         except Exception as e:
             logger.error("Error downloading file %s from bucket %s: %s", file_key, bucket_name, e)
 
-    def list_files(self, bucket_name: str):
-        """
-        List all files in an S3 bucket
-        """
-        try:
-            response = self.s3_client.list_objects_v2(Bucket=bucket_name)
-            if 'Contents' in response:
-                return [obj['Key'] for obj in response['Contents']]
-            else:
-                logger.info("No files found in bucket %s.", bucket_name)
-                return []
-        except Exception as e:
-            logger.error("Error listing files in bucket %s: %s", bucket_name, e)
-            return []
-
     def get_object(self, bucket_name: str, key: str):
         """
         Get object from an S3 bucket
