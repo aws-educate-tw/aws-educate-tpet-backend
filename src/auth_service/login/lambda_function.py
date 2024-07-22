@@ -12,6 +12,7 @@ logger.setLevel(logging.INFO)
 client = boto3.client("cognito-idp")
 
 COGNITO_CLIENT_ID = os.getenv("COGNITO_CLIENT_ID")
+ENVIRONMENT = os.getenv("ENVIRONMENT")
 
 
 def lambda_handler(event, context):
@@ -55,12 +56,24 @@ def lambda_handler(event, context):
         # Extract access token from the response
         access_token = response["AuthenticationResult"]["AccessToken"]
 
+        # Define the domains and secure attribute based on environment
+        if ENVIRONMENT in ["dev", "local-dev", "preview"]:
+            domains = ["localhost", ".aws-educate.tw", ".vercel.app"]
+            secure_attribute = ""
+        else:
+            domains = [".aws-educate.tw"]
+            secure_attribute = "Secure; "
+
+        # Create the Set-Cookie headers for each domain
+        set_cookie_headers = [
+            f"accessToken={access_token}; Path=/; {secure_attribute}HttpOnly; SameSite=None; Domain={domain}"
+            for domain in domains
+        ]
+
         # Return successful response with the access token set in cookies
         return {
             "statusCode": 200,
-            "headers": {
-                "Set-Cookie": f"accessToken={access_token}; Path=/; Secure; HttpOnly; SameSite=None; Domain=.aws-educate.tw"
-            },
+            "multiValueHeaders": {"Set-Cookie": set_cookie_headers},
             "body": json.dumps({"message": "Login successful"}),
         }
     except ClientError as e:
