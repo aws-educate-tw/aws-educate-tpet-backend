@@ -27,6 +27,12 @@ def lambda_handler(event, context):
         dict: Response object with status code, headers, and body.
     """
     try:
+        logger.info("Event: %s", event)
+
+        # Check if the body exists
+        if event.get("body") is None:
+            raise ValueError("Request body is missing")
+
         # Parse the request body
         body = json.loads(event["body"])
 
@@ -43,6 +49,10 @@ def lambda_handler(event, context):
         if response.get("ChallengeName") == "NEW_PASSWORD_REQUIRED":
             return {
                 "statusCode": 200,
+                "headers": {
+                    "Access-Control-Allow-Origin": event["headers"].get("origin", "*"),
+                    "Access-Control-Allow-Credentials": "true",
+                },
                 "body": json.dumps(
                     {
                         "message": "New password required",
@@ -73,6 +83,10 @@ def lambda_handler(event, context):
         # Return successful response with the access token set in cookies
         return {
             "statusCode": 200,
+            "headers": {
+                "Access-Control-Allow-Origin": event["headers"].get("origin", "*"),
+                "Access-Control-Allow-Credentials": "true",
+            },
             "multiValueHeaders": {"Set-Cookie": set_cookie_headers},
             "body": json.dumps({"message": "Login successful"}),
         }
@@ -81,6 +95,10 @@ def lambda_handler(event, context):
         logger.error("Cognito client error: %s", e)
         return {
             "statusCode": 400,
+            "headers": {
+                "Access-Control-Allow-Origin": event["headers"].get("origin", "*"),
+                "Access-Control-Allow-Credentials": "true",
+            },
             "body": json.dumps({"message": e.response["Error"]["Message"]}),
         }
     except json.JSONDecodeError as e:
@@ -88,5 +106,20 @@ def lambda_handler(event, context):
         logger.error("JSON decode error: %s", e)
         return {
             "statusCode": 400,
+            "headers": {
+                "Access-Control-Allow-Origin": event["headers"].get("origin", "*"),
+                "Access-Control-Allow-Credentials": "true",
+            },
             "body": json.dumps({"message": "Invalid JSON format in request body"}),
+        }
+    except ValueError as e:
+        # Handle missing body error
+        logger.error("ValueError: %s", e)
+        return {
+            "statusCode": 400,
+            "headers": {
+                "Access-Control-Allow-Origin": event["headers"].get("origin", "*"),
+                "Access-Control-Allow-Credentials": "true",
+            },
+            "body": json.dumps({"message": str(e)}),
         }

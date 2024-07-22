@@ -33,9 +33,10 @@ module "api_gateway" {
 
 
   cors_configuration = {
-    allow_headers = ["content-type", "x-amz-date", "authorization", "x-api-key", "x-amz-security-token", "x-amz-user-agent"]
-    allow_methods = ["*"]
-    allow_origins = ["*"]
+    allow_headers     = ["content-type", "x-amz-date", "authorization", "x-api-key", "x-amz-security-token", "x-amz-user-agent"]
+    allow_methods     = ["*"]
+    allow_origins     = ["http://localhost:3000", "http://localhost:5500", "https://aws-educate.tw", "https://vercel.app"]
+    allow_credentials = true
   }
 
   fail_on_warnings = false
