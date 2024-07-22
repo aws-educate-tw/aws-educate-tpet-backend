@@ -30,7 +30,7 @@ module "cloudfront" {
     cached_methods           = ["GET", "HEAD"]
     compress                 = true
     query_string             = true
-    cache_policy_id          = aws_cloudfront_cache_policy.custom_cache_policy.id
+    cache_policy_id          = aws_cloudfront_cache_policy.no_cache_policy.id # Use no-cache policy
     origin_request_policy_id = aws_cloudfront_origin_request_policy.custom_origin_request_policy.id
     use_forwarded_values     = false
   }
@@ -45,7 +45,7 @@ module "cloudfront" {
       cached_methods           = ["GET", "HEAD"]
       compress                 = true
       query_string             = true
-      cache_policy_id          = aws_cloudfront_cache_policy.custom_cache_policy.id
+      cache_policy_id          = aws_cloudfront_cache_policy.no_cache_policy.id
       origin_request_policy_id = aws_cloudfront_origin_request_policy.custom_origin_request_policy.id
       use_forwarded_values     = false
     }
@@ -57,29 +57,27 @@ module "cloudfront" {
   }
 }
 
-resource "aws_cloudfront_cache_policy" "custom_cache_policy" {
-  name        = "custom-cache-policy"
-  comment     = "Custom cache policy for disabling Set-Cookie header caching"
-  default_ttl = 86400
-  max_ttl     = 31536000
+
+resource "aws_cloudfront_cache_policy" "no_cache_policy" {
+  name        = "no-cache-policy"
+  comment     = "No cache policy for authenticated requests"
+  default_ttl = 0
+  max_ttl     = 0
   min_ttl     = 0
 
   parameters_in_cache_key_and_forwarded_to_origin {
     cookies_config {
-      cookie_behavior = "none"
+      cookie_behavior = "none" # Do not include cookies in the cache key
     }
     headers_config {
-      header_behavior = "whitelist"
-      headers {
-        items = ["Set-Cookie"]
-      }
+      header_behavior = "none" # Do not include headers in the cache key
     }
     query_strings_config {
-      query_string_behavior = "all"
+      query_string_behavior = "none" # Do not include query strings in the cache key
     }
-    enable_accept_encoding_gzip = true
   }
 }
+
 
 resource "aws_cloudfront_origin_request_policy" "custom_origin_request_policy" {
   name    = "custom-origin-request-policy"
