@@ -1,0 +1,5 @@
+aws_region         = "us-east-1"
+environment        = "dev"
+service_underscore = "auth_service"
+service_hyphen     = "auth-service"
+dynamodb_table     = "user"

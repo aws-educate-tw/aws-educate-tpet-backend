@@ -1,0 +1,5 @@
+aws_region         = "ap-northeast-1"
+environment        = "prod"
+service_underscore = "cognito"
+service_hyphen     = "cognito"
+domain_name        = "aws-educate.tw"

@@ -19,12 +19,6 @@ data "aws_route53_zone" "awseducate_systems" {
   private_zone = false
 }
 
-
-# Get Lambda authorizer lambda
-data "aws_ssm_parameter" "lambda_authorizer_lambda_invoke_arn" {
-  name = "${var.environment}-lambda_authorizer_lambda_invoke_arn"
-}
-
 ################################################################################
 # API Gateway Module
 ################################################################################
@@ -33,31 +27,19 @@ module "api_gateway" {
   source  = "terraform-aws-modules/apigateway-v2/aws"
   version = "5.0.0"
 
-  description = "File service api gateway to lambda container image"
+  description = "AWS Educate TPET, Campaign service api gateway in ${var.environment} environment"
   name        = "${var.environment}-${var.service_underscore}"
   stage_name  = var.environment
 
 
   cors_configuration = {
-    allow_headers = ["content-type", "x-amz-date", "authorization", "x-api-key", "x-amz-security-token", "x-amz-user-agent"]
-    allow_methods = ["*"]
-    allow_origins = ["*"]
+    allow_headers     = ["content-type", "x-amz-date", "authorization", "x-api-key", "x-amz-security-token", "x-amz-user-agent"]
+    allow_methods     = ["*"]
+    allow_origins     = ["http://localhost:3000", "http://localhost:5500", "https://aws-educate.tw", "https://vercel.app"]
+    allow_credentials = true
   }
 
   fail_on_warnings = false
-
-  # Authorizer(s)
-  authorizers = {
-    lambda_authorizer = {
-      name                              = "lambda_authorizer"
-      authorizer_type                   = "REQUEST"
-      authorizer_uri                    = data.aws_ssm_parameter.lambda_authorizer_lambda_invoke_arn.value
-      authorizer_payload_format_version = "2.0"
-      enable_simple_responses           = true
-    }
-  }
-
-
 
 
   # Custom Domain Name
@@ -71,48 +53,49 @@ module "api_gateway" {
 
   # Routes & Integration(s)
   routes = {
-    "POST /upload-multiple-file" = {
+
+    "POST /auth/login" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
-
-      # authorization_type = "CUSTOM"
-      # authorizer_key     = "lambda_authorizer"
-
       integration = {
-        uri                    = module.upload_multiple_file_lambda.lambda_function_arn # Remember to change
+        uri                    = module.login_lambda.lambda_function_arn # Remember to change
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
       }
     }
 
-    "GET /files" = {
+    "POST /auth/change-password" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
-
-      authorization_type = "CUSTOM"
-      authorizer_key     = "lambda_authorizer"
-
       integration = {
-        uri                    = module.list_files_lambda.lambda_function_arn # Remember to change
+        uri                    = module.change_password_lambda.lambda_function_arn # Remember to change
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
       }
     }
 
-    "GET /files/{file_id}" = {
+    "GET /auth/users/{user_id}" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
-
-      # authorization_type = "CUSTOM"
-      # authorizer_key     = "lambda_authorizer"
-
       integration = {
-        uri                    = module.get_file_lambda.lambda_function_arn # Remember to change
+        uri                    = module.get_user_lambda.lambda_function_arn # Remember to change
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
+
+    "GET /auth/users/me" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+      integration = {
+        uri                    = module.get_me_lambda.lambda_function_arn # Remember to change
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
@@ -123,7 +106,7 @@ module "api_gateway" {
 
     "$default" = {
       integration = {
-        uri                  = module.get_file_lambda.lambda_function_arn
+        uri                  = module.login_lambda.lambda_function_arn
         passthrough_behavior = "WHEN_NO_MATCH"
       }
     }

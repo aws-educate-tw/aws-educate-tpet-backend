@@ -1,0 +1,5 @@
+aws_region         = "us-west-2"
+environment        = "local-dev"
+service_underscore = "cognito"
+service_hyphen     = "cognito"
+domain_name        = "aws-educate.tw"
