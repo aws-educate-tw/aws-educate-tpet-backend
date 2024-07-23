@@ -14,6 +14,14 @@ client = boto3.client("cognito-idp")
 COGNITO_CLIENT_ID = os.getenv("COGNITO_CLIENT_ID")
 ENVIRONMENT = os.getenv("ENVIRONMENT")
 
+# Define allowed origins
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5500",
+    "https://aws-educate.tw",
+    "https://vercel.app",
+]
+
 
 def lambda_handler(event, context):
     """
@@ -28,6 +36,34 @@ def lambda_handler(event, context):
     """
     try:
         logger.info("Event: %s", event)
+
+        # Get the origin of the request
+        origin = event["headers"].get("origin")
+
+        # Handle OPTIONS preflight request
+        if event["httpMethod"] == "OPTIONS":
+            return {
+                "statusCode": 200,
+                "headers": {
+                    "Access-Control-Allow-Origin": origin,
+                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                    "Access-Control-Allow-Credentials": "true",
+                },
+                "body": "",
+            }
+
+        # Check if the origin is allowed
+        if origin not in ALLOWED_ORIGINS:
+            return {
+                "statusCode": 403,
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": origin,
+                    "Access-Control-Allow-Credentials": "true",
+                },
+                "body": json.dumps({"message": "Origin not allowed"}),
+            }
 
         # Check if the body exists
         if event.get("body") is None:
@@ -50,7 +86,8 @@ def lambda_handler(event, context):
             return {
                 "statusCode": 200,
                 "headers": {
-                    "Access-Control-Allow-Origin": event["headers"].get("origin", "*"),
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": origin,
                     "Access-Control-Allow-Credentials": "true",
                 },
                 "body": json.dumps(
@@ -84,7 +121,8 @@ def lambda_handler(event, context):
         return {
             "statusCode": 200,
             "headers": {
-                "Access-Control-Allow-Origin": event["headers"].get("origin", "*"),
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": origin,
                 "Access-Control-Allow-Credentials": "true",
             },
             "multiValueHeaders": {"Set-Cookie": set_cookie_headers},
@@ -96,7 +134,8 @@ def lambda_handler(event, context):
         return {
             "statusCode": 400,
             "headers": {
-                "Access-Control-Allow-Origin": event["headers"].get("origin", "*"),
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": origin,
                 "Access-Control-Allow-Credentials": "true",
             },
             "body": json.dumps({"message": e.response["Error"]["Message"]}),
@@ -107,7 +146,8 @@ def lambda_handler(event, context):
         return {
             "statusCode": 400,
             "headers": {
-                "Access-Control-Allow-Origin": event["headers"].get("origin", "*"),
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": origin,
                 "Access-Control-Allow-Credentials": "true",
             },
             "body": json.dumps({"message": "Invalid JSON format in request body"}),
@@ -118,7 +158,8 @@ def lambda_handler(event, context):
         return {
             "statusCode": 400,
             "headers": {
-                "Access-Control-Allow-Origin": event["headers"].get("origin", "*"),
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": origin,
                 "Access-Control-Allow-Credentials": "true",
             },
             "body": json.dumps({"message": str(e)}),
