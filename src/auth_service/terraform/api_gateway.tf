@@ -102,6 +102,18 @@ module "api_gateway" {
       }
     }
 
+    "GET /auth/is-logged-in" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+      integration = {
+        uri                    = module.is_logged_in_lambda.lambda_function_arn # Remember to change
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
+
 
 
     "$default" = {
