@@ -96,25 +96,6 @@ module "lambda_authorizer_lambda" {
   # Additional policies
   ######################
 
-  attach_policy_statements = true
-  policy_statements = {
-    dynamodb_crud = {
-      effect = "Allow",
-      actions = [
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem"
-      ],
-      resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}"
-      ]
-    }
-  }
 }
 
 module "lambda_authorizer_docker_image" {
