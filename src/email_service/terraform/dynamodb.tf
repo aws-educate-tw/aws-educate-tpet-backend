@@ -39,7 +39,6 @@ resource "aws_dynamodb_table" "email" {
   }
 
   tags = {
-    Name    = "email"
-    Creator = "Richie"
+    Name = "email"
   }
 }
