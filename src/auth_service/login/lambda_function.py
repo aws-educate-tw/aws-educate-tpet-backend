@@ -53,18 +53,6 @@ def lambda_handler(event, context):
                 "body": "",
             }
 
-        # Check if the origin is allowed
-        if origin not in ALLOWED_ORIGINS:
-            return {
-                "statusCode": 403,
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": origin,
-                    "Access-Control-Allow-Credentials": "true",
-                },
-                "body": json.dumps({"message": "Origin not allowed"}),
-            }
-
         # Check if the body exists
         if event.get("body") is None:
             raise ValueError("Request body is missing")
