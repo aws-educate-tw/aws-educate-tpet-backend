@@ -99,9 +99,12 @@ def lambda_handler(event, context):
             domains = [".aws-educate.tw"]
             secure_attribute = "Secure; "
 
+        # Calculate the expiry time (7 days in seconds)
+        max_age = 7 * 24 * 60 * 60  # 7 days in seconds
+
         # Create the Set-Cookie headers for each domain
         set_cookie_headers = [
-            f"accessToken={access_token}; Path=/; {secure_attribute}HttpOnly; SameSite=None; Domain={domain}"
+            f"accessToken={access_token}; Path=/; {secure_attribute}HttpOnly; SameSite=None; Domain={domain}; Max-Age={max_age}"
             for domain in domains
         ]
 
