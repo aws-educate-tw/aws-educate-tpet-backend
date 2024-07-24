@@ -124,7 +124,9 @@ def lambda_handler(event, context):
         dict: Authorization result.
     """
     headers = event.get("headers", {})
-    authorization_header = headers.get("Authorization", "")
+    authorization_header = headers.get("authorization", "")
+
+    logger.info("Received Authorization header: %s", authorization_header)
 
     if not authorization_header.startswith("Bearer "):
         logger.info("Authorization header missing or does not start with 'Bearer '")
