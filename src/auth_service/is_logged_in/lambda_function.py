@@ -23,16 +23,20 @@ def lambda_handler(event, context):
 
     # Get accessToken from cookies
     cookies = event.get("headers", {}).get("Cookie", "")
+    logger.info("Received cookies: %s", cookies)
+
     access_token = None
     for cookie in cookies.split(";"):
         if "accessToken=" in cookie:
-            access_token = cookie.split("=")[1]
+            access_token = cookie.split("=")[1].strip()
             break
 
     if not access_token:
+        is_logged_in = "false"
+        logger.info("is_logged_in: %s", is_logged_in)
         return {
             "statusCode": 200,
-            "body": "false",
+            "body": is_logged_in,
             "headers": {"Content-Type": "application/json"},
         }
 
@@ -42,28 +46,36 @@ def lambda_handler(event, context):
         user_id = decoded_token.get("sub")
 
         if not user_id:
+            is_logged_in = "false"
+            logger.info("is_logged_in: %s", is_logged_in)
             return {
                 "statusCode": 200,
-                "body": "false",
+                "body": is_logged_in,
                 "headers": {"Content-Type": "application/json"},
             }
 
+        is_logged_in = "true"
+        logger.info("is_logged_in: %s", is_logged_in)
         return {
             "statusCode": 200,
-            "body": "true",
+            "body": is_logged_in,
             "headers": {"Content-Type": "application/json"},
         }
 
     except jwt.ExpiredSignatureError:
+        is_logged_in = "false"
+        logger.info("is_logged_in: %s", is_logged_in)
         return {
             "statusCode": 200,
-            "body": "false",
+            "body": is_logged_in,
             "headers": {"Content-Type": "application/json"},
         }
 
     except jwt.InvalidTokenError:
+        is_logged_in = "false"
+        logger.info("is_logged_in: %s", is_logged_in)
         return {
             "statusCode": 200,
-            "body": "false",
+            "body": is_logged_in,
             "headers": {"Content-Type": "application/json"},
         }
