@@ -11,6 +11,11 @@ module "cloudfront" {
   retain_on_delete    = false
   wait_for_deployment = false
 
+  logging_config = {
+    bucket = module.log_bucket.s3_bucket_bucket_domain_name
+    prefix = "cloudfront"
+  }
+
   origin = {
     for o in var.api_gateway_origins : o.domain_name => {
       domain_name = o.domain_name
