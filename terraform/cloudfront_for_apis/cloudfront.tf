@@ -36,7 +36,7 @@ module "cloudfront" {
     compress                 = true
     query_string             = true
     cache_policy_id          = aws_cloudfront_cache_policy.no_cache_policy.id # Use no-cache policy
-    origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+    origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
     use_forwarded_values     = false
   }
 
@@ -51,7 +51,7 @@ module "cloudfront" {
       compress                 = true
       query_string             = true
       cache_policy_id          = aws_cloudfront_cache_policy.no_cache_policy.id
-      origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+      origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
       use_forwarded_values     = false
     }
   ]
