@@ -15,38 +15,60 @@ logger.setLevel(logging.INFO)
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
 
-
 class DecimalEncoder(json.JSONEncoder):
     """Custom JSON encoder for Decimal objects."""
-
     def default(self, obj):
         if isinstance(obj, Decimal):
             return float(obj)
         return super(DecimalEncoder, self).default(obj)
 
+# 針對做encode/decode
+def decode_key(encoded_key):
+    try:
+        decoded_key = json.loads(base64.b64decode(encoded_key).decode("utf-8"))
+        return decoded_key
+    except (json.JSONDecodeError, base64.binascii.Error) as e:
+        logger.error("Invalid key format: %s", str(e))
+        raise ValueError("Invalid key format. It must be a valid base64 encoded JSON string.")
+
+def encode_key(decoded_key):
+    encoded_key = base64.b64encode(json.dumps(decoded_key).encode("utf-8")).decode("utf-8")
+    return encoded_key
 
 def lambda_handler(event, context):
     """Lambda function handler for listing files."""
     # Initialize query parameters with default values
     limit = 10
     last_evaluated_key = None
+    first_evaluated_key = None
     file_extension = None
     sort_order = "DESC"
 
     # Extract query parameters if they exist
     if event.get("queryStringParameters"):
-        limit = int(event["queryStringParameters"].get("limit", 10))
-        last_evaluated_key = event["queryStringParameters"].get(
+        try:
+            limit = int(event["queryStringParameters"].get("limit", 10))
+            last_evaluated_key = event["queryStringParameters"].get(
             "last_evaluated_key", None
         )
-        sort_order = event["queryStringParameters"].get("sort_order", "DESC")
-        file_extension = event["queryStringParameters"].get("file_extension", None)
+            first_evaluated_key = event["queryStringParameters"].get(
+            "first_evaluated_key", None
+        )
+            sort_order = event["queryStringParameters"].get("sort_order", "DESC")
+            file_extension = event["queryStringParameters"].get("file_extension", None)
+        except ValueError as e:
+            logger.error("Invalid query parameter: %s", str(e))
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"error": "Invalid query parameter: " + str(e)}),
+            }
 
     # Log the extracted parameters
     logger.info(
-        "Extracted parameters - limit: %d, last_evaluated_key: %s, sort_order: %s, file_extension: %s",
+        "Extracted parameters - limit: %d, last_evaluated_key: %s, first_evaluated_key: %s, sort_order: %s, file_extension: %s",
         limit,
         last_evaluated_key,
+        first_evaluated_key,
         sort_order,
         file_extension,
     )
@@ -59,12 +81,10 @@ def lambda_handler(event, context):
             "KeyConditionExpression": Key("file_extension").eq(file_extension),
         }
 
-        if last_evaluated_key:
+    if last_evaluated_key:
             try:
                 # Decode the base64 last_evaluated_key
-                last_evaluated_key = json.loads(
-                    base64.b64decode(last_evaluated_key).decode("utf-8")
-                )
+                last_evaluated_key  = decode_key(last_evaluated_key)
                 query_kwargs["ExclusiveStartKey"] = last_evaluated_key
                 logger.info("Decoded last_evaluated_key: %s", last_evaluated_key)
             except (json.JSONDecodeError, base64.binascii.Error) as e:
@@ -78,17 +98,17 @@ def lambda_handler(event, context):
                     ),
                 }
 
-        # Query the table using the provided parameters
-        try:
-            response = table.query(**query_kwargs)
-            logger.info("Query successful")
-        except botocore.exceptions.ClientError as e:
-            error_code = e.response["Error"]["Code"]
-            if error_code == "ValidationException":
-                logger.error("Query failed: %s", str(e))
-                return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
-            else:
-                raise e
+    # Query the table using the provided parameters
+    try:
+        response = table.query(**query_kwargs)
+        logger.info("Query successful")
+    except botocore.exceptions.ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        if error_code == "ValidationException":
+            logger.error("Query failed: %s", str(e))
+            return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+        else:
+            raise e
     else:
         scan_kwargs = {
             "Limit": limit,
@@ -119,6 +139,7 @@ def lambda_handler(event, context):
             logger.info("Scan successful")
         except botocore.exceptions.ClientError as e:
             error_code = e.response["Error"]["Code"]
+        
             if error_code == "ValidationException":
                 logger.error("Scan failed: %s", str(e))
                 return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
@@ -127,21 +148,31 @@ def lambda_handler(event, context):
 
     files = response.get("Items", [])
     last_evaluated_key = response.get("LastEvaluatedKey")
+    first_evaluated_key = files[0] if files else None
 
     # Sort the results by created_at
     reverse_order = True if sort_order.upper() == "DESC" else False
     files.sort(key=lambda x: x.get("created_at", ""), reverse=reverse_order)
 
     # Encode last_evaluated_key to base64 if it's not null
+    for file in files:
+        for key, value in file.items():
+            if isinstance(value, Decimal):
+                file[key] = float(value)
+
+    # Encode last_evaluated_key and first_evaluated_key to base64 if they're not null
     if last_evaluated_key:
-        last_evaluated_key = base64.b64encode(
-            json.dumps(last_evaluated_key).encode("utf-8")
-        ).decode("utf-8")
+        last_evaluated_key = encode_key(last_evaluated_key)
         logger.info("Encoded last_evaluated_key: %s", last_evaluated_key)
+
+    if first_evaluated_key:
+        first_evaluated_key = encode_key(first_evaluated_key)
+        logger.info("Encoded first_evaluated_key: %s", first_evaluated_key)
 
     result = {
         "data": files,
         "last_evaluated_key": last_evaluated_key if last_evaluated_key else None,
+        "first_evaluated_key": first_evaluated_key if first_evaluated_key else None,
     }
 
     logger.info("Returning response with %d files", len(files))
