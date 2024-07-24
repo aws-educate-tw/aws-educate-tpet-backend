@@ -11,7 +11,7 @@ def lambda_handler(event, context):
     """
     Lambda function to handle GET /auth/is-logged-in API request.
 
-    This function reads the accessToken from cookies, decodes the JWT to check if the token is valid.
+    This function reads the accessToken from the Authorization header, decodes the JWT to check if the token is valid.
 
     Parameters:
     event (dict): API Gateway Lambda Proxy Input Format
@@ -21,15 +21,20 @@ def lambda_handler(event, context):
     dict: API Gateway Lambda Proxy Output Format
     """
 
-    # Get accessToken from cookies
-    cookies = event.get("headers", {}).get("Cookie", "")
-    logger.info("Received cookies: %s", cookies)
+    # Get accessToken from the Authorization header
+    authorization_header = event.get("headers", {}).get("Authorization", "")
+    logger.info("Received Authorization header: %s", authorization_header)
 
-    access_token = None
-    for cookie in cookies.split(";"):
-        if "accessToken=" in cookie:
-            access_token = cookie.split("=")[1].strip()
-            break
+    if not authorization_header.startswith("Bearer "):
+        is_logged_in = "false"
+        logger.info("is_logged_in: %s", is_logged_in)
+        return {
+            "statusCode": 200,
+            "body": is_logged_in,
+            "headers": {"Content-Type": "application/json"},
+        }
+
+    access_token = authorization_header[len("Bearer ") :]
 
     if not access_token:
         is_logged_in = "false"
