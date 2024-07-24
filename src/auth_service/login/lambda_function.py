@@ -28,11 +28,11 @@ def lambda_handler(event, context):
     AWS Lambda handler function to authenticate a user with Cognito.
 
     Args:
-        event (dict): Event data containing the request body with account and password.
-        context (dict): Context data (unused).
+      event (dict): Event data containing the request body with account and password.
+      context (dict): Context data (unused).
 
     Returns:
-        dict: Response object with status code, headers, and body.
+      dict: Response object with status code, headers, and body.
     """
     try:
         logger.info("Event: %s", event)
@@ -117,7 +117,9 @@ def lambda_handler(event, context):
                 "Access-Control-Allow-Credentials": "true",
             },
             "multiValueHeaders": {"Set-Cookie": set_cookie_headers},
-            "body": json.dumps({"message": "Login successful"}),
+            "body": json.dumps(
+                {"message": "Login successful", "access_token": access_token}
+            ),
         }
     except ClientError as e:
         # Handle Cognito client errors
