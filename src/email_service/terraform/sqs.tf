@@ -3,7 +3,7 @@ module "send_email_sqs" {
   version = "4.2.0"
 
   name                       = "${var.environment}-send-email-sqs"
-  visibility_timeout_seconds = 610 # Second, make sure it is larger than the Lambda timeout
+  visibility_timeout_seconds = 910 # Second, make sure it is larger than the Lambda timeout
 
   # Dead letter queue
   create_dlq = true
