@@ -1,7 +1,6 @@
 import base64
 import json
 import logging
-import os
 from decimal import Decimal
 
 import boto3
@@ -13,7 +12,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
+table = dynamodb.Table("file")
 
 class DecimalEncoder(json.JSONEncoder):
     """Custom JSON encoder for Decimal objects."""
@@ -35,9 +34,7 @@ def encode_key(decoded_key):
     encoded_key = base64.b64encode(json.dumps(decoded_key).encode("utf-8")).decode("utf-8")
     return encoded_key
 
-def lambda_handler(event, context):
-    """Lambda function handler for listing files."""
-    # Initialize query parameters with default values
+def extract_query_params(event):
     limit = 10
     last_evaluated_key = None
     first_evaluated_key = None
@@ -48,12 +45,8 @@ def lambda_handler(event, context):
     if event.get("queryStringParameters"):
         try:
             limit = int(event["queryStringParameters"].get("limit", 10))
-            last_evaluated_key = event["queryStringParameters"].get(
-            "last_evaluated_key", None
-        )
-            first_evaluated_key = event["queryStringParameters"].get(
-            "first_evaluated_key", None
-        )
+            last_evaluated_key = event["queryStringParameters"].get("last_evaluated_key", None)
+            first_evaluated_key = event["queryStringParameters"].get("first_evaluated_key", None)
             sort_order = event["queryStringParameters"].get("sort_order", "DESC")
             file_extension = event["queryStringParameters"].get("file_extension", None)
         except ValueError as e:
@@ -62,7 +55,7 @@ def lambda_handler(event, context):
                 "statusCode": 400,
                 "body": json.dumps({"error": "Invalid query parameter: " + str(e)}),
             }
-
+            
     # Log the extracted parameters
     logger.info(
         "Extracted parameters - limit: %d, last_evaluated_key: %s, first_evaluated_key: %s, sort_order: %s, file_extension: %s",
@@ -72,79 +65,54 @@ def lambda_handler(event, context):
         sort_order,
         file_extension,
     )
+    
+    return limit, last_evaluated_key, first_evaluated_key, file_extension, sort_order
+
+def lambda_handler(event, context):
+    """Lambda function handler for listing files."""
+    limit, last_evaluated_key, first_evaluated_key, file_extension, sort_order = extract_query_params(event)
+
+    query_kwargs = {
+        "Limit": limit,
+        "ScanIndexForward": False if sort_order.upper() == "DESC" else True,
+    }
 
     if file_extension:
-        query_kwargs = {
-            "Limit": limit,
+        query_kwargs.update({
             "IndexName": "file_extension-created_at-gsi",
-            "ScanIndexForward": False if sort_order.upper() == "DESC" else True,
             "KeyConditionExpression": Key("file_extension").eq(file_extension),
-        }
+        })
 
     if last_evaluated_key:
-            try:
-                # Decode the base64 last_evaluated_key
-                last_evaluated_key  = decode_key(last_evaluated_key)
-                query_kwargs["ExclusiveStartKey"] = last_evaluated_key
-                logger.info("Decoded last_evaluated_key: %s", last_evaluated_key)
-            except (json.JSONDecodeError, base64.binascii.Error) as e:
-                logger.error("Invalid last_evaluated_key format: %s", str(e))
-                return {
-                    "statusCode": 400,
-                    "body": json.dumps(
-                        {
-                            "error": "Invalid last_evaluated_key format. It must be a valid base64 encoded JSON string."
-                        }
-                    ),
-                }
-
+        try:
+            # Decode the base64 last_evaluated_key
+            last_evaluated_key = decode_key(last_evaluated_key)
+            query_kwargs["ExclusiveStartKey"] = last_evaluated_key
+            logger.info("Decoded last_evaluated_key: %s", last_evaluated_key)
+        except ValueError as e:
+            logger.error("Invalid last_evaluated_key format: %s", str(e))
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    {"error": "Invalid last_evaluated_key format. It must be a valid base64 encoded JSON string."}
+                ),
+            }
+            
     # Query the table using the provided parameters
     try:
-        response = table.query(**query_kwargs)
-        logger.info("Query successful")
+        if file_extension:
+            response = table.query(**query_kwargs)
+            logger.info("Query successful")
+        else:
+            response = table.scan(**query_kwargs)
+            logger.info("Scan successful")
     except botocore.exceptions.ClientError as e:
         error_code = e.response["Error"]["Code"]
         if error_code == "ValidationException":
-            logger.error("Query failed: %s", str(e))
+            logger.error("Query/Scan failed: %s", str(e))
             return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
         else:
             raise e
-    else:
-        scan_kwargs = {
-            "Limit": limit,
-        }
-
-        if last_evaluated_key:
-            try:
-                # Decode the base64 last_evaluated_key
-                last_evaluated_key = json.loads(
-                    base64.b64decode(last_evaluated_key).decode("utf-8")
-                )
-                scan_kwargs["ExclusiveStartKey"] = last_evaluated_key
-                logger.info("Decoded last_evaluated_key: %s", last_evaluated_key)
-            except (json.JSONDecodeError, base64.binascii.Error) as e:
-                logger.error("Invalid last_evaluated_key format: %s", str(e))
-                return {
-                    "statusCode": 400,
-                    "body": json.dumps(
-                        {
-                            "error": "Invalid last_evaluated_key format. It must be a valid base64 encoded JSON string."
-                        }
-                    ),
-                }
-
-        # Scan the table using the provided parameters
-        try:
-            response = table.scan(**scan_kwargs)
-            logger.info("Scan successful")
-        except botocore.exceptions.ClientError as e:
-            error_code = e.response["Error"]["Code"]
-        
-            if error_code == "ValidationException":
-                logger.error("Scan failed: %s", str(e))
-                return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
-            else:
-                raise e
 
     files = response.get("Items", [])
     last_evaluated_key = response.get("LastEvaluatedKey")
@@ -159,7 +127,7 @@ def lambda_handler(event, context):
         for key, value in file.items():
             if isinstance(value, Decimal):
                 file[key] = float(value)
-
+                
     # Encode last_evaluated_key and first_evaluated_key to base64 if they're not null
     if last_evaluated_key:
         last_evaluated_key = encode_key(last_evaluated_key)
