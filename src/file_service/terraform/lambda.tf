@@ -176,7 +176,7 @@ module "list_files_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["arm64"]                               # or ["arm64"]
+  architectures = ["x86_64"]                               # or ["arm64"]
   image_uri     = module.list_files_docker_image.image_uri # Remember to change
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
