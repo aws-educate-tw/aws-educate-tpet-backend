@@ -21,7 +21,7 @@ class DecimalEncoder(json.JSONEncoder):
             return float(obj)
         return super(DecimalEncoder, self).default(obj)
 
-# 針對做encode/decode
+# encode and decode functions for the key
 def decode_key(encoded_key):
     try:
         decoded_key = json.loads(base64.b64decode(encoded_key).decode("utf-8"))
