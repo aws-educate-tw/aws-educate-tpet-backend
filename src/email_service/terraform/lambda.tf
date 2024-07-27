@@ -14,6 +14,8 @@ locals {
   source_path                                    = "${path.module}/.."
   validate_input_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-validate_input-${random_string.this.result}"
   send_email_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-send_email-${random_string.this.result}"
+  list_runs_function_name_and_ecr_repo_name      = "${var.environment}-${var.service_underscore}-list_runs-${random_string.this.result}"
+  get_run_function_name_and_ecr_repo_name        = "${var.environment}-${var.service_underscore}-get_run-${random_string.this.result}"
   path_include                                   = ["**"]
   path_exclude                                   = ["**/__pycache__/**"]
   files_include                                  = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
@@ -21,6 +23,7 @@ locals {
   files                                          = sort(setsubtract(local.files_include, local.files_exclude))
   dir_sha                                        = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
 }
+
 
 provider "docker" {
   registry_auth {
@@ -51,7 +54,7 @@ module "validate_input_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"]                                   # or ["arm64"]
+  architectures = ["arm64"]                                   # or ["arm64"]
   image_uri     = module.validate_input_docker_image.image_uri # Remember to change
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -173,7 +176,7 @@ module "send_email_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = ["arm64"] # or ["arm64"]
   image_uri     = module.docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -298,6 +301,214 @@ module "docker_image" {
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/send_email/" # Remember to change
+  triggers = {
+    dir_sha = local.dir_sha
+  }
+
+}
+
+####################################
+####################################
+####################################
+# GET /runs #######
+####################################
+####################################
+####################################
+
+module "list_runs_lambda" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "7.7.0"
+
+  function_name  = local.list_runs_function_name_and_ecr_repo_name
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /runs"
+  create_package = false
+  timeout        = 300
+
+  ##################
+  # Container Image
+  ##################
+  package_type  = "Image"
+  architectures = ["arm64"] # or ["arm64"]
+  image_uri     = module.list_runs_docker_image.image_uri
+
+  publish = true # Whether to publish creation/change as new Lambda Function Version.
+
+
+  environment_variables = {
+    "ENVIRONMENT"    = var.environment,
+    "SERVICE"        = var.service_underscore
+    "DYNAMODB_TABLE" = var.dynamodb_table
+  }
+
+  allowed_triggers = {
+    AllowExecutionFromAPIGateway = {
+      service    = "apigateway"
+      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+    }
+  }
+
+  tags = {
+    "Terraform"   = "true",
+    "Environment" = var.environment,
+    "Service"     = var.service_underscore
+  }
+  ######################
+  # Additional policies
+  ######################
+
+  attach_policy_statements = true
+  policy_statements = {
+    dynamodb_crud = {
+      effect = "Allow",
+      actions = [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+      ],
+      resources = [
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}"
+      ]
+    }
+  }
+}
+
+module "list_runs_docker_image" {
+  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version = "7.7.0"
+
+  create_ecr_repo      = true
+  keep_remotely        = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = local.list_runs_function_name_and_ecr_repo_name
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  # docker_campaign_path = "${local.source_path}/path/to/Dockercampaign" # set `docker_campaign_path` If your Dockercampaign is not in `source_path`
+  source_path = "${local.source_path}/list_runs/" # Remember to change
+  triggers = {
+    dir_sha = local.dir_sha
+  }
+
+}
+
+####################################
+####################################
+####################################
+# GET /run/{run_id}  #######
+####################################
+####################################
+####################################
+
+module "get_run_lambda" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "7.7.0"
+
+  function_name  = local.get_run_function_name_and_ecr_repo_name
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /run/{run_id}"
+  create_package = false
+  timeout        = 300
+
+  ##################
+  # Container Image
+  ##################
+  package_type  = "Image"
+  architectures = ["arm64"] # or ["arm64"]
+  image_uri     = module.get_run_docker_image.image_uri
+
+  publish = true # Whether to publish creation/change as new Lambda Function Version.
+
+
+  environment_variables = {
+    "ENVIRONMENT"    = var.environment,
+    "SERVICE"        = var.service_underscore
+    "DYNAMODB_TABLE" = var.dynamodb_table
+  }
+
+  allowed_triggers = {
+    AllowExecutionFromAPIGateway = {
+      service    = "apigateway"
+      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+    }
+  }
+
+  tags = {
+    "Terraform"   = "true",
+    "Environment" = var.environment,
+    "Service"     = var.service_underscore
+  }
+  ######################
+  # Additional policies
+  ######################
+
+  attach_policy_statements = true
+  policy_statements = {
+    dynamodb_crud = {
+      effect = "Allow",
+      actions = [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+      ],
+      resources = [
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}"
+      ]
+    }
+  }
+}
+
+module "get_run_docker_image" {
+  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version = "7.7.0"
+
+  create_ecr_repo      = true
+  keep_remotely        = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = local.get_run_function_name_and_ecr_repo_name
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  # docker_campaign_path = "${local.source_path}/path/to/Dockercampaign" # set `docker_campaign_path` If your Dockercampaign is not in `source_path`
+  source_path = "${local.source_path}/get_run/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }
