@@ -111,11 +111,6 @@ def list_runs(params):
     reverse_order = True if sort_order.upper() == "DESC" else False
     records.sort(key=lambda x: x.get(sort_by, ""), reverse=reverse_order)
 
-    # Filter out recipient_email and email_id from records
-    for record in records:
-        record.pop("recipient_email", None)
-        record.pop("email_id", None)
-
     # Encode last_evaluated_key to base64 if it's not null
     if last_evaluated_key:
         last_evaluated_key = encode_key(last_evaluated_key)
