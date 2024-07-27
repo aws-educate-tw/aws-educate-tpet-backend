@@ -35,7 +35,7 @@ def encode_key(decoded_key):
     return encoded_key
 
 def extract_query_params(event):
-    limit = 10
+    limit = 10  
     last_evaluated_key = None
     first_evaluated_key = None
     file_extension = None
@@ -75,14 +75,14 @@ def lambda_handler(event, context):
     query_kwargs = {
         "Limit": limit,
         "ScanIndexForward": False if sort_order.upper() == "DESC" else True,
+        "IndexName": "file_extension-created_at-gsi"
     }
 
     if file_extension:
-        query_kwargs.update({
-            "IndexName": "file_extension-created_at-gsi",
-            "KeyConditionExpression": Key("file_extension").eq(file_extension),
-        })
-
+        query_kwargs["KeyConditionExpression"] = Key("file_extension").eq(file_extension)
+    else:
+        query_kwargs["KeyConditionExpression"] = Key("file_extension").gt("")  # Use a condition that is always true for the index hash key
+    
     if last_evaluated_key:
         try:
             # Decode the base64 last_evaluated_key
@@ -100,16 +100,12 @@ def lambda_handler(event, context):
             
     # Query the table using the provided parameters
     try:
-        if file_extension:
-            response = table.query(**query_kwargs)
-            logger.info("Query successful")
-        else:
-            response = table.scan(**query_kwargs)
-            logger.info("Scan successful")
+        response = table.query(**query_kwargs)
+        logger.info("Query successful")
     except botocore.exceptions.ClientError as e:
         error_code = e.response["Error"]["Code"]
         if error_code == "ValidationException":
-            logger.error("Query/Scan failed: %s", str(e))
+            logger.error("Query failed: %s", str(e))
             return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
         else:
             raise e
