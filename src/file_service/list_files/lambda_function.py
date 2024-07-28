@@ -9,6 +9,7 @@ from file_repository import FileRepository
 from file_service_pagination_state_repository import (
     FileServicePaginationStateRepository,
 )
+from time_util import get_current_utc_time
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(o)
 
 
-def decode_key(encoded_key: str) -> dict:
+def decode_key(encoded_key: str) -> dict[str, str]:
     """Decode a base64 encoded key into a dictionary."""
     try:
         decoded_key = json.loads(base64.b64decode(encoded_key).decode("utf-8"))
@@ -36,7 +37,7 @@ def decode_key(encoded_key: str) -> dict:
         ) from e
 
 
-def encode_key(decoded_key: dict) -> str:
+def encode_key(decoded_key: dict[str, str]) -> str:
     """Encode a dictionary into a base64 encoded string."""
     encoded_key = base64.b64encode(json.dumps(decoded_key).encode("utf-8")).decode(
         "utf-8"
@@ -44,7 +45,7 @@ def encode_key(decoded_key: dict) -> str:
     return encoded_key
 
 
-def extract_query_params(event: dict) -> dict:
+def extract_query_params(event: dict[str, any]) -> dict[str, any]:
     """Extract query parameters from the API Gateway event."""
     limit: int = 10
     last_evaluated_key: Optional[str] = None
@@ -92,7 +93,7 @@ def extract_query_params(event: dict) -> dict:
     }
 
 
-def lambda_handler(event: dict, context: object) -> dict:
+def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for listing files."""
     extracted_params = extract_query_params(event)
     if isinstance(extracted_params, dict) and extracted_params.get("statusCode"):
@@ -114,10 +115,6 @@ def lambda_handler(event: dict, context: object) -> dict:
             current_last_evaluated_key = last_evaluated_key
             last_evaluated_key = decode_key(last_evaluated_key)
             logger.info("Decoded last_evaluated_key: %s", last_evaluated_key)
-
-            # Get the previous last evaluated key from the state
-            state = pagination_state_repo.get_pagination_state_by_user_id(user_id)
-            previous_last_evaluated_key = state.get("previous_last_evaluated_key")
         except ValueError as e:
             logger.error("Invalid last_evaluated_key format: %s", e)
             return {
@@ -130,10 +127,18 @@ def lambda_handler(event: dict, context: object) -> dict:
             }
     else:
         current_last_evaluated_key = None
-        previous_last_evaluated_key = None
+        # Clear old pagination state
+        pagination_state_repo.save_pagination_state(
+            {
+                "user_id": user_id,
+                "last_evaluated_keys": [],
+                "created_at": get_current_utc_time(),
+                "updated_at": get_current_utc_time(),
+                "limit": limit,
+            }
+        )
 
     # Query the table using the provided parameters
-
     try:
         response = file_repo.query_files(
             file_extension, limit, last_evaluated_key, sort_order
@@ -143,20 +148,28 @@ def lambda_handler(event: dict, context: object) -> dict:
         logger.error("Query failed: %s", e)
         return {"statusCode": 400, "body": json.dumps({"message": str(e)})}
 
-    files: list[dict] = response.get("Items", [])
-    next_last_evaluated_key: Optional[str] = response.get("LastEvaluatedKey")
+    files = response.get("Items", [])
+    next_last_evaluated_key = response.get("LastEvaluatedKey")
 
     # Encode last_evaluated_key to base64 if it's not null
     if next_last_evaluated_key:
         next_last_evaluated_key = encode_key(next_last_evaluated_key)
 
     # Store the pagination state for the next request
+    pagination_state = pagination_state_repo.get_pagination_state_by_user_id(user_id)
+    last_evaluated_keys = pagination_state.get("last_evaluated_keys", [])
+
+    # Append the next_last_evaluated_key only if it is not already in the list
+    if next_last_evaluated_key not in last_evaluated_keys:
+        last_evaluated_keys.append(next_last_evaluated_key)
+
     pagination_state_repo.save_pagination_state(
         {
             "user_id": user_id,
-            "previous_last_evaluated_key": current_last_evaluated_key,
-            "current_last_evaluated_key": next_last_evaluated_key,
-            "next_last_evaluated_key": next_last_evaluated_key,
+            "last_evaluated_keys": last_evaluated_keys,
+            "created_at": pagination_state.get("created_at", get_current_utc_time()),
+            "updated_at": get_current_utc_time(),
+            "limit": limit,
         }
     )
 
@@ -169,6 +182,15 @@ def lambda_handler(event: dict, context: object) -> dict:
         for key, value in file.items():
             if isinstance(value, Decimal):
                 file[key] = float(value)
+
+    # Find the index of the current_last_evaluated_key in last_evaluated_keys
+    if current_last_evaluated_key in last_evaluated_keys:
+        current_index = last_evaluated_keys.index(current_last_evaluated_key)
+        previous_last_evaluated_key = (
+            last_evaluated_keys[current_index - 1] if current_index > 0 else None
+        )
+    else:
+        previous_last_evaluated_key = None
 
     result = {
         "data": files,
