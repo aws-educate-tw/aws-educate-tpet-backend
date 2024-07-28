@@ -22,7 +22,7 @@ def lambda_handler(event, context):
     """
 
     # Get accessToken from the Authorization header
-    authorization_header = event.get("headers", {}).get("Authorization", "")
+    authorization_header = event.get("headers", {}).get("authorization", "")
     logger.info("Received Authorization header: %s", authorization_header)
 
     if not authorization_header.startswith("Bearer "):
