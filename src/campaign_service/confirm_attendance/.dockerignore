@@ -1,0 +1,4 @@
+.env
+samconfig.toml
+template.yaml
+.aws-sam

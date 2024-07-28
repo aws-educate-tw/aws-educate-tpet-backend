@@ -13,10 +13,22 @@ resource "aws_dynamodb_table" "campaign" {
     type = "S"
   }
 
+  attribute {
+    name = "participant_id"
+    type = "S"
+  }
+
   global_secondary_index {
     name            = "campaign_id-created_at-gsi"
     hash_key        = "campaign_id"
     range_key       = "created_at"
+    projection_type = "ALL"
+  }
+
+  global_secondary_index {
+    name           = "campaign_id-participant_id-gsi"
+    hash_key       = "campaign_id"
+    range_key      = "participant_id"
     projection_type = "ALL"
   }
 

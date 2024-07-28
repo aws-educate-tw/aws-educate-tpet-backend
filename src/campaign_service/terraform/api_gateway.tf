@@ -1,6 +1,6 @@
 locals {
   region             = var.aws_region
-  custom_domain_name = "${var.environment}-${var.service_hyphen}-internal-api-tpet.awseducate.systems"
+  custom_domain_name = "${var.environment}-${var.service_hyphen}-internal-api-tpet.aws-educate.tw"
   sub_domain_name    = "${var.environment}-${var.service_hyphen}-internal-api-tpet"
 
   tags = {
@@ -65,7 +65,17 @@ module "api_gateway" {
       }
     }
 
-
+    "GET /confirm-attendance" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+      integration = {
+        uri                    = module.confirm_attendance_lambda.lambda_function_arn # Remember to change
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
 
     "$default" = {
       integration = {
