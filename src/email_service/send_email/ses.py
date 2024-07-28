@@ -13,10 +13,11 @@ import requests
 import time_util
 from botocore.exceptions import ClientError
 from certificate_generator import generate_certificate
+from current_user_util import current_user_util  # Import the global instance
 from dynamodb import save_to_dynamodb
 from s3 import read_html_template_file_from_s3
 
-from file_service import get_file_info
+from file_service import FileService
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -31,6 +32,9 @@ PRIVATE_BUCKET_NAME = os.getenv("PRIVATE_BUCKET_NAME")
 CERTIFICATE_TEMPLATE_FILE_S3_OBJECT_KEY = (
     "templates/[template] AWS Educate certificate.pdf"
 )
+
+# Initialize FileService
+file_service = FileService()
 
 
 def download_file_content(file_url):
@@ -93,7 +97,9 @@ def attach_files_to_message(msg, file_ids):
     logger.info("Processing file attachments.")
     for file_id in file_ids:
         try:
-            file_info = get_file_info(file_id)
+            file_info = file_service.get_file_info(
+                file_id, current_user_util.get_current_user_access_token()
+            )
             file_url = file_info.get("file_url")
             file_name = file_info.get("file_name")
             file_size = file_info.get("file_size")
@@ -261,11 +267,17 @@ def process_email(
     if not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email):
         logger.warning("Invalid email address provided: %s", recipient_email)
         return "FAILED", email_id
-    template_file_info = get_file_info(email_data.get("template_file_id"))
+    # Get template file information and content
+    template_file_info = file_service.get_file_info(
+        email_data.get("template_file_id"),
+        current_user_util.get_current_user_access_token(),
+    )
     template_file_s3_object_key = template_file_info["s3_object_key"]
     template_content = read_html_template_file_from_s3(
         bucket=BUCKET_NAME, template_file_s3_key=template_file_s3_object_key
     )
+
+    # Send email
     sent_time, status = send_email(
         email_data.get("subject"),
         template_content,

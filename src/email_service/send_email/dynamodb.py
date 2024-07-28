@@ -25,6 +25,7 @@ def save_to_dynamodb(item: dict):
             "spreadsheet_file_id",
             "row_data",
             "created_at",
+            "sender_id",
         ]
         for key in required_keys:
             if key not in item:
