@@ -10,7 +10,7 @@ import pandas as pd
 import requests
 from requests.exceptions import RequestException
 
-from auth_service import AuthService  # Import AuthService
+from auth_service import AuthService
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -139,7 +139,7 @@ def lambda_handler(event, context):
             }
 
         # Get the access token from headers
-        authorization_header = event["headers"].get("Authorization")
+        authorization_header = event["headers"].get("authorization")
         if not authorization_header or not authorization_header.startswith("Bearer "):
             return {
                 "statusCode": 401,
@@ -195,7 +195,8 @@ def lambda_handler(event, context):
             "display_name": display_name,
             "attachment_file_ids": attachment_file_ids,
             "is_generate_certificate": is_generate_certificate,
-            "sender_id": sender_id,  # Add sender_id here
+            "sender_id": sender_id,
+            "access_token": access_token,
         }
 
         # Send message to SQS
