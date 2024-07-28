@@ -67,6 +67,9 @@ def save_emails_to_dynamodb(
             "created_at": created_at,
             "is_generate_certificate": sqs_message["is_generate_certificate"],
             "sender_id": sqs_message["sender_id"],
+            "sender_username": current_user_util.get_current_user_info().get(
+                "username"
+            ),
         }
 
         # Save to DynamoDB
