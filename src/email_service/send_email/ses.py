@@ -13,8 +13,9 @@ import requests
 import time_util
 from botocore.exceptions import ClientError
 from certificate_generator import generate_certificate
-from current_user_util import current_user_util  # Import the global instance
+from current_user_util import current_user_util
 from dynamodb import save_to_dynamodb
+from email_repository import EmailRepository
 from s3 import read_html_template_file_from_s3
 
 from file_service import FileService
@@ -35,6 +36,9 @@ CERTIFICATE_TEMPLATE_FILE_S3_OBJECT_KEY = (
 
 # Initialize FileService
 file_service = FileService()
+
+# Initialize EmailRepository
+email_repository = EmailRepository()
 
 
 def download_file_content(file_url):
@@ -261,12 +265,13 @@ def process_email(
     :return: Status and email ID of the email sending operation.
     """
     recipient_email = row.get("Email")
-    email_id = str(uuid.uuid4().hex)
+    email_id = email_data.get("email_id")
 
     logger.info("Row data: %s", row)
     if not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email):
         logger.warning("Invalid email address provided: %s", recipient_email)
         return "FAILED", email_id
+
     # Get template file information and content
     template_file_info = file_service.get_file_info(
         email_data.get("template_file_id"),
@@ -278,7 +283,7 @@ def process_email(
     )
 
     # Send email
-    sent_time, status = send_email(
+    _, status = send_email(
         email_data.get("subject"),
         template_content,
         row,
@@ -288,25 +293,9 @@ def process_email(
         email_data.get("is_generate_certificate"),
         email_data.get("run_id"),
     )
-    updated_at = time_util.get_current_utc_time()
 
-    # Create the item dictionary
-    item = {
-        "run_id": email_data.get("run_id"),
-        "email_id": email_id,
-        "display_name": email_data.get("display_name"),
-        "status": status,
-        "recipient_email": recipient_email,
-        "template_file_id": email_data.get("template_file_id"),
-        "spreadsheet_file_id": email_data.get("spreadsheet_file_id"),
-        "created_at": email_data.get("created_at"),
-        "row_data": row,
-        "sent_at": sent_time,
-        "updated_at": updated_at,
-        "is_generate_certificate": email_data.get("is_generate_certificate"),
-        "sender_id": current_user_util.get_current_user_info().get("user_id"),
-    }
-
-    # Save to DynamoDB
-    save_to_dynamodb(item)
+    # Update the item in DynamoDB using EmailRepository
+    email_repository.update_email_status(
+        run_id=email_data.get("run_id"), email_id=email_id, status=status
+    )
     return status, email_id
