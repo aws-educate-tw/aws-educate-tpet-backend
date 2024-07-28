@@ -27,7 +27,7 @@ class CurrentUserUtil:
             logger.error("Error setting current user: %s", e)
             raise
 
-    def get_current_user_info(self):
+    def get_current_user_info(self) -> dict:
         """
         Get the current logged-in user information.
 
@@ -37,7 +37,7 @@ class CurrentUserUtil:
             raise ValueError("Current user not set")
         return self._current_user_info
 
-    def get_current_user_access_token(self):
+    def get_current_user_access_token(self) -> str:
         """
         Get the current logged-in user's access token.
 

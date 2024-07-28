@@ -304,6 +304,7 @@ def process_email(
         "sent_at": sent_time,
         "updated_at": updated_at,
         "is_generate_certificate": email_data.get("is_generate_certificate"),
+        "sender_id": current_user_util.get_current_user_info().get("user_id"),
     }
 
     # Save to DynamoDB
