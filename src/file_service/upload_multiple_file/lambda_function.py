@@ -8,18 +8,24 @@ from urllib.parse import quote, unquote
 import boto3
 import time_util
 from botocore.exceptions import ClientError
-from dynamodb import save_to_dynamodb
+from file_repository import FileRepository
 from requests_toolbelt.multipart import decoder
 
-from auth_service import AuthService  # Import AuthService
+from auth_service import AuthService
 
 # Set up logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Initialize S3 client and DynamoDB client
+# Initialize S3 client
 s3_client = boto3.client("s3")
-dynamodb = boto3.client("dynamodb")
+
+# Initialize FileRepository
+file_repository = FileRepository()
+
+# Initialize AuthService
+auth_service = AuthService()
+
 BUCKET_NAME = os.environ["BUCKET_NAME"]
 S3_BASE_URL = f"https://{BUCKET_NAME}.s3.amazonaws.com/"
 
@@ -78,15 +84,14 @@ def process_single_file(part, uploader_id):
     res_url = S3_BASE_URL + encoded_file_name
     logger.info("Generated S3 URL: %s", res_url)
 
-    # Save metadata to DynamoDB
+    # Save metadata to DynamoDB using FileRepository
     file_size = len(file_content)
-    save_file_metadata_to_dynamodb(
+    file_metadata = create_file_metadata_dict(
         file_id, unique_file_name, res_url, file_name, file_size, uploader_id
     )
+    file_repository.save_file(file_metadata)
 
-    return create_file_metadata_dict(
-        file_id, unique_file_name, res_url, file_name, file_size, uploader_id
-    )
+    return file_metadata
 
 
 def extract_filename(part):
@@ -97,22 +102,6 @@ def extract_filename(part):
         return unquote(file_name)
     else:
         return disposition.split('filename="')[1].split('"')[0]
-
-
-def save_file_metadata_to_dynamodb(
-    file_id, unique_file_name, res_url, file_name, file_size, uploader_id
-):
-    """Save file metadata to DynamoDB."""
-    logger.info("Storing file metadata in DynamoDB: %s", file_id)
-    save_to_dynamodb(
-        file_id=file_id,
-        s3_object_key=unique_file_name,
-        file_url=res_url,
-        file_name=file_name,
-        file_size=file_size,
-        uploader_id=uploader_id,  # Use actual uploader ID
-    )
-    logger.info("File metadata stored successfully in DynamoDB: %s", file_id)
 
 
 def create_file_metadata_dict(
@@ -141,9 +130,7 @@ def lambda_handler(event, context):
     :param context: The context object providing runtime information
     :return: A dict containing the API response
     """
-
-    # Initialize AuthService
-    auth_service = AuthService()
+    logger.info("Received event: %s", event)
 
     # Get the access token from headers
     authorization_header = event["headers"].get("authorization")
