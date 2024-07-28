@@ -1,3 +1,2 @@
-boto3
-botocore
 requests-toolbelt
+requests==2.32.3

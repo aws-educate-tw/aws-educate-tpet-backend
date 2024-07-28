@@ -11,6 +11,8 @@ from botocore.exceptions import ClientError
 from dynamodb import save_to_dynamodb
 from requests_toolbelt.multipart import decoder
 
+from auth_service import AuthService  # Import AuthService
+
 # Set up logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -32,12 +34,12 @@ def decode_request_body(event):
     return body
 
 
-def process_files(multipart_data):
+def process_files(multipart_data, uploader_id):
     """Process each file in the multipart data."""
     files_metadata = []
     for part in multipart_data.parts:
         try:
-            file_metadata = process_single_file(part)
+            file_metadata = process_single_file(part, uploader_id)
             files_metadata.append(file_metadata)
         except ClientError as e:
             logger.error(
@@ -50,7 +52,7 @@ def process_files(multipart_data):
     return files_metadata
 
 
-def process_single_file(part):
+def process_single_file(part, uploader_id):
     """Process a single file from multipart data."""
     file_name = extract_filename(part)
     content_type = part.headers.get(
@@ -79,11 +81,11 @@ def process_single_file(part):
     # Save metadata to DynamoDB
     file_size = len(file_content)
     save_file_metadata_to_dynamodb(
-        file_id, unique_file_name, res_url, file_name, file_size
+        file_id, unique_file_name, res_url, file_name, file_size, uploader_id
     )
 
     return create_file_metadata_dict(
-        file_id, unique_file_name, res_url, file_name, file_size
+        file_id, unique_file_name, res_url, file_name, file_size, uploader_id
     )
 
 
@@ -98,7 +100,7 @@ def extract_filename(part):
 
 
 def save_file_metadata_to_dynamodb(
-    file_id, unique_file_name, res_url, file_name, file_size
+    file_id, unique_file_name, res_url, file_name, file_size, uploader_id
 ):
     """Save file metadata to DynamoDB."""
     logger.info("Storing file metadata in DynamoDB: %s", file_id)
@@ -108,12 +110,14 @@ def save_file_metadata_to_dynamodb(
         file_url=res_url,
         file_name=file_name,
         file_size=file_size,
-        uploader_id="dummy_uploader_id",  # Replace with actual uploader ID if available
+        uploader_id=uploader_id,  # Use actual uploader ID
     )
     logger.info("File metadata stored successfully in DynamoDB: %s", file_id)
 
 
-def create_file_metadata_dict(file_id, unique_file_name, res_url, file_name, file_size):
+def create_file_metadata_dict(
+    file_id, unique_file_name, res_url, file_name, file_size, uploader_id
+):
     """Create a dictionary with file metadata."""
     formatted_now = time_util.get_current_utc_time()
     return {
@@ -125,7 +129,7 @@ def create_file_metadata_dict(file_id, unique_file_name, res_url, file_name, fil
         "file_name": file_name,
         "file_extension": file_name.split(".")[-1],
         "file_size": file_size,
-        "uploader_id": "dummy_uploader_id",  # Replace with actual uploader ID if available
+        "uploader_id": uploader_id,  # Use actual uploader ID
     }
 
 
@@ -137,7 +141,24 @@ def lambda_handler(event, context):
     :param context: The context object providing runtime information
     :return: A dict containing the API response
     """
-    logger.info("Received event: %s", event)
+
+    # Initialize AuthService
+    auth_service = AuthService()
+
+    # Get the access token from headers
+    authorization_header = event["headers"].get("authorization")
+    if not authorization_header or not authorization_header.startswith("Bearer "):
+        return {
+            "statusCode": 401,
+            "body": json.dumps({"message": "Missing or invalid Authorization header"}),
+            "headers": {"Content-Type": "application/json"},
+        }
+
+    access_token = authorization_header.split(" ")[1]
+
+    # Retrieve user information using AuthService
+    user_info = auth_service.get_me(access_token)
+    uploader_id = user_info.get("user_id")
 
     content_type = event["headers"].get("Content-Type") or event["headers"].get(
         "content-type"
@@ -145,7 +166,7 @@ def lambda_handler(event, context):
     body = decode_request_body(event)
 
     multipart_data = decoder.MultipartDecoder(body, content_type)
-    files_metadata = process_files(multipart_data)
+    files_metadata = process_files(multipart_data, uploader_id)
 
     return {
         "statusCode": 200,
