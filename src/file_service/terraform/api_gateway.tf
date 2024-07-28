@@ -93,8 +93,8 @@ module "api_gateway" {
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
 
-      authorization_type = "CUSTOM"
-      authorizer_key     = "lambda_authorizer"
+      # authorization_type = "CUSTOM"
+      # authorizer_key     = "lambda_authorizer"
 
       integration = {
         uri                    = module.list_files_lambda.lambda_function_arn # Remember to change
