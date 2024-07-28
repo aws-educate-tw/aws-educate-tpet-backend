@@ -14,7 +14,6 @@ import time_util
 from botocore.exceptions import ClientError
 from certificate_generator import generate_certificate
 from current_user_util import current_user_util
-from dynamodb import save_to_dynamodb
 from email_repository import EmailRepository
 from s3 import read_html_template_file_from_s3
 
