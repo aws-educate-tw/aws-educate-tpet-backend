@@ -10,8 +10,10 @@ import pandas as pd
 import requests
 from requests.exceptions import RequestException
 
+from auth_service import AuthService  # Import AuthService
+
 # Set up logging
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Constants
@@ -22,9 +24,11 @@ FILE_SERVICE_API_BASE_URL = (
 )
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
 
-
 # Initialize AWS SQS client
 sqs_client = boto3.client("sqs")
+
+# Initialize AuthService
+auth_service = AuthService()
 
 
 def get_file_info(file_id):
@@ -134,6 +138,23 @@ def lambda_handler(event, context):
                 "body": json.dumps("Missing spreadsheet file ID"),
             }
 
+        # Get the access token from headers
+        authorization_header = event["headers"].get("Authorization")
+        if not authorization_header or not authorization_header.startswith("Bearer "):
+            return {
+                "statusCode": 401,
+                "body": json.dumps(
+                    {"message": "Missing or invalid Authorization header"}
+                ),
+                "headers": {"Content-Type": "application/json"},
+            }
+
+        access_token = authorization_header.split(" ")[1]
+
+        # Retrieve user information using AuthService
+        user_info = auth_service.get_me(access_token)
+        sender_id = user_info.get("user_id")
+
         # Get template file information and content
         template_info = get_file_info(template_file_id)
         template_s3_key = template_info["s3_object_key"]
@@ -174,6 +195,7 @@ def lambda_handler(event, context):
             "display_name": display_name,
             "attachment_file_ids": attachment_file_ids,
             "is_generate_certificate": is_generate_certificate,
+            "sender_id": sender_id,  # Add sender_id here
         }
 
         # Send message to SQS
