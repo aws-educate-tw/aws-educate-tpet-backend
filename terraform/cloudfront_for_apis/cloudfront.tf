@@ -11,6 +11,11 @@ module "cloudfront" {
   retain_on_delete    = false
   wait_for_deployment = false
 
+  logging_config = {
+    bucket = module.log_bucket.s3_bucket_bucket_domain_name
+    prefix = "cloudfront"
+  }
+
   origin = {
     for o in var.api_gateway_origins : o.domain_name => {
       domain_name = o.domain_name
@@ -31,7 +36,7 @@ module "cloudfront" {
     compress                 = true
     query_string             = true
     cache_policy_id          = aws_cloudfront_cache_policy.no_cache_policy.id # Use no-cache policy
-    origin_request_policy_id = aws_cloudfront_origin_request_policy.custom_origin_request_policy.id
+    origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
     use_forwarded_values     = false
   }
 
@@ -46,7 +51,7 @@ module "cloudfront" {
       compress                 = true
       query_string             = true
       cache_policy_id          = aws_cloudfront_cache_policy.no_cache_policy.id
-      origin_request_policy_id = aws_cloudfront_origin_request_policy.custom_origin_request_policy.id
+      origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
       use_forwarded_values     = false
     }
   ]
@@ -75,24 +80,5 @@ resource "aws_cloudfront_cache_policy" "no_cache_policy" {
     query_strings_config {
       query_string_behavior = "none" # Do not include query strings in the cache key
     }
-  }
-}
-
-
-resource "aws_cloudfront_origin_request_policy" "custom_origin_request_policy" {
-  name    = "custom-origin-request-policy"
-  comment = "Custom origin request policy for forwarding Set-Cookie header"
-
-  cookies_config {
-    cookie_behavior = "all"
-  }
-  headers_config {
-    header_behavior = "whitelist"
-    headers {
-      items = ["Origin", "Access-Control-Request-Headers", "Access-Control-Request-Method", "Set-Cookie"]
-    }
-  }
-  query_strings_config {
-    query_string_behavior = "all"
   }
 }

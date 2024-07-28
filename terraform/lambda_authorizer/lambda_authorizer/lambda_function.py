@@ -56,22 +56,6 @@ def get_jwks():
     return JWKS
 
 
-def get_access_token_from_cookies(cookies_list):
-    """
-    Extract access token from cookies list.
-
-    Args:
-        cookies_list (list): List of cookies.
-
-    Returns:
-        str: Access token if found, else None.
-    """
-    for cookie in cookies_list:
-        if cookie.startswith("accessToken="):
-            return cookie.split("accessToken=")[1]
-    return None
-
-
 def verify_jwt(token):
     """
     Verify the JWT token.
@@ -139,14 +123,19 @@ def lambda_handler(event, context):
     Returns:
         dict: Authorization result.
     """
-    if "cookies" not in event or not event["cookies"]:
-        logger.info("No cookies found")
+    headers = event.get("headers", {})
+    authorization_header = headers.get("authorization", "")
+
+    logger.info("Received Authorization header: %s", authorization_header)
+
+    if not authorization_header.startswith("Bearer "):
+        logger.info("Authorization header missing or does not start with 'Bearer '")
         return {"isAuthorized": False}
 
-    cookies_list = event["cookies"]
-    access_token = get_access_token_from_cookies(cookies_list)
-    if access_token is None:
-        logger.info("Access token not found in cookies")
+    access_token = authorization_header[len("Bearer ") :]
+
+    if not access_token:
+        logger.info("Access token not found in Authorization header")
         return {"isAuthorized": False}
 
     if verify_jwt(access_token):

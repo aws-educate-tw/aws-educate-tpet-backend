@@ -39,9 +39,10 @@ module "api_gateway" {
 
 
   cors_configuration = {
-    allow_headers = ["content-type", "x-amz-date", "authorization", "x-api-key", "x-amz-security-token", "x-amz-user-agent"]
-    allow_methods = ["*"]
-    allow_origins = ["*"]
+    allow_headers     = ["content-type", "x-amz-date", "authorization", "x-api-key", "x-amz-security-token", "x-amz-user-agent"]
+    allow_methods     = ["*"]
+    allow_origins     = ["http://localhost:3000", "http://localhost:5500", "https://*"]
+    allow_credentials = true
   }
 
   fail_on_warnings = false
@@ -76,8 +77,8 @@ module "api_gateway" {
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
 
-      # authorization_type = "CUSTOM"
-      # authorizer_key     = "lambda_authorizer"
+      authorization_type = "CUSTOM"
+      authorizer_key     = "lambda_authorizer"
 
       integration = {
         uri                    = module.upload_multiple_file_lambda.lambda_function_arn # Remember to change
@@ -108,23 +109,14 @@ module "api_gateway" {
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
 
-      # authorization_type = "CUSTOM"
-      # authorizer_key     = "lambda_authorizer"
+      authorization_type = "CUSTOM"
+      authorizer_key     = "lambda_authorizer"
 
       integration = {
         uri                    = module.get_file_lambda.lambda_function_arn # Remember to change
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
-      }
-    }
-
-
-
-    "$default" = {
-      integration = {
-        uri                  = module.get_file_lambda.lambda_function_arn
-        passthrough_behavior = "WHEN_NO_MATCH"
       }
     }
   }

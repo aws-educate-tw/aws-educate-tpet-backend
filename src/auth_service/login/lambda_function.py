@@ -28,11 +28,11 @@ def lambda_handler(event, context):
     AWS Lambda handler function to authenticate a user with Cognito.
 
     Args:
-        event (dict): Event data containing the request body with account and password.
-        context (dict): Context data (unused).
+      event (dict): Event data containing the request body with account and password.
+      context (dict): Context data (unused).
 
     Returns:
-        dict: Response object with status code, headers, and body.
+      dict: Response object with status code, headers, and body.
     """
     try:
         logger.info("Event: %s", event)
@@ -51,18 +51,6 @@ def lambda_handler(event, context):
                     "Access-Control-Allow-Credentials": "true",
                 },
                 "body": "",
-            }
-
-        # Check if the origin is allowed
-        if origin not in ALLOWED_ORIGINS:
-            return {
-                "statusCode": 403,
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": origin,
-                    "Access-Control-Allow-Credentials": "true",
-                },
-                "body": json.dumps({"message": "Origin not allowed"}),
             }
 
         # Check if the body exists
@@ -111,9 +99,12 @@ def lambda_handler(event, context):
             domains = [".aws-educate.tw"]
             secure_attribute = "Secure; "
 
+        # Calculate the expiry time (7 days in seconds)
+        max_age = 7 * 24 * 60 * 60  # 7 days in seconds
+
         # Create the Set-Cookie headers for each domain
         set_cookie_headers = [
-            f"accessToken={access_token}; Path=/; {secure_attribute}HttpOnly; SameSite=None; Domain={domain}"
+            f"accessToken={access_token}; Path=/; {secure_attribute}HttpOnly; SameSite=None; Domain={domain}; Max-Age={max_age}"
             for domain in domains
         ]
 
@@ -126,7 +117,9 @@ def lambda_handler(event, context):
                 "Access-Control-Allow-Credentials": "true",
             },
             "multiValueHeaders": {"Set-Cookie": set_cookie_headers},
-            "body": json.dumps({"message": "Login successful"}),
+            "body": json.dumps(
+                {"message": "Login successful", "access_token": access_token}
+            ),
         }
     except ClientError as e:
         # Handle Cognito client errors

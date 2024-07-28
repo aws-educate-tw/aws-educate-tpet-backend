@@ -8,10 +8,11 @@ import uuid
 import boto3
 import pandas as pd
 import requests
+from current_user_util import current_user_util  # Import the global instance
 from requests.exceptions import RequestException
 
 # Set up logging
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Constants
@@ -22,21 +23,25 @@ FILE_SERVICE_API_BASE_URL = (
 )
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
 
-
 # Initialize AWS SQS client
 sqs_client = boto3.client("sqs")
 
 
-def get_file_info(file_id):
+def get_file_info(file_id, access_token):
     """
     Retrieve file information from the file service API.
 
     :param file_id: ID of the file to retrieve information for
+    :param access_token: JWT token for authorization
     :return: JSON response containing file information
     """
     try:
         api_url = f"{FILE_SERVICE_API_BASE_URL}/files/{file_id}"
-        response = requests.get(url=api_url, timeout=25)
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+        response = requests.get(url=api_url, headers=headers, timeout=25)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.Timeout:
@@ -113,6 +118,22 @@ def lambda_handler(event, context):
     :return: Dictionary containing status code and response body
     """
     try:
+        # Extract access token from the event headers
+        authorization_header = event["headers"].get("authorization")
+        if not authorization_header or not authorization_header.startswith("Bearer "):
+            return {
+                "statusCode": 401,
+                "body": json.dumps(
+                    {"message": "Missing or invalid Authorization header"}
+                ),
+                "headers": {"Content-Type": "application/json"},
+            }
+
+        access_token = authorization_header.split(" ")[1]
+
+        # Set the current user information using the access token
+        current_user_util.set_current_user_by_access_token(access_token)
+
         # Parse input from the event body
         body = json.loads(event.get("body", "{}"))
         template_file_id = body.get("template_file_id")
@@ -134,13 +155,16 @@ def lambda_handler(event, context):
                 "body": json.dumps("Missing spreadsheet file ID"),
             }
 
+        current_user = current_user_util.get_current_user_info()
+        sender_id = current_user.get("user_id")
+
         # Get template file information and content
-        template_info = get_file_info(template_file_id)
+        template_info = get_file_info(template_file_id, access_token)
         template_s3_key = template_info["s3_object_key"]
         template_content = get_template(template_s3_key)
 
         # Get spreadsheet file information and columns
-        spreadsheet_info = get_file_info(spreadsheet_file_id)
+        spreadsheet_info = get_file_info(spreadsheet_file_id, access_token)
         spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
         _, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
 
@@ -174,6 +198,8 @@ def lambda_handler(event, context):
             "display_name": display_name,
             "attachment_file_ids": attachment_file_ids,
             "is_generate_certificate": is_generate_certificate,
+            "sender_id": sender_id,
+            "access_token": access_token,
         }
 
         # Send message to SQS

@@ -4,26 +4,28 @@ import uuid
 
 import boto3
 import time_util
+from current_user_util import current_user_util  # Import the global instance
 from data_util import convert_float_to_decimal
-from dynamodb import save_to_dynamodb
+from email_repository import EmailRepository
 from s3 import read_sheet_data_from_s3
 from ses import process_email
 from sqs import delete_sqs_message, get_sqs_message
 
-from file_service import get_file_info
+from file_service import FileService
 
 # Set up logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Get environment variables for DynamoDB table and SQS queue URL
-DYNAMODB_TABLE = os.getenv("DYNAMODB_TABLE")
+# Get environment variables for SQS queue URL
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
 
-# Initialize DynamoDB resource and SQS client
-dynamodb = boto3.resource("dynamodb")
+# Initialize SQS client
 sqs_client = boto3.client("sqs")
-table = dynamodb.Table(DYNAMODB_TABLE)
+
+# Initialize FileService and EmailRepository
+file_service = FileService()
+email_repository = EmailRepository()
 
 
 def save_emails_to_dynamodb(
@@ -64,10 +66,14 @@ def save_emails_to_dynamodb(
             "row_data": row,
             "created_at": created_at,
             "is_generate_certificate": sqs_message["is_generate_certificate"],
+            "sender_id": sqs_message["sender_id"],
+            "sender_username": current_user_util.get_current_user_info().get(
+                "username"
+            ),
         }
 
         # Save to DynamoDB
-        save_to_dynamodb(item)
+        email_repository.save_email(item)
 
 
 def fetch_and_process_pending_emails(
@@ -86,15 +92,13 @@ def fetch_and_process_pending_emails(
         - attachment_file_ids: List of file IDs for attachments.
         - is_generate_certificate: Boolean flag indicating whether to generate a certificate.
     """
-    pending_emails = table.query(
-        IndexName="run_id-status-gsi",
-        KeyConditionExpression=boto3.dynamodb.conditions.Key("run_id").eq(
-            sqs_message["run_id"]
-        )
-        & boto3.dynamodb.conditions.Key("status").eq("PENDING"),
+    pending_emails = email_repository.query_all_emails_by_run_id_and_status_gsi(
+        run_id=sqs_message["run_id"],
+        status="PENDING",
+        sort_order="ASC",
     )
 
-    for item in pending_emails["Items"]:
+    for item in pending_emails:
         email_data = {
             "run_id": sqs_message["run_id"],
             "email_id": item["email_id"],
@@ -104,6 +108,7 @@ def fetch_and_process_pending_emails(
             "spreadsheet_file_id": sqs_message["spreadsheet_file_id"],
             "attachment_file_ids": sqs_message["attachment_file_ids"],
             "is_generate_certificate": sqs_message["is_generate_certificate"],
+            "sender_id": sqs_message["sender_id"],
             "created_at": item.get("created_at"),
         }
         row = item.get("row_data")
@@ -120,22 +125,30 @@ def lambda_handler(event, context):
     for record in event["Records"]:
         try:
             sqs_message = get_sqs_message(record)
+            access_token = sqs_message[
+                "access_token"
+            ]  # Get access_token from SQS message
+
+            # Set the current user information using the access token
+            current_user_util.set_current_user_by_access_token(access_token)
+
             # Check if the run_id already exists in DynamoDB
-            response = table.query(
-                KeyConditionExpression=boto3.dynamodb.conditions.Key("run_id").eq(
-                    sqs_message["run_id"]
-                )
+            response = email_repository.query_emails(
+                run_id=sqs_message["run_id"],
+                limit=1,
+                last_evaluated_key=None,
+                sort_order="ASC",
             )
+
             if response["Count"] == 0:
                 # Run ID does not exist, save all emails to DynamoDB with PENDING status
-                spreadsheet_info = get_file_info(sqs_message["spreadsheet_file_id"])
+                spreadsheet_info = file_service.get_file_info(
+                    sqs_message["spreadsheet_file_id"], access_token
+                )
                 spreadsheet_s3_object_key = spreadsheet_info["s3_object_key"]
                 sheet_data, _ = read_sheet_data_from_s3(spreadsheet_s3_object_key)
                 logger.info("Read sheet data from S3: %s", sheet_data)
-                save_emails_to_dynamodb(
-                    sqs_message,
-                    sheet_data,
-                )
+                save_emails_to_dynamodb(sqs_message, sheet_data)
 
             fetch_and_process_pending_emails(sqs_message)
             logger.info("Processed all emails for run_id: %s", sqs_message["run_id"])

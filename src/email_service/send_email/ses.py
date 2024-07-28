@@ -13,10 +13,11 @@ import requests
 import time_util
 from botocore.exceptions import ClientError
 from certificate_generator import generate_certificate
-from dynamodb import save_to_dynamodb
+from current_user_util import current_user_util
+from email_repository import EmailRepository
 from s3 import read_html_template_file_from_s3
 
-from file_service import get_file_info
+from file_service import FileService
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -31,6 +32,12 @@ PRIVATE_BUCKET_NAME = os.getenv("PRIVATE_BUCKET_NAME")
 CERTIFICATE_TEMPLATE_FILE_S3_OBJECT_KEY = (
     "templates/[template] AWS Educate certificate.pdf"
 )
+
+# Initialize FileService
+file_service = FileService()
+
+# Initialize EmailRepository
+email_repository = EmailRepository()
 
 
 def download_file_content(file_url):
@@ -93,7 +100,9 @@ def attach_files_to_message(msg, file_ids):
     logger.info("Processing file attachments.")
     for file_id in file_ids:
         try:
-            file_info = get_file_info(file_id)
+            file_info = file_service.get_file_info(
+                file_id, current_user_util.get_current_user_access_token()
+            )
             file_url = file_info.get("file_url")
             file_name = file_info.get("file_name")
             file_size = file_info.get("file_size")
@@ -255,18 +264,25 @@ def process_email(
     :return: Status and email ID of the email sending operation.
     """
     recipient_email = row.get("Email")
-    email_id = str(uuid.uuid4().hex)
+    email_id = email_data.get("email_id")
 
     logger.info("Row data: %s", row)
     if not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email):
         logger.warning("Invalid email address provided: %s", recipient_email)
         return "FAILED", email_id
-    template_file_info = get_file_info(email_data.get("template_file_id"))
+
+    # Get template file information and content
+    template_file_info = file_service.get_file_info(
+        email_data.get("template_file_id"),
+        current_user_util.get_current_user_access_token(),
+    )
     template_file_s3_object_key = template_file_info["s3_object_key"]
     template_content = read_html_template_file_from_s3(
         bucket=BUCKET_NAME, template_file_s3_key=template_file_s3_object_key
     )
-    sent_time, status = send_email(
+
+    # Send email
+    _, status = send_email(
         email_data.get("subject"),
         template_content,
         row,
@@ -276,24 +292,9 @@ def process_email(
         email_data.get("is_generate_certificate"),
         email_data.get("run_id"),
     )
-    updated_at = time_util.get_current_utc_time()
 
-    # Create the item dictionary
-    item = {
-        "run_id": email_data.get("run_id"),
-        "email_id": email_id,
-        "display_name": email_data.get("display_name"),
-        "status": status,
-        "recipient_email": recipient_email,
-        "template_file_id": email_data.get("template_file_id"),
-        "spreadsheet_file_id": email_data.get("spreadsheet_file_id"),
-        "created_at": email_data.get("created_at"),
-        "row_data": row,
-        "sent_at": sent_time,
-        "updated_at": updated_at,
-        "is_generate_certificate": email_data.get("is_generate_certificate"),
-    }
-
-    # Save to DynamoDB
-    save_to_dynamodb(item)
+    # Update the item in DynamoDB using EmailRepository
+    email_repository.update_email_status(
+        run_id=email_data.get("run_id"), email_id=email_id, status=status
+    )
     return status, email_id

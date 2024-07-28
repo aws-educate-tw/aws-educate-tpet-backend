@@ -20,7 +20,7 @@ def lambda_handler(event, context):
     """
     Lambda function to handle GET /users/me API request.
 
-    This function reads the accessToken from cookies, decodes the JWT to get the user_id (sub),
+    This function reads the JWT from the Authorization header, decodes it to get the user_id (sub),
     and retrieves the user data from DynamoDB using the user_id.
 
     Parameters:
@@ -31,30 +31,29 @@ def lambda_handler(event, context):
     dict: API Gateway Lambda Proxy Output Format
     """
 
-    # Get accessToken from cookies
-    cookies = event.get("headers", {}).get("Cookie", "")
-    access_token = None
-    for cookie in cookies.split(";"):
-        if "accessToken=" in cookie:
-            access_token = cookie.split("=")[1]
-            break
-
-    if not access_token:
+    # Get JWT token from Authorization header
+    authorization_header = event.get("headers", {}).get("authorization", "")
+    if not authorization_header.startswith("Bearer "):
         return {
             "statusCode": 401,
-            "body": json.dumps({"error": "Access token is missing"}),
+            "body": json.dumps(
+                {"message": "Authorization header is missing or invalid"}
+            ),
             "headers": {"Content-Type": "application/json"},
         }
 
+    # Extract token from Authorization header
+    jwt_token = authorization_header.split(" ")[1]
+
     try:
         # Decode JWT to get user_id (sub)
-        decoded_token = jwt.decode(access_token, options={"verify_signature": False})
+        decoded_token = jwt.decode(jwt_token, options={"verify_signature": False})
         user_id = decoded_token.get("sub")
 
         if not user_id:
             return {
                 "statusCode": 400,
-                "body": json.dumps({"error": "Invalid access token"}),
+                "body": json.dumps({"message": "Invalid JWT token"}),
                 "headers": {"Content-Type": "application/json"},
             }
 
@@ -64,7 +63,7 @@ def lambda_handler(event, context):
         if "Item" not in response:
             return {
                 "statusCode": 404,
-                "body": json.dumps({"error": "User not found"}),
+                "body": json.dumps({"message": "User not found"}),
                 "headers": {"Content-Type": "application/json"},
             }
 
@@ -80,20 +79,20 @@ def lambda_handler(event, context):
         logger.error("Error fetching user data: %s", e)
         return {
             "statusCode": 500,
-            "body": json.dumps({"error": "Internal server error"}),
+            "body": json.dumps({"message": "Internal server error"}),
             "headers": {"Content-Type": "application/json"},
         }
 
     except jwt.ExpiredSignatureError:
         return {
             "statusCode": 401,
-            "body": json.dumps({"error": "Access token has expired"}),
+            "body": json.dumps({"message": "JWT token has expired"}),
             "headers": {"Content-Type": "application/json"},
         }
 
     except jwt.InvalidTokenError:
         return {
             "statusCode": 401,
-            "body": json.dumps({"error": "Invalid access token"}),
+            "body": json.dumps({"message": "Invalid JWT token"}),
             "headers": {"Content-Type": "application/json"},
         }

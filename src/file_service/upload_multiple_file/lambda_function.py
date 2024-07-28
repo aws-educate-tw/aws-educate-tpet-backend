@@ -8,16 +8,24 @@ from urllib.parse import quote, unquote
 import boto3
 import time_util
 from botocore.exceptions import ClientError
-from dynamodb import save_to_dynamodb
+from file_repository import FileRepository
 from requests_toolbelt.multipart import decoder
+
+from auth_service import AuthService
 
 # Set up logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Initialize S3 client and DynamoDB client
+# Initialize S3 client
 s3_client = boto3.client("s3")
-dynamodb = boto3.client("dynamodb")
+
+# Initialize FileRepository
+file_repository = FileRepository()
+
+# Initialize AuthService
+auth_service = AuthService()
+
 BUCKET_NAME = os.environ["BUCKET_NAME"]
 S3_BASE_URL = f"https://{BUCKET_NAME}.s3.amazonaws.com/"
 
@@ -32,12 +40,12 @@ def decode_request_body(event):
     return body
 
 
-def process_files(multipart_data):
+def process_files(multipart_data, uploader_id):
     """Process each file in the multipart data."""
     files_metadata = []
     for part in multipart_data.parts:
         try:
-            file_metadata = process_single_file(part)
+            file_metadata = process_single_file(part, uploader_id)
             files_metadata.append(file_metadata)
         except ClientError as e:
             logger.error(
@@ -50,7 +58,7 @@ def process_files(multipart_data):
     return files_metadata
 
 
-def process_single_file(part):
+def process_single_file(part, uploader_id):
     """Process a single file from multipart data."""
     file_name = extract_filename(part)
     content_type = part.headers.get(
@@ -76,15 +84,14 @@ def process_single_file(part):
     res_url = S3_BASE_URL + encoded_file_name
     logger.info("Generated S3 URL: %s", res_url)
 
-    # Save metadata to DynamoDB
+    # Save metadata to DynamoDB using FileRepository
     file_size = len(file_content)
-    save_file_metadata_to_dynamodb(
-        file_id, unique_file_name, res_url, file_name, file_size
+    file_metadata = create_file_metadata_dict(
+        file_id, unique_file_name, res_url, file_name, file_size, uploader_id
     )
+    file_repository.save_file(file_metadata)
 
-    return create_file_metadata_dict(
-        file_id, unique_file_name, res_url, file_name, file_size
-    )
+    return file_metadata
 
 
 def extract_filename(part):
@@ -97,23 +104,9 @@ def extract_filename(part):
         return disposition.split('filename="')[1].split('"')[0]
 
 
-def save_file_metadata_to_dynamodb(
-    file_id, unique_file_name, res_url, file_name, file_size
+def create_file_metadata_dict(
+    file_id, unique_file_name, res_url, file_name, file_size, uploader_id
 ):
-    """Save file metadata to DynamoDB."""
-    logger.info("Storing file metadata in DynamoDB: %s", file_id)
-    save_to_dynamodb(
-        file_id=file_id,
-        s3_object_key=unique_file_name,
-        file_url=res_url,
-        file_name=file_name,
-        file_size=file_size,
-        uploader_id="dummy_uploader_id",  # Replace with actual uploader ID if available
-    )
-    logger.info("File metadata stored successfully in DynamoDB: %s", file_id)
-
-
-def create_file_metadata_dict(file_id, unique_file_name, res_url, file_name, file_size):
     """Create a dictionary with file metadata."""
     formatted_now = time_util.get_current_utc_time()
     return {
@@ -125,7 +118,7 @@ def create_file_metadata_dict(file_id, unique_file_name, res_url, file_name, fil
         "file_name": file_name,
         "file_extension": file_name.split(".")[-1],
         "file_size": file_size,
-        "uploader_id": "dummy_uploader_id",  # Replace with actual uploader ID if available
+        "uploader_id": uploader_id,  # Use actual uploader ID
     }
 
 
@@ -139,13 +132,28 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: %s", event)
 
+    # Get the access token from headers
+    authorization_header = event["headers"].get("authorization")
+    if not authorization_header or not authorization_header.startswith("Bearer "):
+        return {
+            "statusCode": 401,
+            "body": json.dumps({"message": "Missing or invalid Authorization header"}),
+            "headers": {"Content-Type": "application/json"},
+        }
+
+    access_token = authorization_header.split(" ")[1]
+
+    # Retrieve user information using AuthService
+    user_info = auth_service.get_me(access_token)
+    uploader_id = user_info.get("user_id")
+
     content_type = event["headers"].get("Content-Type") or event["headers"].get(
         "content-type"
     )
     body = decode_request_body(event)
 
     multipart_data = decoder.MultipartDecoder(body, content_type)
-    files_metadata = process_files(multipart_data)
+    files_metadata = process_files(multipart_data, uploader_id)
 
     return {
         "statusCode": 200,

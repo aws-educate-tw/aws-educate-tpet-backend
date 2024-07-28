@@ -29,3 +29,18 @@ resource "aws_dynamodb_table" "file" {
     Name = "file"
   }
 }
+
+resource "aws_dynamodb_table" "file_service_pagination_state" {
+  name         = "file_service_pagination_state"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "user_id"
+
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  tags = {
+    Name = "file_service_pagination_state"
+  }
+}
