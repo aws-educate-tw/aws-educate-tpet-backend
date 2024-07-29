@@ -140,7 +140,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
     # Query the table using the provided parameters
     try:
-        response = file_repo.query_files(
+        response = file_repo.query_files_by_file_extension_and_created_at_gsi(
             file_extension, limit, last_evaluated_key, sort_order
         )
         logger.info("Query successful")
