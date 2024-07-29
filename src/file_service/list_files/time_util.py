@@ -49,18 +49,28 @@ def add_hours_to_time(iso8601_str: str, hours: int) -> str:
     return format_time_to_iso8601(new_dt)
 
 
-# Example usage
-if __name__ == "__main__":
-    current_time = get_current_utc_time()
-    print("Current UTC Time:", current_time)
+def get_previous_month(current_month: str) -> str:
+    """
+    Get the previous month in ISO 8601 format (YYYY-MM).
 
-    formatted_time = format_time_to_iso8601(
-        datetime.datetime.now(datetime.timezone.utc)
-    )
-    print("Formatted Time:", formatted_time)
+    :param current_month: The current month in ISO 8601 format (YYYY-MM).
+    :return: The previous month in ISO 8601 format (YYYY-MM).
+    """
+    year, month = map(int, current_month.split("-"))
+    if month == 1:
+        year -= 1
+        month = 12
+    else:
+        month -= 1
+    return f"{year:04d}-{month:02d}"
 
-    parsed_time = parse_iso8601_to_datetime("2024-07-11T12:00:00Z")
-    print("Parsed Time:", parsed_time)
 
-    new_time = add_hours_to_time("2024-07-11T12:00:00Z", 3)
-    print("New Time:", new_time)
+def get_previous_year(current_year: str) -> str:
+    """
+    Get the previous year in ISO 8601 format (YYYY).
+
+    :param current_year: The current year in ISO 8601 format (YYYY).
+    :return: The previous year in ISO 8601 format (YYYY).
+    """
+    year = int(current_year)
+    return f"{year - 1:04d}"
