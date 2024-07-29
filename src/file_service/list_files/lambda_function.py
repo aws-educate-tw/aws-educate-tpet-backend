@@ -9,7 +9,7 @@ from file_repository import FileRepository
 from file_service_pagination_state_repository import (
     FileServicePaginationStateRepository,
 )
-from time_util import get_current_utc_time
+from time_util import get_current_utc_time, get_previous_month
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -68,14 +68,6 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
                 "body": json.dumps({"message": "Invalid query parameter: " + str(e)}),
             }
 
-    if not file_extension:
-        return {
-            "statusCode": 400,
-            "body": json.dumps(
-                {"message": "file_extension is a required query parameter"}
-            ),
-        }
-
     # Log the extracted parameters
     logger.info(
         "Extracted parameters - limit: %d, last_evaluated_key: %s, sort_order: %s, file_extension: %s",
@@ -101,7 +93,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
     limit: int = extracted_params["limit"]
     last_evaluated_key: Optional[str] = extracted_params["last_evaluated_key"]
-    file_extension: str = extracted_params["file_extension"]
+    file_extension: Optional[str] = extracted_params["file_extension"]
     sort_order: str = extracted_params["sort_order"]
     user_id: str = "dummy_uploader_id"
 
@@ -138,18 +130,41 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             }
         )
 
+    # Get the current and previous month for querying
+    current_month = get_current_utc_time()[:7]
+    previous_month = get_previous_month(current_month)
+
     # Query the table using the provided parameters
     try:
-        response = file_repo.query_files_by_file_extension_and_created_at_gsi(
-            file_extension, limit, last_evaluated_key, sort_order
-        )
+        if file_extension:
+            response = file_repo.query_files_by_file_extension_and_created_at_gsi(
+                file_extension, limit, last_evaluated_key, sort_order
+            )
+        else:
+            # First, try to get the latest items from the current month
+            response = file_repo.query_files_by_created_year_month_and_created_at_gsi(
+                current_month, limit, last_evaluated_key, sort_order
+            )
+            files = response.get("Items", [])
+
+            # If the current month doesn't have enough items, query the previous month
+            if len(files) < limit:
+                remaining_limit = limit - len(files)
+                last_evaluated_key = None  # Reset last_evaluated_key for the new query
+                previous_response = (
+                    file_repo.query_files_by_created_year_month_and_created_at_gsi(
+                        previous_month, remaining_limit, last_evaluated_key, sort_order
+                    )
+                )
+                files.extend(previous_response.get("Items", []))
+                next_last_evaluated_key = previous_response.get("LastEvaluatedKey")
+            else:
+                next_last_evaluated_key = response.get("LastEvaluatedKey")
+
         logger.info("Query successful")
     except ClientError as e:
         logger.error("Query failed: %s", e)
         return {"statusCode": 400, "body": json.dumps({"message": str(e)})}
-
-    files = response.get("Items", [])
-    next_last_evaluated_key = response.get("LastEvaluatedKey")
 
     # Encode last_evaluated_key to base64 if it's not null
     if next_last_evaluated_key:
