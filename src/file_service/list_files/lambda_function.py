@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Optional
 
 from botocore.exceptions import ClientError
+from current_user_util import CurrentUserUtil
 from file_repository import FileRepository
 from file_service_pagination_state_repository import (
     FileServicePaginationStateRepository,
@@ -109,7 +110,16 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     file_extension: Optional[str] = extracted_params["file_extension"]
     sort_order: str = extracted_params["sort_order"]
     created_year: Optional[str] = extracted_params["created_year"]
-    user_id: str = "dummy_uploader_id"
+
+    # Get access token from headers and retrieve user_id
+    authorization_header = event["headers"].get("authorization")
+    if not authorization_header or not authorization_header.startswith("Bearer "):
+        return {
+            "statusCode": 401,
+            "body": json.dumps({"message": "Missing or invalid Authorization header"}),
+        }
+    access_token = authorization_header.split(" ")[1]
+    user_id = CurrentUserUtil().get_user_id_from_access_token(access_token)
 
     # Init dynamoDB entities
     file_repo = FileRepository()
