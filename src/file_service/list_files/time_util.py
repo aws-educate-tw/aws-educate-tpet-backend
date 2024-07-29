@@ -63,3 +63,14 @@ def get_previous_month(current_month: str) -> str:
     else:
         month -= 1
     return f"{year:04d}-{month:02d}"
+
+
+def get_previous_year(current_year: str) -> str:
+    """
+    Get the previous year in ISO 8601 format (YYYY).
+
+    :param current_year: The current year in ISO 8601 format (YYYY).
+    :return: The previous year in ISO 8601 format (YYYY).
+    """
+    year = int(current_year)
+    return f"{year - 1:04d}"

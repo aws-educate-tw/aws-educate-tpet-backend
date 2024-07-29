@@ -9,7 +9,7 @@ from file_repository import FileRepository
 from file_service_pagination_state_repository import (
     FileServicePaginationStateRepository,
 )
-from time_util import get_current_utc_time, get_previous_month
+from time_util import get_current_utc_time, get_previous_year
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -51,6 +51,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
     last_evaluated_key: Optional[str] = None
     file_extension: Optional[str] = None
     sort_order: str = "DESC"
+    created_year: Optional[str] = None
 
     # Extract query parameters if they exist
     if event.get("queryStringParameters"):
@@ -61,6 +62,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
             )
             sort_order = event["queryStringParameters"].get("sort_order", "DESC")
             file_extension = event["queryStringParameters"].get("file_extension", None)
+            created_year = event["queryStringParameters"].get("created_year", None)
         except ValueError as e:
             logger.error("Invalid query parameter: %s", e)
             return {
@@ -68,13 +70,23 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
                 "body": json.dumps({"message": "Invalid query parameter: " + str(e)}),
             }
 
+    # Check if both file_extension and created_year are provided
+    if file_extension and created_year:
+        return {
+            "statusCode": 400,
+            "body": json.dumps(
+                {"message": "file_extension and created_year cannot be used together"}
+            ),
+        }
+
     # Log the extracted parameters
     logger.info(
-        "Extracted parameters - limit: %d, last_evaluated_key: %s, sort_order: %s, file_extension: %s",
+        "Extracted parameters - limit: %d, last_evaluated_key: %s, sort_order: %s, file_extension: %s, created_year: %s",
         limit,
         last_evaluated_key,
         sort_order,
         file_extension,
+        created_year,
     )
 
     return {
@@ -82,6 +94,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
         "last_evaluated_key": last_evaluated_key,
         "file_extension": file_extension,
         "sort_order": sort_order,
+        "created_year": created_year,
     }
 
 
@@ -95,6 +108,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     last_evaluated_key: Optional[str] = extracted_params["last_evaluated_key"]
     file_extension: Optional[str] = extracted_params["file_extension"]
     sort_order: str = extracted_params["sort_order"]
+    created_year: Optional[str] = extracted_params["created_year"]
     user_id: str = "dummy_uploader_id"
 
     # Init dynamoDB entities
@@ -130,9 +144,15 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             }
         )
 
-    # Get the current and previous month for querying
-    current_month = get_current_utc_time()[:7]
-    previous_month = get_previous_month(current_month)
+    # Default to current and previous year for querying if created_year is not provided
+    if created_year:
+        years_to_query = [created_year]
+    else:
+        current_year = get_current_utc_time()[:4]
+        previous_year = get_previous_year(current_year)
+        years_to_query = [current_year, previous_year]
+
+    files = []
 
     # Query the table using the provided parameters
     try:
@@ -140,26 +160,17 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             response = file_repo.query_files_by_file_extension_and_created_at_gsi(
                 file_extension, limit, last_evaluated_key, sort_order
             )
+            files.extend(response.get("Items", []))
         else:
-            # First, try to get the latest items from the current month
-            response = file_repo.query_files_by_created_year_month_and_created_at_gsi(
-                current_month, limit, last_evaluated_key, sort_order
-            )
-            files = response.get("Items", [])
-
-            # If the current month doesn't have enough items, query the previous month
-            if len(files) < limit:
-                remaining_limit = limit - len(files)
-                last_evaluated_key = None  # Reset last_evaluated_key for the new query
-                previous_response = (
-                    file_repo.query_files_by_created_year_month_and_created_at_gsi(
-                        previous_month, remaining_limit, last_evaluated_key, sort_order
-                    )
+            for year in years_to_query:
+                response = file_repo.query_files_by_created_year_and_created_at_gsi(
+                    year, limit, last_evaluated_key, sort_order
                 )
-                files.extend(previous_response.get("Items", []))
-                next_last_evaluated_key = previous_response.get("LastEvaluatedKey")
-            else:
-                next_last_evaluated_key = response.get("LastEvaluatedKey")
+                files.extend(response.get("Items", []))
+                if len(files) >= limit:
+                    break
+
+        next_last_evaluated_key = response.get("LastEvaluatedKey")
 
         logger.info("Query successful")
     except ClientError as e:
@@ -208,7 +219,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         previous_last_evaluated_key = None
 
     result = {
-        "data": files,
+        "data": files[:limit],
         "previous_last_evaluated_key": previous_last_evaluated_key,
         "current_last_evaluated_key": current_last_evaluated_key,
         "next_last_evaluated_key": next_last_evaluated_key,
