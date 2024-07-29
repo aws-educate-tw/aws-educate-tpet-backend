@@ -111,6 +111,12 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     sort_order: str = extracted_params["sort_order"]
     created_year: Optional[str] = extracted_params["created_year"]
 
+    # Determine the correct index_name based on the query parameters
+    if file_extension:
+        index_name = "file_extension-created_at-gsi"
+    else:
+        index_name = "created_year-created_at-gsi"
+
     # Get access token from headers and retrieve user_id
     authorization_header = event["headers"].get("authorization")
     if not authorization_header or not authorization_header.startswith("Bearer "):
@@ -143,10 +149,11 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             }
     else:
         current_last_evaluated_key = None
-        # Clear old pagination state
+        # Clear old pagination state if no last_evaluated_key is provided
         pagination_state_repo.save_pagination_state(
             {
                 "user_id": user_id,
+                "index_name": index_name,
                 "last_evaluated_keys": [],
                 "created_at": get_current_utc_time(),
                 "updated_at": get_current_utc_time(),
@@ -192,16 +199,21 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         next_last_evaluated_key = encode_key(next_last_evaluated_key)
 
     # Store the pagination state for the next request
-    pagination_state = pagination_state_repo.get_pagination_state_by_user_id(user_id)
+    pagination_state = (
+        pagination_state_repo.get_pagination_state_by_user_id_and_index_name(
+            user_id, index_name
+        )
+    )
     last_evaluated_keys = pagination_state.get("last_evaluated_keys", [])
 
     # Append the next_last_evaluated_key only if it is not already in the list
-    if next_last_evaluated_key not in last_evaluated_keys:
+    if next_last_evaluated_key and next_last_evaluated_key not in last_evaluated_keys:
         last_evaluated_keys.append(next_last_evaluated_key)
 
     pagination_state_repo.save_pagination_state(
         {
             "user_id": user_id,
+            "index_name": index_name,
             "last_evaluated_keys": last_evaluated_keys,
             "created_at": pagination_state.get("created_at", get_current_utc_time()),
             "updated_at": get_current_utc_time(),

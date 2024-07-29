@@ -70,9 +70,15 @@ resource "aws_dynamodb_table" "file_service_pagination_state" {
   name         = "file_service_pagination_state"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "user_id"
+  range_key    = "index_name"
 
   attribute {
     name = "user_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "index_name"
     type = "S"
   }
 
