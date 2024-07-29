@@ -32,15 +32,20 @@ class FileServicePaginationStateRepository:
             logger.error("Error saving pagination state: %s", e)
             raise
 
-    def get_pagination_state_by_user_id(self, user_id: str) -> dict[str, Optional[str]]:
+    def get_pagination_state_by_user_id_and_index_name(
+        self, user_id: str, index_name: str
+    ) -> dict[str, Optional[str]]:
         """
-        Retrieve the pagination state for a given user ID from the DynamoDB table.
+        Retrieve the pagination state for a given user ID and index name from the DynamoDB table.
 
         :param user_id: User ID to retrieve the pagination state for
+        :param index_name: Index name to retrieve the pagination state for
         :return: Dictionary containing the pagination state
         """
         try:
-            response = self.table.get_item(Key={"user_id": user_id})
+            response = self.table.get_item(
+                Key={"user_id": user_id, "index_name": index_name}
+            )
             return response.get("Item", {})
         except ClientError as e:
             logger.error("Error getting pagination state: %s", e)

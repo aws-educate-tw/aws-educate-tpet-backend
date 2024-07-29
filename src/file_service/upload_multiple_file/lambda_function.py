@@ -109,10 +109,16 @@ def create_file_metadata_dict(
 ):
     """Create a dictionary with file metadata."""
     formatted_now = time_util.get_current_utc_time()
+    created_year = formatted_now[:4]
+    created_year_month = formatted_now[:7]
+    created_year_month_day = formatted_now[:10]
     return {
         "file_id": file_id,
         "s3_object_key": unique_file_name,
         "created_at": formatted_now,
+        "created_year": created_year,
+        "created_year_month": created_year_month,
+        "created_year_month_day": created_year_month_day,
         "updated_at": formatted_now,
         "file_url": res_url,
         "file_name": file_name,
