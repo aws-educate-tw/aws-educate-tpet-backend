@@ -162,6 +162,22 @@ def lambda_handler(event, context):
                 "body": json.dumps("Missing spreadsheet file ID"),
             }
 
+        # Validate email formats
+        email_pattern = r"[^@]+@[^@]+\.[^@]+"
+        for email_list in [cc, bcc]:
+            for email in email_list:
+                if not re.match(email_pattern, email):
+                    return {
+                        "statusCode": 400,
+                        "body": json.dumps(f"Invalid email format: {email}"),
+                    }
+
+        if not re.match(email_pattern, reply_to):
+            return {
+                "statusCode": 400,
+                "body": json.dumps(f"Invalid email format: {reply_to}"),
+            }
+
         current_user = current_user_util.get_current_user_info()
         sender_id = current_user.get("user_id")
 
