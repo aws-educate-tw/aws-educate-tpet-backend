@@ -61,6 +61,11 @@ resource "aws_dynamodb_table" "file" {
     projection_type = "ALL"
   }
 
+  deletion_protection_enabled = var.enable_deletion_protection_for_dynamodb_table
+
+  point_in_time_recovery {
+    enabled = var.enable_pitr
+  }
   tags = {
     Name = "file"
   }
@@ -81,6 +86,13 @@ resource "aws_dynamodb_table" "file_service_pagination_state" {
     name = "index_name"
     type = "S"
   }
+
+  deletion_protection_enabled = var.enable_deletion_protection_for_dynamodb_table
+
+  point_in_time_recovery {
+    enabled = var.enable_pitr
+  }
+
 
   tags = {
     Name = "file_service_pagination_state"

@@ -38,6 +38,12 @@ resource "aws_dynamodb_table" "email" {
     projection_type = "ALL"
   }
 
+  deletion_protection_enabled = var.enable_deletion_protection_for_dynamodb_table
+
+  point_in_time_recovery {
+    enabled = var.enable_pitr
+  }
+
   tags = {
     Name = "email"
   }

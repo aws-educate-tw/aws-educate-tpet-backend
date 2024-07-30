@@ -21,3 +21,13 @@ variable "domain_name" {
 variable "dynamodb_table" {
   description = "Current service's DynamoDB table name"
 }
+
+variable "enable_pitr" {
+  description = "Enable Point-In-Time Recovery for DynamoDB tables"
+  type        = bool
+}
+
+variable "enable_deletion_protection_for_dynamodb_table" {
+  description = "Enable deletion protection for DynamoDB tables"
+  type        = bool
+}
