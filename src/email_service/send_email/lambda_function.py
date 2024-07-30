@@ -44,6 +44,10 @@ def save_emails_to_dynamodb(
         - spreadsheet_file_id: File ID of the spreadsheet.
         - attachment_file_ids: List of file IDs for attachments.
         - is_generate_certificate: Boolean flag indicating whether to generate a certificate.
+        - reply_to: Reply-To email address.
+        - sender_local_part: Local part of the sender's email address.
+        - cc: List of CC email addresses.
+        - bcc: List of BCC email addresses.
     :param rows: List of dictionaries, each containing email and other placeholder data.
     """
     for row in rows:
@@ -70,6 +74,10 @@ def save_emails_to_dynamodb(
             "sender_username": current_user_util.get_current_user_info().get(
                 "username"
             ),
+            "reply_to": sqs_message.get("reply_to"),
+            "sender_local_part": sqs_message.get("sender_local_part"),
+            "cc": sqs_message.get("cc"),
+            "bcc": sqs_message.get("bcc"),
         }
 
         # Save to DynamoDB
@@ -91,6 +99,10 @@ def fetch_and_process_pending_emails(
         - spreadsheet_file_id: File ID of the spreadsheet.
         - attachment_file_ids: List of file IDs for attachments.
         - is_generate_certificate: Boolean flag indicating whether to generate a certificate.
+        - reply_to: Reply-To email address.
+        - sender_local_part: Local part of the sender's email address.
+        - cc: List of CC email addresses.
+        - bcc: List of BCC email addresses.
     """
     pending_emails = email_repository.query_all_emails_by_run_id_and_status_gsi(
         run_id=sqs_message["run_id"],
@@ -110,6 +122,10 @@ def fetch_and_process_pending_emails(
             "is_generate_certificate": sqs_message["is_generate_certificate"],
             "sender_id": sqs_message["sender_id"],
             "created_at": item.get("created_at"),
+            "reply_to": sqs_message.get("reply_to"),
+            "sender_local_part": sqs_message.get("sender_local_part"),
+            "cc": sqs_message.get("cc"),
+            "bcc": sqs_message.get("bcc"),
         }
         row = item.get("row_data")
         process_email(email_data, row)

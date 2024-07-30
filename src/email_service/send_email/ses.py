@@ -1,7 +1,6 @@
 import logging
 import os
 import re
-import uuid
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -24,8 +23,7 @@ logger.setLevel(logging.INFO)
 
 ses_client = boto3.client("ses", region_name="ap-northeast-1")
 
-SENDER_EMAIL = "cloudambassador@aws-educate.tw"
-REPLY_TO_EMAIL = "awseducate.cloudambassador@gmail.com"
+SENDER_EMAIL_DOMAIN = "aws-educate.tw"
 CHARSET = "utf-8"
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 PRIVATE_BUCKET_NAME = os.getenv("PRIVATE_BUCKET_NAME")
@@ -53,7 +51,14 @@ def download_file_content(file_url):
 
 
 def create_email_message(
-    subject, formatted_content, recipient_email, display_name, reply_to
+    subject,
+    formatted_content,
+    recipient_email,
+    display_name,
+    reply_to,
+    cc,
+    bcc,
+    sender_local_part,
 ):
     """
     Create an email message with the given title, content, recipient, and display name.
@@ -62,15 +67,26 @@ def create_email_message(
     :param formatted_content: Content of the email in HTML format.
     :param recipient_email: Email address of the recipient.
     :param display_name: Display name of the sender.
+    :param reply_to: Reply-To email address.
+    :param cc: List of CC email addresses.
+    :param bcc: List of BCC email addresses.
+    :param sender_local_part: Local part of the sender's email address.
     :return: A MIMEMultipart email message.
     """
+
+    sender_email = f"{sender_local_part}@{SENDER_EMAIL_DOMAIN}"
 
     # Create a multipart/mixed parent container.
     msg = MIMEMultipart("mixed")
     msg["Subject"] = subject
-    msg["From"] = formataddr((display_name, SENDER_EMAIL))
+    msg["From"] = formataddr((display_name, sender_email))
     msg["To"] = recipient_email
     msg["Reply-To"] = reply_to
+
+    if cc:
+        msg["Cc"] = ", ".join(cc)
+    if bcc:
+        msg["Bcc"] = ", ".join(bcc)
 
     # Create a multipart/alternative child container.
     msg_body = MIMEMultipart("alternative")
@@ -151,22 +167,13 @@ def send_email(
     row: dict[str, any],
     display_name: str,
     reply_to: str,
+    sender_local_part: str,
     attachment_file_ids: list[str] = None,
     is_generate_certificate: bool = False,
     run_id: str = None,
+    cc: list[str] = None,
+    bcc: list[str] = None,
 ) -> tuple:
-    """
-    Send an email to the recipient with the provided details.
-
-    :param subject: The subject of the email.
-    :param template_content: The content template of the email with placeholders.
-    :param row: A dictionary containing recipient and email details.
-    :param display_name: The display name of the sender.
-    :param attachment_file_ids: A list of file IDs for attachments (optional).
-    :param is_generate_certificate: A boolean flag to indicate if a certificate should be generated (optional).
-    :param run_id: The run ID for tracking the operation (optional).
-    :return: A tuple containing the sent time (or None) and the status ("SUCCESS" or "FAILED").
-    """
     try:
         logger.info("Row data before formatting: %s", row)
         template_content = template_content.replace("\r", "")
@@ -176,24 +183,25 @@ def send_email(
             logger.warning("Email address not found in row: %s", row)
             return None, "FAILED"
 
-        # Convert all values in the row to strings for consistent formatting
         formatted_row = {k: str(v) for k, v in row.items()}
         logger.info("Formatted row: %s", formatted_row)
-
-        # Replace placeholders in the template content with actual data
         formatted_content = replace_placeholders(template_content, formatted_row)
 
-        # Create the email message object
         msg = create_email_message(
-            subject, formatted_content, recipient_email, display_name, reply_to
+            subject,
+            formatted_content,
+            recipient_email,
+            display_name,
+            reply_to,
+            cc,
+            bcc,
+            sender_local_part,
         )
 
-        # Attach any specified files to the email
         attach_files_to_message(msg, attachment_file_ids)
         logger.info("Will generate certificate: %s", str(is_generate_certificate))
         certificate_path = None
 
-        # Generate a certificate if required and attach it to the email
         if is_generate_certificate:
             participant_name = row.get("Name")
             certificate_text = row.get("Certificate Text")
@@ -201,7 +209,6 @@ def send_email(
                 run_id, participant_name, certificate_text
             )
 
-            # Attach the generated certificate to the email
             with open(certificate_path, "rb") as cert_file:
                 attachment = MIMEApplication(cert_file.read())
                 attachment.add_header(
@@ -216,7 +223,7 @@ def send_email(
             # Send the email using the AWS SES client
             response = ses_client.send_raw_email(
                 Source=msg["From"],
-                Destinations=[recipient_email],
+                Destinations=[recipient_email] + (cc or []) + (bcc or []),
                 RawMessage={"Data": msg.as_string()},
             )
             logger.info("Email sent. Message ID: %s", response["MessageId"])
@@ -242,7 +249,6 @@ def send_email(
     except Exception as e:
         logger.error("Failed to process email for %s: %s", recipient_email, e)
 
-    # Delete the certificate file if sending the email failed
     if certificate_path:
         try:
             Path(certificate_path).unlink()
@@ -287,10 +293,13 @@ def process_email(
         template_content,
         row,
         email_data.get("display_name"),
-        REPLY_TO_EMAIL,
+        email_data.get("reply_to"),
+        email_data.get("sender_local_part"),
         email_data.get("attachment_file_ids"),
         email_data.get("is_generate_certificate"),
         email_data.get("run_id"),
+        email_data.get("cc"),
+        email_data.get("bcc"),
     )
 
     # Update the item in DynamoDB using EmailRepository
