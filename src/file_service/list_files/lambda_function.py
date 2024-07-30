@@ -180,10 +180,16 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             files.extend(response.get("Items", []))
         else:
             for year in years_to_query:
-                response = file_repo.query_files_by_created_year_and_created_at_gsi(
-                    year, limit, last_evaluated_key, sort_order
-                )
-                files.extend(response.get("Items", []))
+                while True:
+                    response = file_repo.query_files_by_created_year_and_created_at_gsi(
+                        year, limit - len(files), last_evaluated_key, sort_order
+                    )
+                    files.extend(response.get("Items", []))
+                    last_evaluated_key = response.get("LastEvaluatedKey")
+
+                    if last_evaluated_key is None or len(files) >= limit:
+                        break
+
                 if len(files) >= limit:
                     break
 
