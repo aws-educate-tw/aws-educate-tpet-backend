@@ -45,7 +45,8 @@ module "validate_input_lambda" {
   function_name  = local.validate_input_function_name_and_ecr_repo_name                             # Remember to change
   description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /send-email" # Remember to change
   create_package = false
-  timeout        = 30
+  timeout        = 60
+  memory_size    = 512
 
   ##################
   # Container Image
