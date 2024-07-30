@@ -22,6 +22,9 @@ FILE_SERVICE_API_BASE_URL = (
     f"https://{ENVIRONMENT}-file-service-internal-api-tpet.aws-educate.tw/{ENVIRONMENT}"
 )
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
+DEFAULT_DISPLAY_NAME = "AWS Educate 雲端大使"
+DEFAULT_REPLY_TO = "awseducate.cloudambassador@gmail.com"
+DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
 
 # Initialize AWS SQS client
 sqs_client = boto3.client("sqs")
@@ -139,10 +142,14 @@ def lambda_handler(event, context):
         template_file_id = body.get("template_file_id")
         spreadsheet_file_id = body.get("spreadsheet_file_id")
         subject = body.get("subject")
-        display_name = body.get("display_name", "No Name Provided")
+        display_name = body.get("display_name", DEFAULT_DISPLAY_NAME)
         run_id = body.get("run_id") if body.get("run_id") else uuid.uuid4().hex
         attachment_file_ids = body.get("attachment_file_ids", [])
         is_generate_certificate = body.get("is_generate_certificate", False)
+        reply_to = body.get("reply_to", DEFAULT_REPLY_TO)
+        sender_local_part = body.get("sender_local_part", DEFAULT_SENDER_LOCAL_PART)
+        cc = body.get("cc", [])
+        bcc = body.get("bcc", [])
 
         # Validate required inputs
         if not subject:
@@ -189,8 +196,8 @@ def lambda_handler(event, context):
                 )
                 return {"statusCode": 400, "body": json.dumps(error_message)}
 
-        # Prepare message for SQS
-        message_body = {
+        # Prepare common data for message and response
+        common_data = {
             "run_id": run_id,
             "template_file_id": template_file_id,
             "spreadsheet_file_id": spreadsheet_file_id,
@@ -199,6 +206,15 @@ def lambda_handler(event, context):
             "attachment_file_ids": attachment_file_ids,
             "is_generate_certificate": is_generate_certificate,
             "sender_id": sender_id,
+            "reply_to": reply_to,
+            "sender_local_part": sender_local_part,
+            "cc": cc,
+            "bcc": bcc,
+        }
+
+        # Prepare message for SQS
+        message_body = {
+            **common_data,
             "access_token": access_token,
         }
 
@@ -212,13 +228,7 @@ def lambda_handler(event, context):
         response = {
             "status": "SUCCESS",
             "message": "Input message accepted for processing",
-            "run_id": run_id,
-            "template_file_id": template_file_id,
-            "spreadsheet_file_id": spreadsheet_file_id,
-            "subject": subject,
-            "display_name": display_name,
-            "attachment_file_ids": attachment_file_ids,
-            "is_generate_certificate": is_generate_certificate,
+            **common_data,
         }
 
         return {"statusCode": 202, "body": json.dumps(response)}
