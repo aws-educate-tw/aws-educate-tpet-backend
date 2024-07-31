@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import uuid
 
 import boto3
@@ -7,8 +8,8 @@ import time_util
 from current_user_util import current_user_util  # Import the global instance
 from data_util import convert_float_to_decimal
 from email_repository import EmailRepository
-from s3 import read_sheet_data_from_s3
-from ses import process_email
+from s3 import read_html_template_file_from_s3, read_sheet_data_from_s3
+from ses import send_email
 from sqs import delete_sqs_message, get_sqs_message
 
 from file_service import FileService
@@ -17,8 +18,9 @@ from file_service import FileService
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Get environment variables for SQS queue URL
+# Get environment variables
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
+BUCKET_NAME = os.getenv("BUCKET_NAME")
 
 # Initialize SQS client
 sqs_client = boto3.client("sqs")
@@ -104,12 +106,14 @@ def fetch_and_process_pending_emails(
         - cc: List of CC email addresses.
         - bcc: List of BCC email addresses.
     """
+    # Fetch all PENDING status emails
     pending_emails = email_repository.query_all_emails_by_run_id_and_status_gsi(
         run_id=sqs_message["run_id"],
         status="PENDING",
         sort_order="ASC",
     )
 
+    # Process all PENDING emails
     for item in pending_emails:
         email_data = {
             "run_id": sqs_message["run_id"],
@@ -129,6 +133,57 @@ def fetch_and_process_pending_emails(
         }
         row = item.get("row_data")
         process_email(email_data, row)
+
+
+def process_email(
+    email_data: dict,
+    row: list[dict[str, any]],
+) -> tuple:
+    """
+    Process email sending for a given row of data.
+
+    :param email_data: Dictionary containing email metadata such as subject, display_name, template_file_id, etc.
+    :param row: A dictionary representing a single row of data from Excel, containing email recipient and placeholder values.
+    :return: Status and email ID of the email sending operation.
+    """
+    recipient_email = row.get("Email")
+    email_id = email_data.get("email_id")
+
+    logger.info("Row data: %s", row)
+    if not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email):
+        logger.warning("Invalid email address provided: %s", recipient_email)
+        return "FAILED", email_id
+
+    # Get template file information and content
+    template_file_info = file_service.get_file_info(
+        email_data.get("template_file_id"),
+        current_user_util.get_current_user_access_token(),
+    )
+    template_file_s3_object_key = template_file_info["s3_object_key"]
+    template_content = read_html_template_file_from_s3(
+        bucket=BUCKET_NAME, template_file_s3_key=template_file_s3_object_key
+    )
+
+    # Send email
+    _, status = send_email(
+        email_data.get("subject"),
+        template_content,
+        row,
+        email_data.get("display_name"),
+        email_data.get("reply_to"),
+        email_data.get("sender_local_part"),
+        email_data.get("attachment_file_ids"),
+        email_data.get("is_generate_certificate"),
+        email_data.get("run_id"),
+        email_data.get("cc"),
+        email_data.get("bcc"),
+    )
+
+    # Update the item in DynamoDB using EmailRepository
+    email_repository.update_email_status(
+        run_id=email_data.get("run_id"), email_id=email_id, status=status
+    )
+    return status, email_id
 
 
 def lambda_handler(event, context):

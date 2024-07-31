@@ -1,4 +1,3 @@
-# template_util.py
 import re
 
 
