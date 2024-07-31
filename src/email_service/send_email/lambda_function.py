@@ -138,13 +138,12 @@ def fetch_and_process_pending_emails(
 def process_email(
     email_data: dict,
     row: list[dict[str, any]],
-) -> tuple:
+) -> None:
     """
     Process email sending for a given row of data.
 
     :param email_data: Dictionary containing email metadata such as subject, display_name, template_file_id, etc.
     :param row: A dictionary representing a single row of data from Excel, containing email recipient and placeholder values.
-    :return: Status and email ID of the email sending operation.
     """
     recipient_email = row.get("Email")
     email_id = email_data.get("email_id")
@@ -152,7 +151,10 @@ def process_email(
     logger.info("Row data: %s", row)
     if not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email):
         logger.warning("Invalid email address provided: %s", recipient_email)
-        return "FAILED", email_id
+        email_repository.update_email_status(
+            run_id=email_data.get("run_id"), email_id=email_id, status="FAILED"
+        )
+        return
 
     # Get template file information and content
     template_file_info = file_service.get_file_info(
@@ -183,7 +185,6 @@ def process_email(
     email_repository.update_email_status(
         run_id=email_data.get("run_id"), email_id=email_id, status=status
     )
-    return status, email_id
 
 
 def lambda_handler(event, context):
