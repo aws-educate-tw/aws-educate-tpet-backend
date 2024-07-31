@@ -12,6 +12,7 @@ from certificate_generator import generate_certificate
 from current_user_util import current_user_util
 from email_repository import EmailRepository
 from email_util import attach_files_to_message, create_email_message
+from file_util import download_file_content
 from s3 import read_html_template_file_from_s3
 from template_util import replace_placeholders
 
@@ -34,18 +35,6 @@ file_service = FileService()
 
 # Initialize EmailRepository
 email_repository = EmailRepository()
-
-
-def download_file_content(file_url):
-    """
-    Download the content of the file from the given URL.
-
-    :param file_url: URL of the file to be downloaded.
-    :return: Content of the downloaded file.
-    """
-    response = requests.get(file_url, timeout=25)
-    response.raise_for_status()
-    return response.content
 
 
 def send_email(
