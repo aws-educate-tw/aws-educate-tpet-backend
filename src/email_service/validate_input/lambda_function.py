@@ -153,13 +153,19 @@ def lambda_handler(event, context):
 
         # Validate required inputs
         if not subject:
-            return {"statusCode": 400, "body": json.dumps("Missing email title")}
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Missing email title"}),
+            }
         if not template_file_id:
-            return {"statusCode": 400, "body": json.dumps("Missing template file ID")}
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Missing template file ID"}),
+            }
         if not spreadsheet_file_id:
             return {
                 "statusCode": 400,
-                "body": json.dumps("Missing spreadsheet file ID"),
+                "body": json.dumps({"message": "Missing spreadsheet file ID"}),
             }
 
         # Validate email formats
@@ -169,13 +175,15 @@ def lambda_handler(event, context):
                 if not re.match(email_pattern, email):
                     return {
                         "statusCode": 400,
-                        "body": json.dumps(f"Invalid email format: {email}"),
+                        "body": json.dumps(
+                            {"message": f"Invalid email format: {email}"}
+                        ),
                     }
 
         if not re.match(email_pattern, reply_to):
             return {
                 "statusCode": 400,
-                "body": json.dumps(f"Invalid email format: {reply_to}"),
+                "body": json.dumps({"message": f"Invalid email format: {reply_to}"}),
             }
 
         current_user = current_user_util.get_current_user_info()
@@ -189,7 +197,7 @@ def lambda_handler(event, context):
         # Get spreadsheet file information and columns
         spreadsheet_info = get_file_info(spreadsheet_file_id, access_token)
         spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
-        _, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
+        rows, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
 
         # Validate template placeholders against spreadsheet columns
         missing_columns = validate_template(template_content, columns)
@@ -197,7 +205,7 @@ def lambda_handler(event, context):
             error_message = "Missing required columns for placeholders: %s" % ", ".join(
                 missing_columns
             )
-            return {"statusCode": 400, "body": json.dumps(error_message)}
+            return {"statusCode": 400, "body": json.dumps({"message": error_message})}
 
         # Validate required columns for certificate generation
         if is_generate_certificate:
@@ -210,7 +218,28 @@ def lambda_handler(event, context):
                     "Missing required columns for certificate generation: %s"
                     % ", ".join(missing_required_columns)
                 )
-                return {"statusCode": 400, "body": json.dumps(error_message)}
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"message": error_message}),
+                }
+
+        # Validate emails in spreadsheet
+        invalid_emails = []
+        for index, row in enumerate(rows, start=1):
+            email = row.get("Email")
+            if not email or pd.isna(email) or not re.match(email_pattern, email):
+                invalid_emails.append({"row": index, "email": email})
+
+        if invalid_emails:
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    {"message": f"Invalid email(s) in spreadsheet: {invalid_emails}"}
+                ),
+            }
+
+        # Calculate the number of emails to be sent
+        expected_email_send_count = len([row for row in rows if row.get("Email")])
 
         # Prepare common data for message and response
         common_data = {
@@ -226,6 +255,7 @@ def lambda_handler(event, context):
             "sender_local_part": sender_local_part,
             "cc": cc,
             "bcc": bcc,
+            "expected_email_send_count": expected_email_send_count,
         }
 
         # Prepare message for SQS
