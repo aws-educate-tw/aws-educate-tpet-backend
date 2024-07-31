@@ -22,6 +22,9 @@ FILE_SERVICE_API_BASE_URL = (
     f"https://{ENVIRONMENT}-file-service-internal-api-tpet.aws-educate.tw/{ENVIRONMENT}"
 )
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
+DEFAULT_DISPLAY_NAME = "AWS Educate 雲端大使"
+DEFAULT_REPLY_TO = "awseducate.cloudambassador@gmail.com"
+DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
 
 # Initialize AWS SQS client
 sqs_client = boto3.client("sqs")
@@ -139,20 +142,48 @@ def lambda_handler(event, context):
         template_file_id = body.get("template_file_id")
         spreadsheet_file_id = body.get("spreadsheet_file_id")
         subject = body.get("subject")
-        display_name = body.get("display_name", "No Name Provided")
+        display_name = body.get("display_name", DEFAULT_DISPLAY_NAME)
         run_id = body.get("run_id") if body.get("run_id") else uuid.uuid4().hex
         attachment_file_ids = body.get("attachment_file_ids", [])
         is_generate_certificate = body.get("is_generate_certificate", False)
+        reply_to = body.get("reply_to", DEFAULT_REPLY_TO)
+        sender_local_part = body.get("sender_local_part", DEFAULT_SENDER_LOCAL_PART)
+        cc = body.get("cc", [])
+        bcc = body.get("bcc", [])
 
         # Validate required inputs
         if not subject:
-            return {"statusCode": 400, "body": json.dumps("Missing email title")}
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Missing email title"}),
+            }
         if not template_file_id:
-            return {"statusCode": 400, "body": json.dumps("Missing template file ID")}
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Missing template file ID"}),
+            }
         if not spreadsheet_file_id:
             return {
                 "statusCode": 400,
-                "body": json.dumps("Missing spreadsheet file ID"),
+                "body": json.dumps({"message": "Missing spreadsheet file ID"}),
+            }
+
+        # Validate email formats
+        email_pattern = r"[^@]+@[^@]+\.[^@]+"
+        for email_list in [cc, bcc]:
+            for email in email_list:
+                if not re.match(email_pattern, email):
+                    return {
+                        "statusCode": 400,
+                        "body": json.dumps(
+                            {"message": f"Invalid email format: {email}"}
+                        ),
+                    }
+
+        if not re.match(email_pattern, reply_to):
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": f"Invalid email format: {reply_to}"}),
             }
 
         current_user = current_user_util.get_current_user_info()
@@ -166,7 +197,7 @@ def lambda_handler(event, context):
         # Get spreadsheet file information and columns
         spreadsheet_info = get_file_info(spreadsheet_file_id, access_token)
         spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
-        _, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
+        rows, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
 
         # Validate template placeholders against spreadsheet columns
         missing_columns = validate_template(template_content, columns)
@@ -174,7 +205,7 @@ def lambda_handler(event, context):
             error_message = "Missing required columns for placeholders: %s" % ", ".join(
                 missing_columns
             )
-            return {"statusCode": 400, "body": json.dumps(error_message)}
+            return {"statusCode": 400, "body": json.dumps({"message": error_message})}
 
         # Validate required columns for certificate generation
         if is_generate_certificate:
@@ -187,10 +218,31 @@ def lambda_handler(event, context):
                     "Missing required columns for certificate generation: %s"
                     % ", ".join(missing_required_columns)
                 )
-                return {"statusCode": 400, "body": json.dumps(error_message)}
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"message": error_message}),
+                }
 
-        # Prepare message for SQS
-        message_body = {
+        # Validate emails in spreadsheet
+        invalid_emails = []
+        for index, row in enumerate(rows, start=1):
+            email = row.get("Email")
+            if not email or pd.isna(email) or not re.match(email_pattern, email):
+                invalid_emails.append({"row": index, "email": email})
+
+        if invalid_emails:
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    {"message": f"Invalid email(s) in spreadsheet: {invalid_emails}"}
+                ),
+            }
+
+        # Calculate the number of emails to be sent
+        expected_email_send_count = len([row for row in rows if row.get("Email")])
+
+        # Prepare common data for message and response
+        common_data = {
             "run_id": run_id,
             "template_file_id": template_file_id,
             "spreadsheet_file_id": spreadsheet_file_id,
@@ -199,6 +251,16 @@ def lambda_handler(event, context):
             "attachment_file_ids": attachment_file_ids,
             "is_generate_certificate": is_generate_certificate,
             "sender_id": sender_id,
+            "reply_to": reply_to,
+            "sender_local_part": sender_local_part,
+            "cc": cc,
+            "bcc": bcc,
+            "expected_email_send_count": expected_email_send_count,
+        }
+
+        # Prepare message for SQS
+        message_body = {
+            **common_data,
             "access_token": access_token,
         }
 
@@ -212,13 +274,7 @@ def lambda_handler(event, context):
         response = {
             "status": "SUCCESS",
             "message": "Input message accepted for processing",
-            "run_id": run_id,
-            "template_file_id": template_file_id,
-            "spreadsheet_file_id": spreadsheet_file_id,
-            "subject": subject,
-            "display_name": display_name,
-            "attachment_file_ids": attachment_file_ids,
-            "is_generate_certificate": is_generate_certificate,
+            **common_data,
         }
 
         return {"statusCode": 202, "body": json.dumps(response)}
