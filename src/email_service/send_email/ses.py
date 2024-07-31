@@ -15,6 +15,7 @@ from certificate_generator import generate_certificate
 from current_user_util import current_user_util
 from email_repository import EmailRepository
 from s3 import read_html_template_file_from_s3
+from template_util import replace_placeholders
 
 from file_service import FileService
 
@@ -141,24 +142,6 @@ def attach_files_to_message(msg, file_ids):
         except Exception as e:
             logger.error("Error processing file attachment %s: %s", file_id, e)
             # Continue to the next file rather than failing the entire email
-
-
-def replace_placeholders(template, values):
-    """
-    Replace placeholders in the template with actual values.
-
-    :param template: The template string with placeholders.
-    :param values: A dictionary of values to replace the placeholders.
-    :return: The template string with placeholders replaced by actual values.
-    """
-
-    def replacement(match):
-        variable_name = match.group(1)
-        return values.get(variable_name, match.group(0))
-
-    # Using Regular Expressions to Match and Replace {{variable}}
-    pattern = r"\{\{(.*?)\}\}"
-    return re.sub(pattern, replacement, template)
 
 
 def send_email(
