@@ -5,7 +5,7 @@ from email.mime.text import MIMEText
 from email.utils import formataddr
 
 from current_user_util import current_user_util
-from s3 import download_file_content
+from file_util import download_file_content
 
 from file_service import FileService
 
