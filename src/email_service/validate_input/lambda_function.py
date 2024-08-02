@@ -262,6 +262,7 @@ def lambda_handler(event, context):
             "sender_local_part": sender_local_part,
             "cc": cc,
             "bcc": bcc,
+            "success_email_count": 0,
             "expected_email_send_count": expected_email_send_count,
         }
 

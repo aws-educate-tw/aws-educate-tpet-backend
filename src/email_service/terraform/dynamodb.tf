@@ -70,7 +70,7 @@ resource "aws_dynamodb_table" "run" {
   }
 
   global_secondary_index {
-    name            = "created_year_created_at_gsi"
+    name            = "created_year-created_at-gsi"
     hash_key        = "created_year"
     range_key       = "created_at"
     projection_type = "ALL"
@@ -85,5 +85,34 @@ resource "aws_dynamodb_table" "run" {
 
   tags = {
     Name = "run"
+  }
+}
+
+
+resource "aws_dynamodb_table" "email_service_pagination_state" {
+  name         = "email_service_pagination_state"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "user_id"
+  range_key    = "index_name"
+
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "index_name"
+    type = "S"
+  }
+
+  deletion_protection_enabled = var.enable_deletion_protection_for_dynamodb_table
+
+  point_in_time_recovery {
+    enabled = var.enable_pitr
+  }
+
+
+  tags = {
+    Name = "email_service_pagination_state"
   }
 }

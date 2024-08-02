@@ -8,6 +8,7 @@ import time_util
 from current_user_util import current_user_util  # Import the global instance
 from data_util import convert_float_to_decimal
 from email_repository import EmailRepository
+from run_repository import RunRepository
 from s3 import read_html_template_file_from_s3, read_sheet_data_from_s3
 from ses import send_email
 from sqs import delete_sqs_message, get_sqs_message
@@ -25,9 +26,10 @@ BUCKET_NAME = os.getenv("BUCKET_NAME")
 # Initialize SQS client
 sqs_client = boto3.client("sqs")
 
-# Initialize FileService and EmailRepository
+# Initialize FileService, EmailRepository and RunRepository
 file_service = FileService()
 email_repository = EmailRepository()
+run_repository = RunRepository()
 
 
 def save_emails_to_dynamodb(
@@ -185,6 +187,10 @@ def process_email(
     email_repository.update_email_status(
         run_id=email_data.get("run_id"), email_id=email_id, status=status
     )
+
+    # Increment success_email_count if email was successfully sent
+    if status == "SUCCESS":
+        run_repository.increment_success_email_count(email_data.get("run_id"))
 
 
 def lambda_handler(event, context):

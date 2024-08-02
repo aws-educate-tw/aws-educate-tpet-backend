@@ -26,6 +26,10 @@ variable "run_dynamodb_table" {
   description = "Current service's Run DynamoDB table name"
 }
 
+variable "pagination_state_dynamodb_table" {
+  description = "Current service's Pagination state DynamoDB table name"
+}
+
 variable "enable_pitr" {
   description = "Enable Point-In-Time Recovery for DynamoDB tables"
   type        = bool
