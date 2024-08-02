@@ -355,10 +355,12 @@ module "list_runs_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore
-    "DYNAMODB_TABLE" = var.dynamodb_table
-    "BUCKET_NAME"    = "${var.environment}-aws-educate-tpet-storage"
+    "ENVIRONMENT"                     = var.environment,
+    "SERVICE"                         = var.service_underscore
+    "DYNAMODB_TABLE"                  = var.dynamodb_table
+    "RUN_DYNAMODB_TABLE"              = var.run_dynamodb_table
+    "PAGINATION_STATE_DYNAMODB_TABLE" = var.pagination_state_dynamodb_table
+    "BUCKET_NAME"                     = "${var.environment}-aws-educate-tpet-storage"
   }
 
   allowed_triggers = {
@@ -393,8 +395,10 @@ module "list_runs_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.service_underscore}_pagination_state",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/*"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/*",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.pagination_state_dynamodb_table}",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}/index/*",
       ]
     },
     s3_crud = {

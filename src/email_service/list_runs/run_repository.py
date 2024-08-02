@@ -42,7 +42,7 @@ class RunRepository:
             query_kwargs = {
                 "Limit": limit,
                 "ScanIndexForward": False if sort_order.upper() == "DESC" else True,
-                "IndexName": "created_year_created_at_gsi",
+                "IndexName": "created_year-created_at-gsi",
                 "KeyConditionExpression": Key("created_year").eq(created_year),
             }
 

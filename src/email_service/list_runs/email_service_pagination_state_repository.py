@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-TABLE_NAME = "email_service_pagination_state"
+TABLE_NAME = "email_service_pagination_state"  # 確保這個表名是正確的
 
 
 class EmailServicePaginationStateRepository:
@@ -32,19 +32,19 @@ class EmailServicePaginationStateRepository:
             logger.error("Error saving pagination state: %s", e)
             raise
 
-    def get_pagination_state_by_run_id_and_index_name(
-        self, run_id: str, index_name: str
+    def get_pagination_state_by_user_id_and_index_name(
+        self, user_id: str, index_name: str
     ) -> dict[str, Optional[str]]:
         """
-        Retrieve the pagination state for a given run ID and index name from the DynamoDB table.
+        Retrieve the pagination state for a given user ID and index name from the DynamoDB table.
 
-        :param run_id: Run ID to retrieve the pagination state for
+        :param user_id: User ID to retrieve the pagination state for
         :param index_name: Index name to retrieve the pagination state for
         :return: Dictionary containing the pagination state
         """
         try:
             response = self.table.get_item(
-                Key={"run_id": run_id, "index_name": index_name}
+                Key={"user_id": user_id, "index_name": index_name}
             )
             return response.get("Item", {})
         except ClientError as e:

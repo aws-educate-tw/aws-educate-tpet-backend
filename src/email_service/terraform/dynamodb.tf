@@ -70,7 +70,7 @@ resource "aws_dynamodb_table" "run" {
   }
 
   global_secondary_index {
-    name            = "created_year_created_at_gsi"
+    name            = "created_year-created_at-gsi"
     hash_key        = "created_year"
     range_key       = "created_at"
     projection_type = "ALL"

@@ -182,7 +182,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
     # Store the pagination state for the next request
     pagination_state = (
-        pagination_state_repo.get_pagination_state_by_run_id_and_index_name(
+        pagination_state_repo.get_pagination_state_by_user_id_and_index_name(
             user_id, index_name
         )
     )
