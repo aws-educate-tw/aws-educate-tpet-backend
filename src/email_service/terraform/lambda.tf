@@ -59,10 +59,11 @@ module "validate_input_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"   = var.environment,
-    "SERVICE"       = var.service_underscore
-    "BUCKET_NAME"   = "${var.environment}-aws-educate-tpet-storage"
-    "SQS_QUEUE_URL" = module.send_email_sqs.queue_url
+    "ENVIRONMENT"        = var.environment,
+    "SERVICE"            = var.service_underscore
+    "BUCKET_NAME"        = "${var.environment}-aws-educate-tpet-storage"
+    "SQS_QUEUE_URL"      = module.send_email_sqs.queue_url
+    "RUN_DYNAMODB_TABLE" = var.run_dynamodb_table
   }
 
   allowed_triggers = {
