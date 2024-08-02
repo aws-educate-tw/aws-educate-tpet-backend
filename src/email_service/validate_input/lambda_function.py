@@ -9,7 +9,10 @@ import boto3
 import pandas as pd
 import requests
 from current_user_util import current_user_util  # Import the global instance
+from data_util import convert_float_to_decimal
 from requests.exceptions import RequestException
+from run_repository import RunRepository
+from time_util import get_current_utc_time
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -28,6 +31,9 @@ DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
 
 # Initialize AWS SQS client
 sqs_client = boto3.client("sqs")
+
+# Initialize RunRepository
+run_repository = RunRepository()
 
 
 def get_file_info(file_id, access_token):
@@ -186,8 +192,8 @@ def lambda_handler(event, context):
                 "body": json.dumps({"message": f"Invalid email format: {reply_to}"}),
             }
 
-        current_user = current_user_util.get_current_user_info()
-        sender_id = current_user.get("user_id")
+        current_user_info = current_user_util.get_current_user_info()
+        sender_id = current_user_info.get("user_id")
 
         # Get template file information and content
         template_info = get_file_info(template_file_id, access_token)
@@ -202,9 +208,7 @@ def lambda_handler(event, context):
         # Validate template placeholders against spreadsheet columns
         missing_columns = validate_template(template_content, columns)
         if missing_columns:
-            error_message = "Missing required columns for placeholders: %s" % ", ".join(
-                missing_columns
-            )
+            error_message = f"Missing required columns for placeholders: {', '.join(missing_columns)}"
             return {"statusCode": 400, "body": json.dumps({"message": error_message})}
 
         # Validate required columns for certificate generation
@@ -214,10 +218,7 @@ def lambda_handler(event, context):
                 col for col in required_columns if col not in columns
             ]
             if missing_required_columns:
-                error_message = (
-                    "Missing required columns for certificate generation: %s"
-                    % ", ".join(missing_required_columns)
-                )
+                error_message = f"Missing required columns for certificate generation: {', '.join(missing_required_columns)}"
                 return {
                     "statusCode": 400,
                     "body": json.dumps({"message": error_message}),
@@ -241,6 +242,12 @@ def lambda_handler(event, context):
         # Calculate the number of emails to be sent
         expected_email_send_count = len([row for row in rows if row.get("Email")])
 
+        # Get attachment file information if any
+        attachment_files = []
+        for file_id in attachment_file_ids:
+            attachment_info = get_file_info(file_id, access_token)
+            attachment_files.append(attachment_info)
+
         # Prepare common data for message and response
         common_data = {
             "run_id": run_id,
@@ -258,6 +265,35 @@ def lambda_handler(event, context):
             "expected_email_send_count": expected_email_send_count,
         }
 
+        # Get current time and extract date parts
+        created_at = get_current_utc_time()
+        created_year = created_at[:4]
+        created_year_month = created_at[:7]
+        created_year_month_day = created_at[:10]
+
+        # Save run item to DynamoDB
+        run_item = {
+            **common_data,
+            "created_at": created_at,
+            "created_year": created_year,
+            "created_year_month": created_year_month,
+            "created_year_month_day": created_year_month_day,
+            "template_file": template_info,
+            "spreadsheet_file": spreadsheet_info,
+            "attachment_files": attachment_files,
+            "sender": current_user_info,
+        }
+
+        # Convert floats to decimals
+        run_item = convert_float_to_decimal(run_item)
+
+        saved_run_id = run_repository.save_run(run_item)
+        if not saved_run_id:
+            return {
+                "statusCode": 500,
+                "body": json.dumps({"message": "Failed to save run"}),
+            }
+
         # Prepare message for SQS
         message_body = {
             **common_data,
@@ -273,7 +309,7 @@ def lambda_handler(event, context):
         # Prepare success response
         response = {
             "status": "SUCCESS",
-            "message": "Input message accepted for processing",
+            "message": "Your send email request has been successfully received and is being processed.",
             **common_data,
         }
 
