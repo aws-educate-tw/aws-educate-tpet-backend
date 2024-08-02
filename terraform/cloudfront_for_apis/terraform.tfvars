@@ -27,12 +27,12 @@ api_gateway_origins = [
   {
     # Email Service - prod
     domain_name  = "prod-email-service-internal-api-tpet.aws-educate.tw"
-    path_pattern = "/prod/*email*"
+    path_pattern = "/prod/*"
   },
   {
     # Email Service - dev
     domain_name  = "dev-email-service-internal-api-tpet.aws-educate.tw"
-    path_pattern = "/dev/*email*"
+    path_pattern = "/dev/*"
   },
   {
     # Auth Service - prod
