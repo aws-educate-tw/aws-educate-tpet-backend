@@ -203,6 +203,7 @@ module "send_email_lambda" {
     "ENVIRONMENT"         = var.environment,
     "SERVICE"             = var.service_underscore
     "DYNAMODB_TABLE"      = var.dynamodb_table
+    "RUN_DYNAMODB_TABLE"  = var.run_dynamodb_table
     "BUCKET_NAME"         = "${var.environment}-aws-educate-tpet-storage"
     "PRIVATE_BUCKET_NAME" = "${var.environment}-aws-educate-tpet-private-storage"
     "SQS_QUEUE_URL"       = module.send_email_sqs.queue_url
@@ -241,7 +242,9 @@ module "send_email_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/*"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/*",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}/index/*",
       ]
     },
     ses_send_email = {

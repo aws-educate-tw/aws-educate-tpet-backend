@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Optional
 
 import boto3
@@ -9,7 +10,7 @@ from botocore.exceptions import ClientError
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-TABLE_NAME = "email"
+TABLE_NAME = os.getenv("DYNAMODB_TABLE")
 
 
 class EmailRepository:
