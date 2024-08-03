@@ -25,14 +25,14 @@ resource "aws_dynamodb_table" "email" {
   }
 
   global_secondary_index {
-    name            = "run_id-status-gsi"
+    name            = "email-run_id-status-gsi"
     hash_key        = "run_id"
     range_key       = "status"
     projection_type = "ALL"
   }
 
   global_secondary_index {
-    name            = "run_id-created_at-gsi"
+    name            = "email-run_id-created_at-gsi"
     hash_key        = "run_id"
     range_key       = "created_at"
     projection_type = "ALL"
