@@ -25,23 +25,23 @@ api_gateway_origins = [
     path_pattern = "/dev/*file*"
   },
   {
-    # Email Service - prod
-    domain_name  = "prod-email-service-internal-api-tpet.aws-educate.tw"
-    path_pattern = "/prod/*email*"
-  },
-  {
-    # Email Service - dev
-    domain_name  = "dev-email-service-internal-api-tpet.aws-educate.tw"
-    path_pattern = "/dev/*email*"
-  },
-  {
     # Auth Service - prod
     domain_name  = "prod-auth-service-internal-api-tpet.aws-educate.tw"
-    path_pattern = "/prod/*auth*"
+    path_pattern = "/prod/auth*"
   },
   {
     # Auth Service - dev
     domain_name  = "dev-auth-service-internal-api-tpet.aws-educate.tw"
-    path_pattern = "/dev/*auth*"
+    path_pattern = "/dev/auth*"
+  },
+  {
+    # Email Service - prod
+    domain_name  = "prod-email-service-internal-api-tpet.aws-educate.tw"
+    path_pattern = "/prod/*"
+  },
+  {
+    # Email Service - dev
+    domain_name  = "dev-email-service-internal-api-tpet.aws-educate.tw"
+    path_pattern = "/dev/*"
   }
 ]

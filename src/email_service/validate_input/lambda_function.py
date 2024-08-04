@@ -9,7 +9,10 @@ import boto3
 import pandas as pd
 import requests
 from current_user_util import current_user_util  # Import the global instance
+from data_util import convert_float_to_decimal
 from requests.exceptions import RequestException
+from run_repository import RunRepository
+from time_util import get_current_utc_time
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -22,9 +25,15 @@ FILE_SERVICE_API_BASE_URL = (
     f"https://{ENVIRONMENT}-file-service-internal-api-tpet.aws-educate.tw/{ENVIRONMENT}"
 )
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
+DEFAULT_DISPLAY_NAME = "AWS Educate 雲端大使"
+DEFAULT_REPLY_TO = "awseducate.cloudambassador@gmail.com"
+DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
 
 # Initialize AWS SQS client
 sqs_client = boto3.client("sqs")
+
+# Initialize RunRepository
+run_repository = RunRepository()
 
 
 def get_file_info(file_id, access_token):
@@ -139,24 +148,52 @@ def lambda_handler(event, context):
         template_file_id = body.get("template_file_id")
         spreadsheet_file_id = body.get("spreadsheet_file_id")
         subject = body.get("subject")
-        display_name = body.get("display_name", "No Name Provided")
+        display_name = body.get("display_name", DEFAULT_DISPLAY_NAME)
         run_id = body.get("run_id") if body.get("run_id") else uuid.uuid4().hex
         attachment_file_ids = body.get("attachment_file_ids", [])
         is_generate_certificate = body.get("is_generate_certificate", False)
+        reply_to = body.get("reply_to", DEFAULT_REPLY_TO)
+        sender_local_part = body.get("sender_local_part", DEFAULT_SENDER_LOCAL_PART)
+        cc = body.get("cc", [])
+        bcc = body.get("bcc", [])
 
         # Validate required inputs
         if not subject:
-            return {"statusCode": 400, "body": json.dumps("Missing email title")}
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Missing email title"}),
+            }
         if not template_file_id:
-            return {"statusCode": 400, "body": json.dumps("Missing template file ID")}
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Missing template file ID"}),
+            }
         if not spreadsheet_file_id:
             return {
                 "statusCode": 400,
-                "body": json.dumps("Missing spreadsheet file ID"),
+                "body": json.dumps({"message": "Missing spreadsheet file ID"}),
             }
 
-        current_user = current_user_util.get_current_user_info()
-        sender_id = current_user.get("user_id")
+        # Validate email formats
+        email_pattern = r"[^@]+@[^@]+\.[^@]+"
+        for email_list in [cc, bcc]:
+            for email in email_list:
+                if not re.match(email_pattern, email):
+                    return {
+                        "statusCode": 400,
+                        "body": json.dumps(
+                            {"message": f"Invalid email format: {email}"}
+                        ),
+                    }
+
+        if not re.match(email_pattern, reply_to):
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": f"Invalid email format: {reply_to}"}),
+            }
+
+        current_user_info = current_user_util.get_current_user_info()
+        sender_id = current_user_info.get("user_id")
 
         # Get template file information and content
         template_info = get_file_info(template_file_id, access_token)
@@ -166,15 +203,13 @@ def lambda_handler(event, context):
         # Get spreadsheet file information and columns
         spreadsheet_info = get_file_info(spreadsheet_file_id, access_token)
         spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
-        _, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
+        rows, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
 
         # Validate template placeholders against spreadsheet columns
         missing_columns = validate_template(template_content, columns)
         if missing_columns:
-            error_message = "Missing required columns for placeholders: %s" % ", ".join(
-                missing_columns
-            )
-            return {"statusCode": 400, "body": json.dumps(error_message)}
+            error_message = f"Missing required columns for placeholders: {', '.join(missing_columns)}"
+            return {"statusCode": 400, "body": json.dumps({"message": error_message})}
 
         # Validate required columns for certificate generation
         if is_generate_certificate:
@@ -183,14 +218,38 @@ def lambda_handler(event, context):
                 col for col in required_columns if col not in columns
             ]
             if missing_required_columns:
-                error_message = (
-                    "Missing required columns for certificate generation: %s"
-                    % ", ".join(missing_required_columns)
-                )
-                return {"statusCode": 400, "body": json.dumps(error_message)}
+                error_message = f"Missing required columns for certificate generation: {', '.join(missing_required_columns)}"
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"message": error_message}),
+                }
 
-        # Prepare message for SQS
-        message_body = {
+        # Validate emails in spreadsheet
+        invalid_emails = []
+        for index, row in enumerate(rows, start=1):
+            email = row.get("Email")
+            if not email or pd.isna(email) or not re.match(email_pattern, email):
+                invalid_emails.append({"row": index, "email": email})
+
+        if invalid_emails:
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    {"message": f"Invalid email(s) in spreadsheet: {invalid_emails}"}
+                ),
+            }
+
+        # Calculate the number of emails to be sent
+        expected_email_send_count = len([row for row in rows if row.get("Email")])
+
+        # Get attachment file information if any
+        attachment_files = []
+        for file_id in attachment_file_ids:
+            attachment_info = get_file_info(file_id, access_token)
+            attachment_files.append(attachment_info)
+
+        # Prepare common data for message and response
+        common_data = {
             "run_id": run_id,
             "template_file_id": template_file_id,
             "spreadsheet_file_id": spreadsheet_file_id,
@@ -199,6 +258,46 @@ def lambda_handler(event, context):
             "attachment_file_ids": attachment_file_ids,
             "is_generate_certificate": is_generate_certificate,
             "sender_id": sender_id,
+            "reply_to": reply_to,
+            "sender_local_part": sender_local_part,
+            "cc": cc,
+            "bcc": bcc,
+            "success_email_count": 0,
+            "expected_email_send_count": expected_email_send_count,
+        }
+
+        # Get current time and extract date parts
+        created_at = get_current_utc_time()
+        created_year = created_at[:4]
+        created_year_month = created_at[:7]
+        created_year_month_day = created_at[:10]
+
+        # Save run item to DynamoDB
+        run_item = {
+            **common_data,
+            "created_at": created_at,
+            "created_year": created_year,
+            "created_year_month": created_year_month,
+            "created_year_month_day": created_year_month_day,
+            "template_file": template_info,
+            "spreadsheet_file": spreadsheet_info,
+            "attachment_files": attachment_files,
+            "sender": current_user_info,
+        }
+
+        # Convert floats to decimals
+        run_item = convert_float_to_decimal(run_item)
+
+        saved_run_id = run_repository.save_run(run_item)
+        if not saved_run_id:
+            return {
+                "statusCode": 500,
+                "body": json.dumps({"message": "Failed to save run"}),
+            }
+
+        # Prepare message for SQS
+        message_body = {
+            **common_data,
             "access_token": access_token,
         }
 
@@ -211,14 +310,8 @@ def lambda_handler(event, context):
         # Prepare success response
         response = {
             "status": "SUCCESS",
-            "message": "Input message accepted for processing",
-            "run_id": run_id,
-            "template_file_id": template_file_id,
-            "spreadsheet_file_id": spreadsheet_file_id,
-            "subject": subject,
-            "display_name": display_name,
-            "attachment_file_ids": attachment_file_ids,
-            "is_generate_certificate": is_generate_certificate,
+            "message": "Your send email request has been successfully received and is being processed.",
+            **common_data,
         }
 
         return {"statusCode": 202, "body": json.dumps(response)}
