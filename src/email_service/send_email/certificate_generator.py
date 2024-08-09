@@ -79,7 +79,8 @@ def generate_certificate(
                 )
 
                 tw.write_text(page)
-                doc.save(str(output_path))
+                doc.subset_fonts()
+                doc.save(str(output_path), deflate=True, garbage=3, clean=True)
         except Exception as e:
             logger.error("Error generating certificate: %s", e)
             raise
