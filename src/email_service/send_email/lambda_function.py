@@ -200,6 +200,9 @@ def lambda_handler(event, context):
     :param event: The event data from SQS.
     :param context: The runtime information of the Lambda function.
     """
+    # Log the start of Lambda execution and incoming event details
+    logger.info("Lambda triggered with event: %s", event)
+
     for record in event["Records"]:
         try:
             sqs_message = get_sqs_message(record)
