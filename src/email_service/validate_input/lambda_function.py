@@ -102,16 +102,61 @@ def read_sheet_data_from_s3(
         raise
 
 
-def validate_template(template_content: str, columns: list[str]) -> list[str]:
-    """Validate template placeholders against available columns."""
+def extract_template_variables(template_content: str) -> list[str]:
+    """Extract required variables from template content.
+
+    Args:
+        template_content: The content of template file.
+
+    Returns:
+        A list of variable names that are required in the template.
+    """
     try:
         placeholders = re.findall(r"{{(.*?)}}", template_content)
-        return [
-            placeholder for placeholder in placeholders if placeholder not in columns
-        ]
+        return list(set(placeholders))  # Use set to remove duplicates
     except Exception as e:
-        logger.error("Error in validate_template: %s", e)
+        logger.error("Error in extract_template_variables: %s", e)
         raise
+
+
+def validate_template_variables(
+    template_content: str,
+    recipient_source: str,
+    recipients: list[dict[str, Any]] | None = None,
+    rows: list[dict[str, Any]] | None = None,
+) -> None:
+    """Validate that all required template variables are provided.
+
+    Args:
+        template_content: The content of template file.
+        recipient_source: The source of recipients (SPREADSHEET or DIRECT).
+        recipients: List of recipients with their template variables (for DIRECT mode).
+        rows: List of spreadsheet rows (for SPREADSHEET mode).
+
+    Raises:
+        ValueError: If any recipient is missing required template variables.
+    """
+    required_variables = extract_template_variables(template_content)
+    if not required_variables:
+        return
+
+    if recipient_source == "DIRECT":
+        for recipient in recipients or []:
+            template_vars = recipient.get("template_variables", {})
+            missing_vars = [
+                var for var in required_variables if var not in template_vars
+            ]
+            if missing_vars:
+                raise ValueError(
+                    f"Email {recipient['email']} missing required template variables: {', '.join(missing_vars)}"
+                )
+    else:  # SPREADSHEET mode
+        for index, row in enumerate(rows or [], start=1):
+            missing_vars = [var for var in required_variables if var not in row]
+            if missing_vars:
+                raise ValueError(
+                    f"Row {index} (Email: {row.get('Email', 'N/A')}) missing required template variables: {', '.join(missing_vars)}"
+                )
 
 
 def validate_spreadsheet_mode(
@@ -124,13 +169,6 @@ def validate_spreadsheet_mode(
     spreadsheet_info = get_file_info(spreadsheet_file_id, access_token)
     spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
     rows, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
-
-    # Validate template placeholders
-    missing_columns = validate_template(template_content, columns)
-    if missing_columns:
-        raise ValueError(
-            f"Missing required columns for HTML file placeholders: {', '.join(missing_columns)}"
-        )
 
     # Validate email format
     invalid_emails = [
@@ -275,8 +313,14 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                         spreadsheet_file_id, access_token, template_content
                     )
                 )
+                validate_template_variables(
+                    template_content, recipient_source, rows=rows
+                )
             else:
                 expected_email_send_count = validate_direct_mode(recipients)
+                validate_template_variables(
+                    template_content, recipient_source, recipients=recipients
+                )
 
             # Validate certificate requirements
             validate_certificate_requirements(
