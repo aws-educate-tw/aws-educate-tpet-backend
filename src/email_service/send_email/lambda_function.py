@@ -208,6 +208,13 @@ def lambda_handler(event, context):
             sqs_message = get_sqs_message(record)
             access_token = sqs_message["access_token"]
             recipient_source = sqs_message.get("recipient_source")
+            if recipient_source is None:
+                logger.warning(
+                    "Missing recipient_source in SQS message; defaulting to SPREADSHEET mode."
+                )
+                recipient_source = (
+                    "SPREADSHEET"  # Set a default value or handle as necessary
+                )
 
             # Set the current user information using the access token
             current_user_util.set_current_user_by_access_token(access_token)
