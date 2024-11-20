@@ -4,7 +4,7 @@ provider "aws" {
     tags = {
       "Terraform"   = "true",
       "Environment" = "global",
-      "Project"     = "AWS Educate TPET",
+      "Project"     = "AWS Educate TPET"
       "Service"     = "cloudfront_for_apis"
     }
   }
