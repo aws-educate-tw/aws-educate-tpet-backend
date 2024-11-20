@@ -22,6 +22,10 @@ variable "dynamodb_table" {
   description = "Current service's DynamoDB table name"
 }
 
+variable "send_email_api_endpoint" {
+  description = "Send email API endpoint"
+}
+
 variable "enable_pitr" {
   description = "Enable Point-In-Time Recovery for DynamoDB tables"
   type        = bool
