@@ -190,9 +190,10 @@ module "save_webhook_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore,
-    "DYNAMODB_TABLE" = var.dynamodb_table
+    "ENVIRONMENT"                  = var.environment,
+    "SERVICE"                      = var.service_underscore,
+    "DYNAMODB_TABLE"               = var.dynamodb_table
+    "TRIGGER_WEBHOOK_API_ENDPOINT" = var.trigger_webhook_api_endpoint
   }
 
   allowed_triggers = {

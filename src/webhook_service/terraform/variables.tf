@@ -22,6 +22,10 @@ variable "dynamodb_table" {
   description = "Current service's DynamoDB table name"
 }
 
+variable "trigger_webhook_api_endpoint" {
+  description = "Trigger webhook API endpoint"
+}
+
 variable "send_email_api_endpoint" {
   description = "Send email API endpoint"
 }

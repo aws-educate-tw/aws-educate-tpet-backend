@@ -42,6 +42,7 @@ def lambda_handler(event, context):
         }        
         # Insert the item into DynamoDB
         response = table.put_item(Item=item)
+        trigger_webhook_api_endpoint = os.getenv("TRIGGER_WEBHOOK_API_ENDPOINT")
 
         return {
             "statusCode": 200,
@@ -54,7 +55,7 @@ def lambda_handler(event, context):
                     "status": "SUCCESS",
                     "message": "Webhook successfully created.",
                     "webhook_id": webhook_id,
-                    "response": response
+                    "webhook_url": f"{trigger_webhook_api_endpoint}/{webhook_id}",
                 }, cls=DecimalEncoder),
         }
     except Exception as e:
