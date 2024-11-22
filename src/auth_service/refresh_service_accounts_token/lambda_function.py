@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from typing import Dict
 
 import boto3
 from botocore.exceptions import ClientError
@@ -14,134 +15,122 @@ secrets_client = boto3.client("secretsmanager")
 lambda_client = boto3.client("lambda")
 
 # Environment variables
-AUTH_LOGIN_FUNCTION = os.getenv("AUTH_LOGIN_FUNCTION")
-SERVICE_ACCOUNT_SECRET_NAME = os.getenv("SERVICE_ACCOUNT_SECRET_NAME")
+LOGIN_FUNCTION_ARN = os.getenv("LOGIN_FUNCTION_ARN")
+ENVIRONMENT = os.getenv("ENVIRONMENT")
+
+# List of service accounts that need token refresh
+SERVICE_ACCOUNTS = [
+    "surveycake",
+]
 
 
-def get_service_account_password():
+def get_secret_path(service_account: str, secret_type: str) -> str:
     """
-    Get service account password from AWS Secrets Manager.
-
-    Returns:
-        str: The password stored in Secrets Manager.
-
-    Raises:
-        ClientError: If there's an error retrieving the secret.
-    """
-    try:
-        response = secrets_client.get_secret_value(SecretId=SERVICE_ACCOUNT_SECRET_NAME)
-        secret_data = json.loads(response["SecretString"])
-        return secret_data["password"]
-    except ClientError as e:
-        logger.error("Failed to get password from Secrets Manager: %s", e)
-        raise
-
-
-def get_access_token(password):
-    """
-    Invoke auth login lambda to get access token.
+    Generate secret path based on environment and service account.
 
     Args:
-        password (str): Service account password.
+        service_account (str): Name of the service account (e.g., 'surveycake', 'slack')
+        secret_type (str): Type of secret ("password" or "access-token")
 
     Returns:
-        str: The access token from login response.
+        str: Full secret path in Secrets Manager
+    """
+    return f"aws-educate-tpet/{ENVIRONMENT}/service-accounts/{service_account}/{secret_type}"
+
+
+def refresh_service_account_access_token(service_account: str) -> Dict:
+    """
+    Refresh access token for a specific service account.
+
+    Args:
+        service_account (str): Name of the service account to refresh token for
+
+    Returns:
+        dict: Result of the refresh operation
 
     Raises:
-        ClientError: If Lambda invocation fails.
-        ValueError: If the login response is invalid.
+        ClientError: If AWS service interaction fails
+        ValueError: If the refresh operation fails
     """
     try:
-        payload = {"body": json.dumps({"account": "surveycake", "password": password})}
+        logger.info("Starting token refresh for service account: %s", service_account)
 
-        response = lambda_client.invoke(
-            FunctionName=AUTH_LOGIN_FUNCTION,
+        # Get password
+        password_response = secrets_client.get_secret_value(
+            SecretId=get_secret_path(service_account, "password")
+        )
+        password = json.loads(password_response["SecretString"])["password"]
+
+        # Get new token
+        login_payload = {
+            "body": json.dumps({"account": service_account, "password": password})
+        }
+
+        login_response = lambda_client.invoke(
+            FunctionName=LOGIN_FUNCTION_ARN,
             InvocationType="RequestResponse",
-            Payload=json.dumps(payload),
+            Payload=json.dumps(login_payload),
         )
 
-        response_payload = json.loads(response["Payload"].read().decode())
+        login_result = json.loads(login_response["Payload"].read().decode())
 
-        if response_payload["statusCode"] != 200:
-            logger.error(
-                "Login failed with status %d: %s",
-                response_payload["statusCode"],
-                response_payload["body"],
-            )
-            raise ValueError("Login request failed")
+        if login_result["statusCode"] != 200:
+            raise ValueError(f"Login failed: {login_result['body']}")
 
-        body = json.loads(response_payload["body"])
-        return body["access_token"]
+        access_token = json.loads(login_result["body"])["access_token"]
 
-    except ClientError as e:
-        logger.error("Lambda invocation failed: %s", e)
-        raise
-
-
-def update_access_token(access_token):
-    """
-    Update access token in Secrets Manager.
-
-    Args:
-        access_token (str): New access token to store.
-
-    Raises:
-        ClientError: If there's an error updating the secret.
-    """
-    try:
-        secret_data = {"access_token": access_token, "account": "surveycake"}
+        # Update access token
+        secret_data = {"account": service_account, "access_token": access_token}
 
         secrets_client.update_secret(
-            SecretId=SERVICE_ACCOUNT_SECRET_NAME, SecretString=json.dumps(secret_data)
+            SecretId=get_secret_path(service_account, "access-token"),
+            SecretString=json.dumps(secret_data),
         )
 
-    except ClientError as e:
-        logger.error("Failed to update token in Secrets Manager: %s", e)
-        raise
+        logger.info("Token refresh successful for service account: %s", service_account)
+        return {
+            "service_account": service_account,
+            "status": "success",
+            "message": "Token refresh successful",
+        }
+
+    except (ClientError, ValueError) as e:
+        logger.error(
+            "Token refresh failed for service account %s: %s", service_account, str(e)
+        )
+        return {"service_account": service_account, "status": "failed", "error": str(e)}
 
 
 def lambda_handler(event, context):
     """
-    AWS Lambda handler function to refresh service account access token.
+    AWS Lambda handler function to refresh access tokens for all service accounts.
 
     Args:
-        event (dict): Event data (unused).
-        context (dict): Context data (unused).
+        event (dict): Event data (unused)
+        context (dict): Context data (unused)
 
     Returns:
-        dict: Response object with status code and body.
+        dict: Response object with status code and body containing results for all service accounts
     """
-    try:
-        # Get password from Secrets Manager
-        password = get_service_account_password()
+    results = []
+    has_failures = False
 
-        # Get new access token via Lambda invocation
-        access_token = get_access_token(password)
+    for service_account in SERVICE_ACCOUNTS:
+        result = refresh_service_account_access_token(service_account)
+        results.append(result)
+        if result["status"] == "failed":
+            has_failures = True
 
-        # Update access token in Secrets Manager
-        update_access_token(access_token)
+    response_body = {
+        "results": results,
+        "summary": {
+            "total": len(results),
+            "successful": len([r for r in results if r["status"] == "success"]),
+            "failed": len([r for r in results if r["status"] == "failed"]),
+        },
+    }
 
-        return {
-            "statusCode": 200,
-            "body": json.dumps({"message": "Token refresh successful"}),
-        }
-
-    except ClientError as e:
-        logger.error("AWS service error: %s", e)
-        return {
-            "statusCode": 500,
-            "body": json.dumps(
-                {"message": "Failed to interact with AWS services", "error": str(e)}
-            ),
-        }
-    except ValueError as e:
-        logger.error("Value error: %s", e)
-        return {"statusCode": 400, "body": json.dumps({"message": str(e)})}
-    except Exception as e:
-        logger.error("Unexpected error: %s", e)
-        return {
-            "statusCode": 500,
-            "body": json.dumps(
-                {"message": "An unexpected error occurred", "error": str(e)}
-            ),
-        }
+    return {
+        "statusCode": 500 if has_failures else 200,
+        "body": json.dumps(response_body),
+    }
