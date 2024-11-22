@@ -632,8 +632,8 @@ module "refresh_service_accounts_token_lambda" {
         "secretsmanager:UpdateSecret"
       ],
       resources = [
-        "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.this.account_id}:secret:aws-educate-tpet/${var.environment}/service-accounts/*/password",
-        "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.this.account_id}:secret:aws-educate-tpet/${var.environment}/service-accounts/*/access-token"
+        "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.this.account_id}:secret:aws-educate-tpet/${var.environment}/service-accounts/*/password-*",
+        "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.this.account_id}:secret:aws-educate-tpet/${var.environment}/service-accounts/*/access-token-*"
       ]
     },
 

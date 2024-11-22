@@ -23,13 +23,13 @@ resource "aws_secretsmanager_secret" "surveycake_service_account_access_token" {
         Resource = "*"
         Condition = {
           StringEquals = {
-            "aws:PrincipalTag/Service" : "webhook",
+            "aws:PrincipalTag/Service" : "webhook_service",
             "aws:PrincipalTag/Environment" : var.environment
           }
         }
       },
       {
-        Sid    = "AllowTokenRefreshServiceToManageSecret"
+        Sid    = "AllowTokenRefreshFunctionToManageSecret"
         Effect = "Allow"
         Principal = {
           Service = "lambda.amazonaws.com"
@@ -41,7 +41,7 @@ resource "aws_secretsmanager_secret" "surveycake_service_account_access_token" {
         Resource = "*"
         Condition = {
           StringEquals = {
-            "aws:PrincipalTag/Service" : "token-refresh",
+            "aws:PrincipalTag/Service" : "auth_service",
             "aws:PrincipalTag/Environment" : var.environment
           }
         }
