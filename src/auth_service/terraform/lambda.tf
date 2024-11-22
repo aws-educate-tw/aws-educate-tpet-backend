@@ -603,7 +603,7 @@ module "refresh_service_accounts_token_lambda" {
     "ENVIRONMENT"        = var.environment,
     "SERVICE"            = var.service_underscore
     "COGNITO_CLIENT_ID"  = data.aws_ssm_parameter.aws_educate_tpet_cognito_client_id.value
-    "LOGIN_FUNCTION_ARN" = module.login_lambda.lambda_function_invoke_arn
+    "LOGIN_FUNCTION_ARN" = module.login_lambda.lambda_function_arn
   }
 
   allowed_triggers = {
@@ -644,7 +644,7 @@ module "refresh_service_accounts_token_lambda" {
         "lambda:InvokeFunction"
       ],
       resources = [
-        module.login_lambda.lambda_function_invoke_arn
+        module.login_lambda.lambda_function_arn
       ]
     }
   }
