@@ -47,19 +47,31 @@ jobs:
 
       - name: Terraform Destroy (Cleanup)
         id: destroy
-        run: terraform destroy -auto-approve -var-file='preview.tfvars'
+        run: |
+          terraform destroy -auto-approve -var-file='preview.tfvars' 2>&1 | \
+          grep -v -E '^[[:space:]]*(module\.|random_|aws_).*: (Creating|Creation complete|Still creating|Modifications complete|Destroying|Destruction complete|Reading\.\.\.)' | \
+          grep -v -E '^\[.*\][[:space:]]*module\..*$' | \
+          grep -v '^[0-9]+[[:space:]]'
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -var-file='preview.tfvars'
+        run: |
+          terraform plan -var-file='preview.tfvars' 2>&1 | \
+          grep -v -E '^[[:space:]]*(module\.|random_|aws_).*: (Creating|Creation complete|Still creating|Modifications complete|Destroying|Destruction complete|Reading\.\.\.|Plan:)' | \
+          grep -v -E '^\[.*\][[:space:]]*module\..*$' | \
+          grep -v '^[0-9]+[[:space:]]'
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
       - name: Terraform Apply
         id: apply
-        run: terraform apply -var-file='preview.tfvars' -auto-approve
+        run: |
+          terraform apply -var-file='preview.tfvars' -auto-approve 2>&1 | \
+          grep -v -E '^[[:space:]]*(module\.|random_|aws_).*: (Creating|Creation complete|Still creating|Modifications complete|Destroying|Destruction complete|Reading\.\.\.)' | \
+          grep -v -E '^\[.*\][[:space:]]*module\..*$' | \
+          grep -v '^[0-9]+[[:space:]]'
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
@@ -129,7 +141,11 @@ jobs:
         working-directory: ${{ env.TF_DIR }}
 
       - name: Terraform Destroy
-        run: terraform destroy -auto-approve -var-file='preview.tfvars'
+        run: |
+          terraform destroy -auto-approve -var-file='preview.tfvars' 2>&1 | \
+          grep -v -E '^[[:space:]]*(module\.|random_|aws_).*: (Creating|Creation complete|Still creating|Modifications complete|Destroying|Destruction complete|Reading\.\.\.)' | \
+          grep -v -E '^\[.*\][[:space:]]*module\..*$' | \
+          grep -v '^[0-9]+[[:space:]]'
         working-directory: ${{ env.TF_DIR }}
 
   deploy:
@@ -168,18 +184,30 @@ jobs:
 
       - name: Terraform Destroy (Cleanup)
         id: destroy
-        run: terraform destroy -auto-approve -var-file='${{ env.TF_VARS_FILE }}'
+        run: |
+          terraform destroy -auto-approve -var-file='${{ env.TF_VARS_FILE }}' 2>&1 | \
+          grep -v -E '^[[:space:]]*(module\.|random_|aws_).*: (Creating|Creation complete|Still creating|Modifications complete|Destroying|Destruction complete|Reading\.\.\.)' | \
+          grep -v -E '^\[.*\][[:space:]]*module\..*$' | \
+          grep -v '^[0-9]+[[:space:]]'
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -var-file='${{ env.TF_VARS_FILE }}' -out=tfplan
+        run: |
+          terraform plan -var-file='${{ env.TF_VARS_FILE }}' 2>&1 | \
+          grep -v -E '^[[:space:]]*(module\.|random_|aws_).*: (Creating|Creation complete|Still creating|Modifications complete|Destroying|Destruction complete|Reading\.\.\.|Plan:)' | \
+          grep -v -E '^\[.*\][[:space:]]*module\..*$' | \
+          grep -v '^[0-9]+[[:space:]]'
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
       - name: Terraform Apply
         id: apply
-        run: terraform apply -var-file='${{ env.TF_VARS_FILE }}' -auto-approve
+        run: |
+          terraform apply -var-file='${{ env.TF_VARS_FILE }}' -auto-approve 2>&1 | \
+          grep -v -E '^[[:space:]]*(module\.|random_|aws_).*: (Creating|Creation complete|Still creating|Modifications complete|Destroying|Destruction complete|Reading\.\.\.)' | \
+          grep -v -E '^\[.*\][[:space:]]*module\..*$' | \
+          grep -v '^[0-9]+[[:space:]]'
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
