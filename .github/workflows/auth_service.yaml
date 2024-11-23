@@ -77,34 +77,9 @@ jobs:
 
       - uses: actions/github-script@v6
         if: github.event_name == 'pull_request'
-        env:
-          APPLY: "terraform\n${{ steps.apply.outputs.stdout }}"
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const MAX_COMMENT_LENGTH = 65536;
-            const MAX_OUTPUT_LENGTH = 10000; // Limit the output length to avoid argument list too long error
-
-            const truncateOutput = (output, maxLength) => {
-              if (output.length <= maxLength) return output;
-              return output.substring(0, maxLength) + '\n... (Output truncated due to length)';
-            };
-
-            const createSummary = (stdout) => {
-              const isSuccess = stdout.includes('Apply complete!') || 
-                              stdout.includes('Successfully configured');
-              const hasErrors = stdout.includes('Error:') || 
-                              stdout.includes('Failed to');
-              
-              if (hasErrors) {
-                return '❌ Deployment encountered errors. Please check the workflow logs for details.';
-              } else if (isSuccess) {
-                return '✅ Deployment completed successfully!';
-              } else {
-                return '⚠️ Deployment status unclear. Please check the workflow logs for details.';
-              }
-            };
-
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -115,16 +90,16 @@ jobs:
               return comment.user.type === 'Bot' && comment.body.includes('Terraform Apply Results');
             });
 
-            let output = `#### Terraform Apply Results 🌟\n`;
-            const applyOutput = truncateOutput(`${{ steps.apply.outputs.stdout }}`, MAX_OUTPUT_LENGTH);
+            const exitCode = '${{ steps.apply.outcome }}' === 'success' ? 0 : 1;
 
-            output += createSummary(applyOutput);
-            output += '\n\n<details><summary>Show Output (Truncated)</summary>\n\n';
-            output += '```\n' + applyOutput + '\n```\n\n';
-            output += '</details>\n\n';
-            output += '> [!NOTE]\n';
-            output += '> The output might be truncated. Check the Actions tab for complete logs.\n\n';
-            output += `*Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            let output = `#### Terraform Apply Results 🌟\n`;
+            if (exitCode === 0) {
+              output += '✅ Deployment completed successfully!\n';
+            } else {
+              output += '❌ Deployment encountered errors. Please check the workflow logs for details.\n';
+            }
+
+            output += `\n*Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
 
             if (botComment) {
               await github.rest.issues.updateComment({
