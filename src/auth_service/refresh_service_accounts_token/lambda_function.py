@@ -66,7 +66,7 @@ def refresh_service_account_access_token(service_account: str) -> Dict:
 
         # Prepare login payload with complete API Gateway format
         login_payload = {
-            "headers": {"origin": "*", "Content-Type": "application/json"},
+            "headers": {"Content-Type": "application/json"},
             "httpMethod": "POST",
             "body": json.dumps({"account": service_account, "password": password}),
             "requestContext": {"http": {"method": "POST"}},
