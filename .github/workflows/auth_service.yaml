@@ -82,10 +82,15 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const MAX_COMMENT_LENGTH = 65536; // GitHub API comment length limit
+            const MAX_COMMENT_LENGTH = 65536;
+            const MAX_OUTPUT_LENGTH = 10000; // Limit the output length to avoid argument list too long error
+
+            const truncateOutput = (output, maxLength) => {
+              if (output.length <= maxLength) return output;
+              return output.substring(0, maxLength) + '\n... (Output truncated due to length)';
+            };
 
             const createSummary = (stdout) => {
-              // Check for success or failure keywords
               const isSuccess = stdout.includes('Apply complete!') || 
                               stdout.includes('Successfully configured');
               const hasErrors = stdout.includes('Error:') || 
@@ -94,7 +99,7 @@ jobs:
               if (hasErrors) {
                 return '❌ Deployment encountered errors. Please check the workflow logs for details.';
               } else if (isSuccess) {
-                return '✅ Deployment completed successfully! The details are too long to display here.';
+                return '✅ Deployment completed successfully!';
               } else {
                 return '⚠️ Deployment status unclear. Please check the workflow logs for details.';
               }
@@ -111,21 +116,15 @@ jobs:
             });
 
             let output = `#### Terraform Apply Results 🌟\n`;
-            const applyOutput = `${{ steps.apply.outputs.stdout }}`;
+            const applyOutput = truncateOutput(`${{ steps.apply.outputs.stdout }}`, MAX_OUTPUT_LENGTH);
 
-            if (applyOutput.length > MAX_COMMENT_LENGTH - 500) { // Reserve space for other text
-              output += createSummary(applyOutput);
-              output += '\n\n> [!NOTE]\n';
-              output += '> The complete output was too long to display here.\n';
-              output += '> You can find the full logs in the Actions tab.\n';
-            } else {
-              output += `Preview environment has been deployed. You can now test your changes.\n\n`;
-              output += `<details><summary>Show Actual Apply</summary>\n\n`;
-              output += `\`\`\`\n${applyOutput}\n\`\`\`\n\n`;
-              output += `</details>\n`;
-            }
-
-            output += `\n*Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            output += createSummary(applyOutput);
+            output += '\n\n<details><summary>Show Output (Truncated)</summary>\n\n';
+            output += '```\n' + applyOutput + '\n```\n\n';
+            output += '</details>\n\n';
+            output += '> [!NOTE]\n';
+            output += '> The output might be truncated. Check the Actions tab for complete logs.\n\n';
+            output += `*Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
 
             if (botComment) {
               await github.rest.issues.updateComment({
