@@ -607,9 +607,9 @@ module "refresh_service_accounts_token_lambda" {
   }
 
   allowed_triggers = {
-    AllowExecutionFromAPIGateway = {
-      service    = "apigateway"
-      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+    AllowExecutionFromEventBridgeScheduler = {
+      service    = "scheduler"
+      source_arn = aws_scheduler_schedule.refresh_service_accounts_token.arn
     }
   }
 
