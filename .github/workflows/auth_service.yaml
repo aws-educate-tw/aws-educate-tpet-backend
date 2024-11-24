@@ -16,6 +16,15 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   TF_DIR: ./src/auth_service/terraform
+  GREP_FILTER: >-
+    grep -v -E '^[[:space:]]*(module\.|random_|aws_).*: (Creating|Creation complete|Still creating|Modifications complete|Destroying|Destruction complete|Reading\.\.\.|Plan:|Read complete after)' |
+    grep -v -E '^\[.*\][[:space:]]*module\..*$' |
+    grep -v '^[0-9]+[[:space:]]' |
+    grep -v 'Creation complete after' |
+    grep -v 'Still creating\.\.\.' |
+    grep -v ': Reading\.\.\.' |
+    grep -v ': Read complete' |
+    grep -v 'Refreshing state\.\.\.'
 
 permissions:
   contents: write
@@ -47,26 +56,27 @@ jobs:
 
       - name: Terraform Destroy (Cleanup)
         id: destroy
-        run: terraform destroy -auto-approve -var-file='preview.tfvars'
+        run: |
+          terraform destroy -auto-approve -var-file='preview.tfvars' 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -var-file='preview.tfvars'
+        run: |
+          terraform plan -var-file='preview.tfvars' 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
       - name: Terraform Apply
         id: apply
-        run: terraform apply -var-file='preview.tfvars' -auto-approve
+        run: |
+          terraform apply -var-file='preview.tfvars' -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
       - uses: actions/github-script@v6
         if: github.event_name == 'pull_request'
-        env:
-          APPLY: "terraform\n${{ steps.apply.outputs.stdout }}"
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -80,18 +90,16 @@ jobs:
               return comment.user.type === 'Bot' && comment.body.includes('Terraform Apply Results');
             });
 
-            const output = `#### Terraform Apply Results 🌟
-            Preview environment has been deployed. You can now test your changes.
+            const exitCode = '${{ steps.apply.outcome }}' === 'success' ? 0 : 1;
 
-            <details><summary>Show Actual Apply</summary>
+            let output = `#### Terraform Apply Results 🌟\n`;
+            if (exitCode === 0) {
+              output += '✅ Deployment completed successfully!\n';
+            } else {
+              output += '❌ Deployment encountered errors. Please check the workflow logs for details.\n';
+            }
 
-            \`\`\`\n
-            ${{ steps.apply.outputs.stdout }}
-            \`\`\`
-
-            </details>
-
-            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            output += `\n*Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
 
             if (botComment) {
               await github.rest.issues.updateComment({
@@ -129,7 +137,8 @@ jobs:
         working-directory: ${{ env.TF_DIR }}
 
       - name: Terraform Destroy
-        run: terraform destroy -auto-approve -var-file='preview.tfvars'
+        run: |
+          terraform destroy -auto-approve -var-file='preview.tfvars' 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
 
   deploy:
@@ -168,18 +177,21 @@ jobs:
 
       - name: Terraform Destroy (Cleanup)
         id: destroy
-        run: terraform destroy -auto-approve -var-file='${{ env.TF_VARS_FILE }}'
+        run: |
+          terraform destroy -auto-approve -var-file='${{ env.TF_VARS_FILE }}' 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -var-file='${{ env.TF_VARS_FILE }}' -out=tfplan
+        run: |
+          terraform plan -var-file='${{ env.TF_VARS_FILE }}' 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
       - name: Terraform Apply
         id: apply
-        run: terraform apply -var-file='${{ env.TF_VARS_FILE }}' -auto-approve
+        run: |
+          terraform apply -var-file='${{ env.TF_VARS_FILE }}' -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true

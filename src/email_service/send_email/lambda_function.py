@@ -206,9 +206,15 @@ def lambda_handler(event, context):
     for record in event["Records"]:
         try:
             sqs_message = get_sqs_message(record)
-            access_token = sqs_message[
-                "access_token"
-            ]  # Get access_token from SQS message
+            access_token = sqs_message["access_token"]
+            recipient_source = sqs_message.get("recipient_source")
+            if recipient_source is None:
+                logger.warning(
+                    "Missing recipient_source in SQS message; defaulting to SPREADSHEET mode."
+                )
+                recipient_source = (
+                    "SPREADSHEET"  # Set a default value or handle as necessary
+                )
 
             # Set the current user information using the access token
             current_user_util.set_current_user_by_access_token(access_token)
@@ -222,13 +228,24 @@ def lambda_handler(event, context):
             )
 
             if response["Count"] == 0:
-                # Run ID does not exist, save all emails to DynamoDB with PENDING status
-                spreadsheet_info = file_service.get_file_info(
-                    sqs_message["spreadsheet_file_id"], access_token
-                )
-                spreadsheet_s3_object_key = spreadsheet_info["s3_object_key"]
-                sheet_data, _ = read_sheet_data_from_s3(spreadsheet_s3_object_key)
-                logger.info("Read sheet data from S3: %s", sheet_data)
+                if recipient_source == "SPREADSHEET":
+                    spreadsheet_info = file_service.get_file_info(
+                        sqs_message["spreadsheet_file_id"], access_token
+                    )
+                    spreadsheet_s3_object_key = spreadsheet_info["s3_object_key"]
+                    sheet_data, _ = read_sheet_data_from_s3(spreadsheet_s3_object_key)
+                    logger.info("Read sheet data from S3: %s", sheet_data)
+                else:  # DIRECT mode
+                    # Convert recipients to the same format as sheet_data
+                    sheet_data = []
+                    for recipient in sqs_message["recipients"]:
+                        recipient_data = {
+                            "Email": recipient["email"],
+                            **recipient["template_variables"],
+                        }
+                        sheet_data.append(recipient_data)
+                    logger.info("Processed direct recipients data: %s", sheet_data)
+
                 save_emails_to_dynamodb(sqs_message, sheet_data)
 
             fetch_and_process_pending_emails(sqs_message)
