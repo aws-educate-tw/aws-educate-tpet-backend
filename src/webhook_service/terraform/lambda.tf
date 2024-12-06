@@ -27,7 +27,7 @@ locals {
 }
 
 provider "docker" {
-  host = "unix:///Users/chungchihhan/.docker/run/docker.sock"
+  host = var.docker_host
 
   registry_auth {
     address  = format("%v.dkr.ecr.%v.amazonaws.com", data.aws_caller_identity.this.account_id, var.aws_region)
