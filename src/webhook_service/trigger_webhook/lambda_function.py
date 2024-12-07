@@ -70,6 +70,7 @@ class WebhookHandler:
                 },
                 json=email_body
             )
+            logger.info(f'Send email response: {response.json()}')
             
             return {
                 'statusCode': response.status_code,
@@ -83,12 +84,18 @@ class WebhookHandler:
             }
 
     def prepare_email_body(self, webhook_details: Dict[str, Any], recipient_email: str) -> Dict[str, Any]:
+        attachment_file_ids = webhook_details.get("attachment_file_ids", [])
+        attachment_file_ids = [item for item in attachment_file_ids if item.strip()]
+
+        if not attachment_file_ids:
+            attachment_file_ids = []
+
         return {
             "recipient_source": "DIRECT",
             "subject": webhook_details["subject"],
             "display_name": webhook_details["display_name"],
             "template_file_id": webhook_details["template_file_id"],
-            "attachment_file_ids": webhook_details["attachment_file_ids"],
+            "attachment_file_ids": attachment_file_ids,
             "is_generate_certificate": webhook_details["is_generate_certificate"],
             "reply_to": webhook_details["reply_to"],
             "sender_local_part": webhook_details["sender_local_part"],
@@ -183,7 +190,7 @@ def lambda_handler(event, context):
         
         email_body = handler.prepare_email_body(webhook_details, recipient_email)
         send_email_status = handler.send_email(email_body)
-        logger.info(f'Email sent successfully: {send_email_status}')
+        logger.info(f'Email status: {send_email_status}')
         
         return {
             'statusCode': 202,
