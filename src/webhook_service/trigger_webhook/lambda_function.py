@@ -26,10 +26,10 @@ class WebhookHandler:
     def process_request_body(self, body: str, is_base64_encoded: bool) -> Tuple[str, str]:
         if body is None:
             raise ValueError('No body in the request')
-            
+                    
         decoded_str = base64.b64decode(body).decode('utf-8') if is_base64_encoded else body
         params = parse_qs(decoded_str)
-        
+
         svid_value = params.get('svid', [None])[0]
         hash_value = params.get('hash', [None])[0]
         
@@ -60,6 +60,7 @@ class WebhookHandler:
     def send_email(self, email_body: Dict[str, Any]) -> Dict[str, Any]:
         try:
             access_token = self.secrets_manager.get_access_token("surveycake")
+            logger.info(f'Send email API endpoint: {Config.SEND_EMAIL_API_ENDPOINT}')
             
             response = requests.post(
                 Config.SEND_EMAIL_API_ENDPOINT,
@@ -72,11 +73,14 @@ class WebhookHandler:
             
             return {
                 'statusCode': response.status_code,
-                'body': response.json() if response.status_code == 200 else response.text
+                'body': response.json()
             }
         except Exception as e:
-            print(f'Failed to send email: {str(e)}')
-            return {'error': str(e)}
+            logger.error(f'Failed to send email: {str(e)}')
+            return {
+                'statusCode': 500,
+                'body': json.dumps({'error': str(e)})
+            }
 
     def prepare_email_body(self, webhook_details: Dict[str, Any], recipient_email: str) -> Dict[str, Any]:
         return {
@@ -97,13 +101,35 @@ class WebhookHandler:
                 }
             ]
         }
+    
+    def check_headers_agent(self, headers: Dict[str, str]) -> bool:
+        allowed_user_agents = ["GuzzleHttp/7"]
+        user_agent = headers.get("User-Agent")
+        
+        if user_agent not in allowed_user_agents:
+            logger.warning(f"Unauthorized User-Agent: {user_agent}")
+            return False
+        return True
 
 def lambda_handler(event, context):
+    # Log the entire event for debugging purposes
+    logger.info(f'Event: {json.dumps(event)}')
+    
     try:
         handler = WebhookHandler()
+        header = event.get('headers', {})
+
+        check_headers_agent = handler.check_headers_agent(header)
+        if not check_headers_agent:
+            return {
+                "statusCode": 403,
+                "body": json.dumps({"message": "Forbidden: Unauthorized User-Agent"})
+            }
+            
+
         webhook_id = event["pathParameters"]["webhook_id"]
         webhook_details = handler.get_webhook_details(webhook_id)
-        logger.info(f'Webhook details that have been saved to DynamoDB: {webhook_details}')
+        logger.info(f'Webhook details in DynamoDB: {webhook_details}')
         
         if not webhook_details:
             return {
@@ -116,6 +142,8 @@ def lambda_handler(event, context):
                 event.get('body'),
                 event.get('isBase64Encoded', False)
             )
+            logger.info(f"Decoded svid: {svid_value}, hash: {hash_value}")
+
         except ValueError as e:
             return {
                 'statusCode': 400,
@@ -158,15 +186,16 @@ def lambda_handler(event, context):
         logger.info(f'Email sent successfully: {send_email_status}')
         
         return {
-            'statusCode': 200,
+            'statusCode': 202,
             'body': json.dumps({
-                'message': 'Email sent successfully',
-                'send_email_status': send_email_status
-            })
+                'message': 'Email is being processed...',
+                'webhook_id': webhook_id,
+                'recipient_email': recipient_email
+                })
         }
         
     except Exception as e:
-        print(f'Error processing webhook: {str(e)}')
+        logger.error(f'Error: {str(e)}')
         return {
             'statusCode': 500,
             'body': json.dumps({'error': str(e)})
