@@ -22,6 +22,8 @@ def lambda_handler(event, context):
     webhook_id = event["pathParameters"]["webhook_id"]
     webhook_details = table.get_item(Key={"webhook_id": webhook_id})
 
+    print("webhook_details", webhook_details)
+
     if "Item" not in webhook_details:
         return {
             "statusCode": 404, 
@@ -29,6 +31,8 @@ def lambda_handler(event, context):
         }
 
     webhook_details_item = webhook_details.get("Item")
+
+    print("webhook_details_item", webhook_details_item)
 
     if webhook_details_item is None:
         return {
@@ -74,13 +78,16 @@ def lambda_handler(event, context):
         }
     
     encrypted_data = base64.b64decode(encrypted_data_response.content)
-    print("encrypted_data", encrypted_data)
+    # print("encrypted_data", encrypted_data)
 
     # Retrieve hash_key and IV_key from the DynamoDB item
-    hash_key = webhook_details_item.get('hash_key').encode('utf-8')
-    iv_key = webhook_details_item.get('IV_key').encode('utf-8')
-
     try:
+        hash_key = webhook_details_item.get('hash_key').encode('utf-8')
+        iv_key = webhook_details_item.get('iv_key').encode('utf-8')
+
+        if not hash_key or not iv_key:
+            raise ValueError('Missing hash_key or IV_key in the webhook details')
+
         cipher = AES.new(hash_key, AES.MODE_CBC, iv_key)
         decrypted_data = cipher.decrypt(encrypted_data).rstrip(b'\0')
         decrypted_str = decrypted_data.decode('utf-8')
@@ -123,12 +130,13 @@ def lambda_handler(event, context):
                 "cc": webhook_details_item["cc"],
                 "recipients": recipients,
                 # "surveycake_link": webhook_details_item["surveycake_link"],
-                # "hask_key": webhook_details_item["hask_key"],
+                # "hash_key": webhook_details_item["hash_key"],
                 # "iv_key": webhook_details_item["iv_key"],
                 # "webhook_name": webhook_details_item["webhook_name"]
             }
         
             send_email_status = send_email(send_email_body)
+            print("send_email_status", send_email_status)
             return {
                 'statusCode': 200,
                 'body': json.dumps({
@@ -151,18 +159,59 @@ def lambda_handler(event, context):
 
 def send_email(send_email_body):
     try:
+        access_token = get_access_token_from_secrets_manager("surveycake")
+
         send_email_api_endpoint = os.getenv('SEND_EMAIL_API_ENDPOINT')
         response = requests.post(
             send_email_api_endpoint,
             headers={
                 'Content-Type': 'application/json',
+                'Authorization': f'Bearer {access_token}'
             },
-            body= json.dumps(send_email_body)
+            json=send_email_body 
         )
 
-        return response
-    
+        print("send_email response", response)
 
+        return {
+            'statusCode': response.status_code,
+            'body': response.json() if response.status_code == 200 else response.text
+        }
+    
     except Exception as e:
         print(f'Failed to send email: {str(e)}')
-        return str(e)
+        return {'error': str(e)}
+    
+# LOGIN_FUNCTION_ARN = os.getenv("LOGIN_FUNCTION_ARN")
+ENVIRONMENT = os.getenv("ENVIRONMENT")
+
+SERVICE_ACCOUNTS = [
+    "surveycake",
+]
+
+def get_secret_path(service_account: str, secret_type: str) -> str:
+    """
+    Generate secret path based on environment and service account.
+
+    Args:
+        service_account (str): Name of the service account (e.g., 'surveycake', 'slack')
+        secret_type (str): Type of secret ("password" or "access-token")
+
+    Returns:
+        str: Full secret path in Secrets Manager
+    """
+    return f"aws-educate-tpet/{ENVIRONMENT}/service-accounts/{service_account}/{secret_type}"
+
+
+def get_access_token_from_secrets_manager(service_account: str) -> str:
+    secrets_client = boto3.client('secretsmanager')
+
+    try:
+        response = secrets_client.get_secret_value(
+            SecretId=get_secret_path(service_account, "access-token")
+        )
+        access_token = json.loads(response["SecretString"])["access_token"]
+        return access_token
+    except Exception as e:
+        print(f"Failed to retrieve access token: {str(e)}")
+        raise

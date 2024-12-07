@@ -45,7 +45,7 @@ def lambda_handler(event, context):
         "bcc": webhook_details_item["bcc"],
         "cc": webhook_details_item["cc"],
         "surveycake_link": webhook_details_item["surveycake_link"],
-        "hask_key": webhook_details_item["hask_key"],
+        "hash_key": webhook_details_item["hash_key"],
         "iv_key": webhook_details_item["iv_key"],
         "webhook_name": webhook_details_item["webhook_name"]
     }

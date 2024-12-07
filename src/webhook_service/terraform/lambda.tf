@@ -340,6 +340,15 @@ module "trigger_webhook_lambda" {
 
   attach_policy_statements = true
   policy_statements = {
+    secrets_manager = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue",
+      ],
+      resources = [
+        "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.this.account_id}:secret:aws-educate-tpet/${var.environment}/service-accounts/*/access-token-*"
+      ]
+    },
     dynamodb_crud = {
       effect = "Allow",
       actions = [

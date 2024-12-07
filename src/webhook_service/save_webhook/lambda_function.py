@@ -38,7 +38,7 @@ def lambda_handler(event, context):
             "bcc": data.get("bcc", []),
             "cc": data.get("cc", []),
             "surveycake_link": data.get("surveycake_link"),
-            "hask_key": data.get("hask_key"),
+            "hash_key": data.get("hash_key"),
             "iv_key": data.get("iv_key"),
             "webhook_name": data.get("webhook_name")
         }
