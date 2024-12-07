@@ -193,7 +193,7 @@ module "save_webhook_lambda" {
     "ENVIRONMENT"                  = var.environment,
     "SERVICE"                      = var.service_underscore,
     "DYNAMODB_TABLE"               = var.dynamodb_table
-    "TRIGGER_WEBHOOK_API_ENDPOINT" = var.trigger_webhook_api_endpoint
+    "TRIGGER_WEBHOOK_API_ENDPOINT" = local.api_endpoints.trigger_webhook
   }
 
   allowed_triggers = {
@@ -319,7 +319,7 @@ module "trigger_webhook_lambda" {
     "ENVIRONMENT"             = var.environment,
     "SERVICE"                 = var.service_underscore,
     "DYNAMODB_TABLE"          = var.dynamodb_table
-    "SEND_EMAIL_API_ENDPOINT" = var.send_email_api_endpoint
+    "SEND_EMAIL_API_ENDPOINT" = local.api_endpoints.send_email
   }
 
   allowed_triggers = {
