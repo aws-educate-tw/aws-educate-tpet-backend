@@ -130,7 +130,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.8.3
+          terraform_version: 1.9.3
 
       - name: Terraform Init
         run: terraform init -backend-config="preview.tfbackend" -reconfigure
@@ -155,7 +155,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.8.3
+          terraform_version: 1.9.3
 
       - name: Set Environment Variables
         run: |
