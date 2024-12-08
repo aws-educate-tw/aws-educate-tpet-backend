@@ -189,16 +189,34 @@ def lambda_handler(event, context):
             }
         
         email_body = handler.prepare_email_body(webhook_details, recipient_email)
-        send_email_status = handler.send_email(email_body)
-        logger.info(f'Email status: {send_email_status}')
+        email_status = handler.send_email(email_body)
+        logger.info(f'Email status: {email_status}')
         
-        return {
-            'statusCode': 202,
-            'body': json.dumps({
-                'message': 'Email is being processed...',
-                'webhook_id': webhook_id,
-                'recipient_email': recipient_email
+        if email_status.get('statusCode') != 202:
+            return {
+                "statusCode": email_status.get('statusCode', 500),
+                "body": json.dumps({
+                    "status": "error",
+                    "message": "Failed to send email",
+                    "details": email_status.get('body'),
                 })
+            }
+        
+        # Successful response
+        return {
+            "statusCode": 202,
+            "body": json.dumps({
+                "status": "success",
+                "message": "Email is being processed successfully",
+                "data": {
+                    "recipient_email": recipient_email,
+                    "webhook_id": webhook_id,
+                },
+                "send_email_response": {
+                    "status_code": email_status.get('statusCode'),
+                    "body": email_status.get('body')
+                }
+            })
         }
         
     except Exception as e:
