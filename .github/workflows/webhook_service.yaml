@@ -1,0 +1,197 @@
+name: "Webhook Service Infrastructure Change Management Pipeline with GitHub Actions"
+
+on:
+  pull_request:
+    paths:
+      - src/webhook_service/**
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - src/webhook_service/**
+
+env:
+  TF_LOG: INFO
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  TF_DIR: ./src/webhook_service/terraform
+  GREP_FILTER: >-
+    grep -v -E '^[[:space:]]*(module\.|random_|aws_).*: (Creating|Creation complete|Still creating|Modifications complete|Destroying|Destruction complete|Reading\.\.\.|Plan:|Read complete after)' |
+    grep -v -E '^\[.*\][[:space:]]*module\..*$' |
+    grep -v '^[0-9]+[[:space:]]' |
+    grep -v 'Creation complete after' |
+    grep -v 'Still creating\.\.\.' |
+    grep -v ': Reading\.\.\.' |
+    grep -v ': Read complete' |
+    grep -v 'Refreshing state\.\.\.'
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: read
+  checks: write
+
+jobs:
+  preview:
+    name: "Deploy Preview Environment"
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Print Debug Information"
+        run: |
+          echo "Event Name: ${{ github.event_name }}"
+          echo "Event Action: ${{ github.event.action }}"
+          echo "Merged: ${{ github.event.pull_request.merged }}"
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.3
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config="preview.tfbackend" -reconfigure
+        working-directory: ${{ env.TF_DIR }}
+
+      - name: Terraform Destroy (Cleanup)
+        id: destroy
+        run: |
+          terraform destroy -auto-approve -var-file='preview.tfvars' 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -var-file='preview.tfvars' 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      - name: Terraform Apply
+        id: apply
+        run: |
+          terraform apply -var-file='preview.tfvars' -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      - uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => {
+              return comment.user.type === 'Bot' && comment.body.includes('Terraform Apply Results');
+            });
+
+            const exitCode = '${{ steps.apply.outcome }}' === 'success' ? 0 : 1;
+
+            let output = `#### Terraform Apply Results 🌟\n`;
+            if (exitCode === 0) {
+              output += '✅ Deployment completed successfully!\n';
+            } else {
+              output += '❌ Deployment encountered errors. Please check the workflow logs for details.\n';
+            }
+
+            output += `\n*Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: output,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output,
+              });
+            }
+
+  cleanup_preview:
+    name: "Cleanup Preview Environment"
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Print Debug Information"
+        run: |
+          echo "Event Name: ${{ github.event_name }}"
+          echo "Event Action: ${{ github.event.action }}"
+          echo "Merged: ${{ github.event.pull_request.merged }}"
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.3
+
+      - name: Terraform Init
+        run: terraform init -backend-config="preview.tfbackend" -reconfigure
+        working-directory: ${{ env.TF_DIR }}
+
+      - name: Terraform Destroy
+        run: |
+          terraform destroy -auto-approve -var-file='preview.tfvars' 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+
+  deploy:
+    name: "Deploy to Target Environment"
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    needs: [cleanup_preview]
+    steps:
+      - name: "Print Debug Information"
+        run: |
+          echo "Event Name: ${{ github.event_name }}"
+          echo "Event Action: ${{ github.event.action }}"
+          echo "Merged: ${{ github.event.pull_request.merged }}"
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.3
+
+      - name: Set Environment Variables
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+            echo "TF_VARS_FILE=prod.tfvars" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+            echo "TF_VARS_FILE=dev.tfvars" >> $GITHUB_ENV
+          else
+            echo "Unsupported branch: ${{ github.ref }}"
+            exit 1
+          fi
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config="${{ env.ENVIRONMENT }}.tfbackend" -reconfigure
+        working-directory: ${{ env.TF_DIR }}
+
+      - name: Terraform Destroy (Cleanup)
+        id: destroy
+        run: |
+          terraform destroy -auto-approve -var-file='${{ env.TF_VARS_FILE }}' 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -var-file='${{ env.TF_VARS_FILE }}' 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      - name: Terraform Apply
+        id: apply
+        run: |
+          terraform apply -var-file='${{ env.TF_VARS_FILE }}' -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
