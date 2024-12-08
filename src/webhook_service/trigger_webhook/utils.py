@@ -1,9 +1,11 @@
 import json
 from decimal import Decimal
+from typing import Any, Dict
+
 import boto3
-from typing import Dict, Any
-from Crypto.Cipher import AES
 from config import Config
+from Crypto.Cipher import AES
+
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):

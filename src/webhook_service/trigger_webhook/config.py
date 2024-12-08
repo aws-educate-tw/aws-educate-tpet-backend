@@ -1,5 +1,6 @@
 import os
 
+
 class Config:
     DYNAMODB_TABLE = os.getenv("DYNAMODB_TABLE")
     ENVIRONMENT = os.getenv("ENVIRONMENT")
