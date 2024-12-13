@@ -34,6 +34,16 @@ api_gateway_origins = [
     domain_name  = "dev-auth-service-internal-api-tpet.aws-educate.tw"
     path_pattern = "/dev/auth*"
   },
+  # {
+  #   # Webhook Service - prod
+  #   domain_name  = "prod-webhook-service-internal-api-tpet.aws-educate.tw"
+  #   path_pattern = "/prod/*webhook*"
+  # },
+  {
+    # Webhook Service - dev
+    domain_name  = "dev-webhook-service-internal-api-tpet.aws-educate.tw"
+    path_pattern = "/dev/*webhook*"
+  },
   {
     # Email Service - prod
     domain_name  = "prod-email-service-internal-api-tpet.aws-educate.tw"
