@@ -1,9 +1,11 @@
 import json
-import os
-from decimal import Decimal
-import uuid
 import logging
+import os
+import uuid
+from decimal import Decimal
+
 import boto3
+from time_util import get_current_utc_time
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
@@ -18,16 +20,23 @@ class DecimalEncoder(json.JSONEncoder):
             return float(o)
         return super(DecimalEncoder, self).default(o)
 
-
 def lambda_handler(event, context):
     try:
+        # Parse the event body
         data = json.loads(event['body'])
+
+        # Generate webhook ID and URL
         webhook_id = str(uuid.uuid4())
         webhook_url = f"{trigger_webhook_api_endpoint}/{webhook_id}"
 
+        # Use time_util to get current time
+        created_at = get_current_utc_time()
+
+        # Prepare the DynamoDB item
         item = {
             "webhook_id": webhook_id,
             "webhook_url": webhook_url,
+            "created_at": created_at, 
             "subject": data.get("subject"),
             "display_name": data.get("display_name"),
             "template_file_id": data.get("template_file_id"),
@@ -59,9 +68,11 @@ def lambda_handler(event, context):
                     "message": "Webhook successfully created.",
                     "webhook_id": webhook_id,
                     "webhook_url": webhook_url,
+                    "created_at": created_at 
                 }, cls=DecimalEncoder),
         }
     except Exception as e:
+        logger.error("Error occurred: %s", str(e))
         return {
             "statusCode": 500,
             "body": json.dumps({"message": str(e)})
