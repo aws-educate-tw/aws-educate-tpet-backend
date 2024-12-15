@@ -8,7 +8,8 @@ import boto3
 from time_util import get_current_utc_time
 
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
+main_table = dynamodb.Table(os.getenv("DYNAMODB_TABLE")) 
+total_count_table = dynamodb.Table(os.getenv("DYNAMODB_TABLE_TOTAL_COUNT"))
 trigger_webhook_api_endpoint = os.getenv("TRIGGER_WEBHOOK_API_ENDPOINT")
 
 logger = logging.getLogger(__name__)
@@ -20,10 +21,34 @@ class DecimalEncoder(json.JSONEncoder):
             return float(o)
         return super(DecimalEncoder, self).default(o)
 
+def increment_counter(webhook_type: str) -> int:
+    """
+    Increment the total count for a webhook_type atomically and return the new total.
+    """
+    try:
+        response = total_count_table.update_item(
+            Key={"webhook_type": webhook_type},
+            UpdateExpression="ADD total_count :increment",
+            ExpressionAttributeValues={":increment": 1},
+            ReturnValues="UPDATED_NEW"
+        )
+        new_total = response["Attributes"]["total_count"]
+        logger.info(f"Updated total count for {webhook_type}: {new_total}")
+        return new_total
+    except Exception as e:
+        logger.error(f"Error updating counter for {webhook_type}: {str(e)}")
+        raise
+
 def lambda_handler(event, context):
     try:
         # Parse the event body
         data = json.loads(event['body'])
+
+        # Determine webhook_type
+        webhook_type = data.get("webhook_type") if data.get("webhook_type") in ["surveycake", "slack"] else "surveycake"
+
+        # Increment the total count and get the new sequence_number
+        sequence_number = increment_counter(webhook_type)
 
         # Generate webhook ID and URL
         webhook_id = str(uuid.uuid4())
@@ -34,9 +59,11 @@ def lambda_handler(event, context):
 
         # Prepare the DynamoDB item
         item = {
+            "webhook_type": webhook_type,
+            "sequence_number": sequence_number,
             "webhook_id": webhook_id,
             "webhook_url": webhook_url,
-            "created_at": created_at, 
+            "created_at": created_at,
             "subject": data.get("subject"),
             "display_name": data.get("display_name"),
             "template_file_id": data.get("template_file_id"),
@@ -52,8 +79,9 @@ def lambda_handler(event, context):
             "webhook_name": data.get("webhook_name")
         }
 
+        # Save the item to the main table
         logger.info("Attempting to put item into DynamoDB: %s", item)
-        response = table.put_item(Item=item)
+        response = main_table.put_item(Item=item)
         logger.info("DynamoDB put_item response: %s", response)
 
         return {
@@ -68,7 +96,9 @@ def lambda_handler(event, context):
                     "message": "Webhook successfully created.",
                     "webhook_id": webhook_id,
                     "webhook_url": webhook_url,
-                    "created_at": created_at 
+                    "webhook_type": webhook_type,
+                    "sequence_number": sequence_number,
+                    "created_at": created_at
                 }, cls=DecimalEncoder),
         }
     except Exception as e:
