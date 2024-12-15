@@ -45,7 +45,23 @@ def lambda_handler(event, context):
         data = json.loads(event['body'])
 
         # Determine webhook_type
-        webhook_type = data.get("webhook_type") if data.get("webhook_type") in ["surveycake", "slack"] else "surveycake"
+        webhook_type_list = ["surveycake", "slack"]
+        if data.get("webhook_type") in webhook_type_list:
+            webhook_type = data.get("webhook_type")
+        else:
+            return {
+                "statusCode": 400,
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*",
+                },
+                "body": json.dumps(
+                    {
+                        "status": "FAILED",
+                        "message": f"webhook_type must be one of {webhook_type_list}."
+                    }
+                )
+            }
 
         # Increment the total count and get the new sequence_number
         sequence_number = increment_counter(webhook_type)
