@@ -18,6 +18,8 @@ resource "aws_dynamodb_table" "webhook" {
     type = "S"
   }
 
+  # The order of sequence_number is the same as the order of ascending order of created_at
+  # So sorting by sequence_number is the same as sorting by created_at, we only need to use SequenceNumberIndex to sort here.
   global_secondary_index {
     name               = "SequenceNumberIndex" # Updated GSI name
     hash_key           = "webhook_type"        # Partition key

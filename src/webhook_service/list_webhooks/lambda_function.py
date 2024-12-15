@@ -55,11 +55,27 @@ def lambda_handler(event: Dict, context) -> Dict:
         total_count = get_total_count(webhook_type)
 
         # Validate page number
-        if page < 1 or (total_count > 0 and (page - 1) * limit >= total_count):
+        if page < 1:
             return {
                 "statusCode": 400,
                 "headers": {"Content-Type": "application/json"},
                 "body": json.dumps({"error": "Invalid page number."}),
+            }
+        
+        elif limit < 1:
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"error": "Invalid limit value."}),
+            }
+        
+        
+        
+        elif (page - 1) * limit >= total_count:
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"error": "Page number out of range."}),
             }
 
         # Calculate start and end range for the page
@@ -71,6 +87,8 @@ def lambda_handler(event: Dict, context) -> Dict:
             end_key = total_count - (page - 1) * limit
 
         # Query DynamoDB for the calculated range
+        # The order of sequence_number is the same as the order of ascending order of created_at
+        # So sorting by sequence_number is the same as sorting by created_at, we only need to use SequenceNumberIndex to sort here.
         response = table.query(
             IndexName="SequenceNumberIndex",
             KeyConditionExpression=Key("webhook_type").eq(webhook_type) &
