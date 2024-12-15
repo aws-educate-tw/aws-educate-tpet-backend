@@ -5,11 +5,11 @@ import uuid
 from decimal import Decimal
 
 import boto3
+from increment_total_count import increment_total_count
 from time_util import get_current_utc_time
 
 dynamodb = boto3.resource("dynamodb")
 main_table = dynamodb.Table(os.getenv("DYNAMODB_TABLE")) 
-total_count_table = dynamodb.Table(os.getenv("DYNAMODB_TABLE_TOTAL_COUNT"))
 trigger_webhook_api_endpoint = os.getenv("TRIGGER_WEBHOOK_API_ENDPOINT")
 
 logger = logging.getLogger(__name__)
@@ -20,24 +20,6 @@ class DecimalEncoder(json.JSONEncoder):
         if isinstance(o, Decimal):
             return float(o)
         return super(DecimalEncoder, self).default(o)
-
-def increment_counter(webhook_type: str) -> int:
-    """
-    Increment the total count for a webhook_type atomically and return the new total.
-    """
-    try:
-        response = total_count_table.update_item(
-            Key={"webhook_type": webhook_type},
-            UpdateExpression="ADD total_count :increment",
-            ExpressionAttributeValues={":increment": 1},
-            ReturnValues="UPDATED_NEW"
-        )
-        new_total = response["Attributes"]["total_count"]
-        logger.info(f"Updated total count for {webhook_type}: {new_total}")
-        return new_total
-    except Exception as e:
-        logger.error(f"Error updating counter for {webhook_type}: {str(e)}")
-        raise
 
 def lambda_handler(event, context):
     try:
@@ -64,7 +46,7 @@ def lambda_handler(event, context):
             }
 
         # Increment the total count and get the new sequence_number
-        sequence_number = increment_counter(webhook_type)
+        sequence_number = increment_total_count(webhook_type)
 
         # Generate webhook ID and URL
         webhook_id = str(uuid.uuid4())
@@ -113,7 +95,7 @@ def lambda_handler(event, context):
                     "webhook_id": webhook_id,
                     "webhook_url": webhook_url,
                     "webhook_type": webhook_type,
-                    "sequence_number": sequence_number,
+                    # "sequence_number": sequence_number,
                     "created_at": created_at
                 }, cls=DecimalEncoder),
         }
