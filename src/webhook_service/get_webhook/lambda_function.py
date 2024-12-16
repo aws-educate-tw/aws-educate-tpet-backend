@@ -1,7 +1,7 @@
 import json
+import logging
 import os
 from decimal import Decimal
-import logging
 
 import boto3
 
@@ -47,7 +47,8 @@ def lambda_handler(event, context):
         "surveycake_link": webhook_details_item["surveycake_link"],
         "hash_key": webhook_details_item["hash_key"],
         "iv_key": webhook_details_item["iv_key"],
-        "webhook_name": webhook_details_item["webhook_name"]
+        "webhook_name": webhook_details_item["webhook_name"],
+        "webhook_type": webhook_details_item["webhook_type"],
     }
 
     return {
