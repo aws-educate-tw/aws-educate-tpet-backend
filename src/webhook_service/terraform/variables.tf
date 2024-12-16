@@ -27,6 +27,11 @@ variable "dynamodb_table" {
   description = "Current service's DynamoDB table name"
 }
 
+variable "dynamodb_table_total_count" {
+  description = "Current service's DynamoDB table for total count"
+  
+}
+
 variable "enable_pitr" {
   description = "Enable Point-In-Time Recovery for DynamoDB tables"
   type        = bool
