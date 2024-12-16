@@ -30,13 +30,13 @@ def lambda_handler(event: Dict, context) -> Dict:
     limit = int(query_params.get("limit", 10))  # Default limit to 10
     sort_order = query_params.get("sort_order", "DESC").upper()  # Default to DESC
     page = int(query_params.get("page", 1))  # Default page number is 1
-    webhook_type = query_params.get("webhook_type", "surveycake")  # Default webhook_type
+    webhook_type = query_params.get("webhook_type") # Required parameter
 
-    if not webhook_type:
+    if not webhook_type or webhook_type.strip() == "":
         return {
             'statusCode': 400,
             'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({'error': "'webhook_type' parameter is required."})
+            'body': json.dumps({'error': "'webhook_type' parameter is required and cannot be empty."})
         }
 
     try:
