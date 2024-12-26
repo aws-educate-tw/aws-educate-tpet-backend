@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
+    def default(self, o):
+        if isinstance(o, Decimal):
             # Convert Decimal to float or int, depending on your needs
-            return float(obj)
+            return float(o)
         return super(DecimalEncoder, self).default(obj)
 
 
