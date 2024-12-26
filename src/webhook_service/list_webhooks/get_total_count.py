@@ -18,5 +18,5 @@ def get_total_count(webhook_type: str) -> int:
         total_count = response.get("Item", {}).get("total_count", 0)
         return int(total_count)
     except Exception as e:
-        logger.error(f"Error fetching total count for {webhook_type}: {str(e)}")
+        logger.error("Error fetching total count for %s: %s", webhook_type, str(e))
         raise
