@@ -5,11 +5,11 @@ from decimal import Decimal
 from typing import Dict
 
 import boto3
-from boto3.dynamodb.conditions import Key
-from get_total_count import get_total_count
+from webhook_repository import WebhookRepository
+from webhook_total_count_repository import WebhookTotalCountRepository
 
-dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
+WebhookRepository = WebhookRepository()
+WebhookTotalCountRepository = WebhookTotalCountRepository()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -41,7 +41,7 @@ def lambda_handler(event: Dict, context) -> Dict:
 
     try:
         # Get total count from the total_count table
-        total_count = get_total_count(webhook_type)
+        total_count = WebhookTotalCountRepository.get_total_count(webhook_type)
 
         # Validate page number
         if page < 1:
@@ -74,16 +74,7 @@ def lambda_handler(event: Dict, context) -> Dict:
             start_key = max(total_count - (page * limit) + 1, 1)
             end_key = total_count - (page - 1) * limit
 
-        # Query DynamoDB for the calculated range
-        # The order of sequence_number is the same as the order of ascending order of created_at
-        # So sorting by sequence_number is the same as sorting by created_at, we only need to use SequenceNumberIndex to sort here.
-        response = table.query(
-            IndexName="SequenceNumberIndex",
-            KeyConditionExpression=Key("webhook_type").eq(webhook_type) &
-                                   Key("sequence_number").between(start_key, end_key),
-            ScanIndexForward=(sort_order == "ASC")  # True for ASC, False for DESC
-        )
-        data = response.get("Items", [])
+        data = WebhookRepository.get_data(webhook_type, limit, sort_order, page, start_key, end_key)    
 
         return {
             "statusCode": 200,
