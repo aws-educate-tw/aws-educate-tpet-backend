@@ -32,9 +32,9 @@ class WebhookRepository:
         try:
             # Query DynamoDB for the calculated range
             # The order of sequence_number is the same as the order of ascending order of created_at
-            # So sorting by sequence_number is the same as sorting by created_at, we only need to use SequenceNumberIndex to sort here.
+            # So sorting by sequence_number is the same as sorting by created_at, we only need to use webhook-webhook_type-sequence_number-gsi to sort here.
             response = self.table.query(
-                IndexName="SequenceNumberIndex",
+                IndexName="webhook-webhook_type-sequence_number-gsi",
                 KeyConditionExpression=Key("webhook_type").eq(webhook_type) &
                                         Key("sequence_number").between(start_key, end_key),
                 ScanIndexForward=(sort_order == "ASC")  # True for ASC, False for DESC
