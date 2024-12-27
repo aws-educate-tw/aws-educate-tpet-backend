@@ -7,6 +7,7 @@ from typing import Dict
 import boto3
 from webhook_repository import WebhookRepository
 from webhook_total_count_repository import WebhookTotalCountRepository
+from webhook_type_enum import WebhookType
 
 WebhookRepository = WebhookRepository()
 WebhookTotalCountRepository = WebhookTotalCountRepository()
@@ -19,7 +20,7 @@ class DecimalEncoder(json.JSONEncoder):
         if isinstance(o, Decimal):
             # Convert Decimal to float or int, depending on your needs
             return float(o)
-        return super(DecimalEncoder, self).default(obj)
+        return super(DecimalEncoder, self).default(o)
 
 
 def lambda_handler(event: Dict, context) -> Dict:
@@ -38,10 +39,22 @@ def lambda_handler(event: Dict, context) -> Dict:
             'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({'error': "'webhook_type' parameter is required and cannot be empty."})
         }
+    
+    try:
+        # Convert string webhook_type to Enum
+        webhook_type_enum = WebhookType(webhook_type.lower())
+
+    except ValueError:
+        # Handle invalid webhook_type values
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': f"Invalid webhook_type value: {webhook_type}. Must be one of {[e.value for e in WebhookType]}."})
+        }
 
     try:
         # Get total count from the total_count table
-        total_count = WebhookTotalCountRepository.get_total_count(webhook_type)
+        total_count = WebhookTotalCountRepository.get_total_count(webhook_type_enum.name)
 
         # Validate page number
         if page < 1:
