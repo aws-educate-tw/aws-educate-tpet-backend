@@ -5,12 +5,17 @@ import uuid
 from decimal import Decimal
 
 import boto3
-from increment_total_count import increment_total_count
 from time_util import get_current_utc_time
+from webhook_repository import WebhookRepository
+from webhook_total_count_repository import WebhookIncrementCountRepository
 
-dynamodb = boto3.resource("dynamodb")
-main_table = dynamodb.Table(os.getenv("DYNAMODB_TABLE")) 
+# dynamodb = boto3.resource("dynamodb")
+# main_table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
+
 trigger_webhook_api_endpoint = os.getenv("TRIGGER_WEBHOOK_API_ENDPOINT")
+
+WebhookRepository = WebhookRepository()
+WebhookIncrementCountRepository = WebhookIncrementCountRepository() 
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -46,7 +51,7 @@ def lambda_handler(event, context):
             }
 
         # Increment the total count and get the new sequence_number
-        sequence_number = increment_total_count(webhook_type)
+        sequence_number = WebhookIncrementCountRepository.increment_total_count(webhook_type)
 
         # Generate webhook ID and URL
         webhook_id = str(uuid.uuid4())
@@ -79,7 +84,7 @@ def lambda_handler(event, context):
 
         # Save the item to the main table
         logger.info("Attempting to put item into DynamoDB: %s", item)
-        response = main_table.put_item(Item=item)
+        response = WebhookRepository.save_data(item)
         logger.info("DynamoDB put_item response: %s", response)
 
         return {
