@@ -8,6 +8,7 @@ import boto3
 from time_util import get_current_utc_time
 from webhook_repository import WebhookRepository
 from webhook_total_count_repository import WebhookIncrementCountRepository
+from webhook_type_enum import WebhookTypeEnum
 
 # dynamodb = boto3.resource("dynamodb")
 # main_table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
@@ -31,11 +32,9 @@ def lambda_handler(event, context):
         # Parse the event body
         data = json.loads(event['body'])
 
-        # Determine webhook_type
-        webhook_type_list = ["surveycake", "slack"]
-        if data.get("webhook_type") in webhook_type_list:
-            webhook_type = data.get("webhook_type")
-        else:
+        try:
+            webhook_type_enum = WebhookTypeEnum(data.get("webhook_type").lower())
+        except ValueError:
             return {
                 "statusCode": 400,
                 "headers": {
@@ -45,10 +44,11 @@ def lambda_handler(event, context):
                 "body": json.dumps(
                     {
                         "status": "FAILED",
-                        "message": f"webhook_type must be one of {webhook_type_list}."
+                        "message": f"Invalid webhook_type. Must be one of {[e.value for e in WebhookTypeEnum]}."
                     }
                 )
             }
+        webhook_type = webhook_type_enum.value
 
         # Increment the total count and get the new sequence_number
         sequence_number = WebhookIncrementCountRepository.increment_total_count(webhook_type)
