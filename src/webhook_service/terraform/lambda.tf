@@ -56,8 +56,7 @@ module "get_webhook_lambda" {
   package_type = "Image"
   # architectures = ["x86_64"] # or ["arm64"]
   architectures = ["arm64"]
-  # image_uri     = "public.ecr.aws/lambda/python:3.8"
-  # image_uri     = module.list_emails_docker_image.image_uri
+  
   image_uri = module.get_webhook_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
