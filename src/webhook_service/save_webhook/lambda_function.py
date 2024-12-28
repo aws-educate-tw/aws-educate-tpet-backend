@@ -8,7 +8,7 @@ import boto3
 from time_util import get_current_utc_time
 from webhook_repository import WebhookRepository
 from webhook_total_count_repository import WebhookIncrementCountRepository
-from webhook_type_enum import WebhookTypeEnum
+from webhook_type_enum import WebhookType
 
 # dynamodb = boto3.resource("dynamodb")
 # main_table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
@@ -33,7 +33,7 @@ def lambda_handler(event, context):
         data = json.loads(event['body'])
 
         try:
-            webhook_type_enum = WebhookTypeEnum(data.get("webhook_type").lower())
+            webhook_type_enum = WebhookType(data.get("webhook_type").lower())
         except ValueError:
             return {
                 "statusCode": 400,
@@ -44,7 +44,7 @@ def lambda_handler(event, context):
                 "body": json.dumps(
                     {
                         "status": "FAILED",
-                        "message": f"Invalid webhook_type. Must be one of {[e.value for e in WebhookTypeEnum]}."
+                        "message": f"Invalid webhook_type. Must be one of {[e.value for e in WebhookType]}."
                     }
                 )
             }
