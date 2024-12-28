@@ -56,7 +56,7 @@ module "get_webhook_lambda" {
   package_type = "Image"
   # architectures = ["x86_64"] # or ["arm64"]
   architectures = ["arm64"]
-  
+
   image_uri = module.get_webhook_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -101,25 +101,6 @@ module "get_webhook_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}"
       ]
     },
-    s3_crud = {
-      effect = "Allow",
-      actions = [
-        "s3:ListBucket",
-        "s3:GetBucketLocation",
-        "s3:CreateBucket",
-        "s3:DeleteBucket",
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject",
-        "s3:ListBucketMultipartUploads",
-        "s3:ListMultipartUploadParts",
-        "s3:AbortMultipartUpload"
-      ],
-      resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
-      ]
-    }
   }
 
 }
@@ -228,25 +209,6 @@ module "list_webhooks_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table_total_count}",
       ]
     },
-    s3_crud = {
-      effect = "Allow",
-      actions = [
-        "s3:ListBucket",
-        "s3:GetBucketLocation",
-        "s3:CreateBucket",
-        "s3:DeleteBucket",
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject",
-        "s3:ListBucketMultipartUploads",
-        "s3:ListMultipartUploadParts",
-        "s3:AbortMultipartUpload"
-      ],
-      resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
-      ]
-    }
   }
 
 }
@@ -358,25 +320,6 @@ module "save_webhook_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table_total_count}",
       ]
     },
-    s3_crud = {
-      effect = "Allow",
-      actions = [
-        "s3:ListBucket",
-        "s3:GetBucketLocation",
-        "s3:CreateBucket",
-        "s3:DeleteBucket",
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject",
-        "s3:ListBucketMultipartUploads",
-        "s3:ListMultipartUploadParts",
-        "s3:AbortMultipartUpload"
-      ],
-      resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
-      ]
-    }
   }
 
 }
@@ -493,25 +436,6 @@ module "trigger_webhook_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}"
       ]
     },
-    s3_crud = {
-      effect = "Allow",
-      actions = [
-        "s3:ListBucket",
-        "s3:GetBucketLocation",
-        "s3:CreateBucket",
-        "s3:DeleteBucket",
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject",
-        "s3:ListBucketMultipartUploads",
-        "s3:ListMultipartUploadParts",
-        "s3:AbortMultipartUpload"
-      ],
-      resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
-      ]
-    }
   }
 
 }
