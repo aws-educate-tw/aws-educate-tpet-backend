@@ -54,7 +54,7 @@ def lambda_handler(event: Dict, context) -> Dict:
 
     try:
         # Get total count from the total_count table
-        total_count = WebhookTotalCountRepository.get_total_count(webhook_type_enum.name)
+        total_count = WebhookTotalCountRepository.get_total_count(webhook_type_enum.value)
 
         # Validate page number
         if page < 1:
