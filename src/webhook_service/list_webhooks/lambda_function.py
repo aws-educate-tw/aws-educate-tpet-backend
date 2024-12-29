@@ -55,6 +55,18 @@ def lambda_handler(event: Dict, context) -> Dict:
     try:
         # Get total count from the total_count table
         total_count = WebhookTotalCountRepository.get_total_count(webhook_type_enum.value)
+        if total_count == 0:
+            return {
+                "statusCode": 200,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({
+                    "data": [],
+                    "page": page,
+                    "limit": limit,
+                    "total_count": total_count,
+                    "sort_order": sort_order,
+                }),
+            }
 
         # Validate page number
         if page < 1:
