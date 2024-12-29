@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 import boto3
 
@@ -8,16 +9,29 @@ lambda_client = boto3.client("lambda")
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# Get tag key and value from environment variables
+PREWARM_TAG_KEY = os.environ.get("PREWARM_TAG_KEY", "Prewarm")
+PREWARM_TAG_VALUE = os.environ.get("PREWARM_TAG_VALUE", "true")
+
 
 def get_prewarm_functions():
     """
-    Fetch all Lambda functions and filter those with the tag: Prewarm=true.
-    This function supports pagination to handle a large number of Lambda functions.
+    Fetch all Lambda functions and filter those with the specified tag key and value
+    from environment variables.
+
+    Environment Variables:
+        PREWARM_TAG_KEY: The tag key to check (e.g., "Project")
+        PREWARM_TAG_VALUE: The expected value for the tag (e.g., "DemoProject")
 
     Returns:
         list: A list of function names that require prewarming.
     """
     try:
+
+        logger.info(
+            "Searching for functions with %s=%s", PREWARM_TAG_KEY, PREWARM_TAG_VALUE
+        )
+
         functions = []
         next_marker = None  # Marker for pagination
 
@@ -35,8 +49,16 @@ def get_prewarm_functions():
 
                 # Retrieve tags for the current function
                 tags = lambda_client.list_tags(Resource=function_arn)
-                if tags.get("Tags", {}).get("Prewarm") == "true":
+
+                # Check if the function has the specified tag and value
+                if tags.get("Tags", {}).get(PREWARM_TAG_KEY) == PREWARM_TAG_VALUE:
                     functions.append(function_name)
+                    logger.info(
+                        "Function %s matched criteria: %s=%s",
+                        function_name,
+                        PREWARM_TAG_KEY,
+                        PREWARM_TAG_VALUE,
+                    )
 
             # Check if there are more pages
             next_marker = response.get("NextMarker")
@@ -45,6 +67,7 @@ def get_prewarm_functions():
 
         logger.info("Found %d functions to prewarm: %s", len(functions), functions)
         return functions
+
     except Exception as e:
         logger.error("Error while fetching functions: %s", e)
         raise
@@ -62,7 +85,7 @@ def invoke_lambda(function_name):
         lambda_client.invoke(
             FunctionName=function_name,
             InvocationType="Event",  # Asynchronous invocation to reduce latency
-            Payload=json.dumps({"action": "prewarm"}),  # Send a custom prewarm signal
+            Payload=json.dumps({"action": "PREWARM"}),  # Send a custom prewarm signal
         )
         logger.info("Successfully prewarmed %s", function_name)
     except Exception as e:
