@@ -4,12 +4,15 @@ import os
 from decimal import Decimal
 
 import boto3
+from webhook_repository import WebhookRepository
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+WebhookRepository = WebhookRepository()
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
@@ -20,9 +23,9 @@ class DecimalEncoder(json.JSONEncoder):
 
 def lambda_handler(event, context):
     webhook_id = event["pathParameters"]["webhook_id"]
-    webhook_details = table.get_item(Key={"webhook_id": webhook_id})
+    webhook_details = WebhookRepository.get_item(webhook_id)
 
-    if "Item" not in webhook_details:
+    if webhook_details is None:
         return {
             "statusCode": 404, 
             "body": json.dumps({"message": "Webhook not found"})
