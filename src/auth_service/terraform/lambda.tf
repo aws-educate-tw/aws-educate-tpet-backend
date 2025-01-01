@@ -64,7 +64,7 @@ module "login_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = ["arm64"] # or ["arm64"]
   image_uri     = module.login_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -171,7 +171,7 @@ module "change_password_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = ["arm64"] # or ["arm64"]
   image_uri     = module.change_password_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -278,7 +278,7 @@ module "get_user_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = ["arm64"] # or ["arm64"]
   image_uri     = module.get_user_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -383,7 +383,7 @@ module "get_me_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = ["arm64"] # or ["arm64"]
   image_uri     = module.get_me_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -489,7 +489,7 @@ module "is_logged_in_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = ["arm64"] # or ["arm64"]
   image_uri     = module.is_logged_in_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -595,7 +595,7 @@ module "refresh_service_accounts_token_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = ["arm64"] # or ["arm64"]
   image_uri     = module.refresh_service_accounts_token_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.

@@ -79,6 +79,7 @@ module "validate_input_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
   ######################
   # Additional policies
@@ -221,7 +222,7 @@ module "send_email_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
-
+    "Prewarm"     = "true"
   }
   ######################
   # Additional policies
@@ -378,6 +379,7 @@ module "list_runs_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
   ######################
   # Additional policies
@@ -508,6 +510,7 @@ module "list_emails_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
   ######################
   # Additional policies
