@@ -1,7 +1,7 @@
 import json
+import logging
 import os
 from decimal import Decimal
-import logging
 
 import boto3
 
@@ -11,6 +11,7 @@ table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, Decimal):
@@ -19,14 +20,16 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 def lambda_handler(event, context):
+    # Identify if the incoming event is a prewarm request
+    if event.get("action") == "PREWARM":
+        logger.info("Received a prewarm request. Skipping business logic.")
+        return {"statusCode": 200, "body": "Successfully warmed up"}
+
     webhook_id = event["pathParameters"]["webhook_id"]
     webhook_details = table.get_item(Key={"webhook_id": webhook_id})
 
     if "Item" not in webhook_details:
-        return {
-            "statusCode": 404, 
-            "body": json.dumps({"message": "Webhook not found"})
-        }
+        return {"statusCode": 404, "body": json.dumps({"message": "Webhook not found"})}
 
     webhook_details_item = webhook_details["Item"]
 
@@ -47,7 +50,7 @@ def lambda_handler(event, context):
         "surveycake_link": webhook_details_item["surveycake_link"],
         "hash_key": webhook_details_item["hash_key"],
         "iv_key": webhook_details_item["iv_key"],
-        "webhook_name": webhook_details_item["webhook_name"]
+        "webhook_name": webhook_details_item["webhook_name"],
     }
 
     return {
@@ -61,5 +64,7 @@ def lambda_handler(event, context):
                 "status": "SUCCESS",
                 "message": "The details of the webhook are successfully retrieved.",
                 **data,
-            }, cls=DecimalEncoder),
+            },
+            cls=DecimalEncoder,
+        ),
     }

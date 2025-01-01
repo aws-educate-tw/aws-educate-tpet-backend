@@ -81,6 +81,7 @@ module "get_webhook_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
   ######################
   # Additional policies
@@ -207,6 +208,7 @@ module "save_webhook_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
   ######################
   # Additional policies
@@ -333,6 +335,7 @@ module "trigger_webhook_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
   ######################
   # Additional policies
