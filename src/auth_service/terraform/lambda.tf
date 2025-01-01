@@ -64,7 +64,7 @@ module "login_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["arm64"] # or ["arm64"]
+  architectures = ["x86_64"] # or ["arm64"]
   image_uri     = module.login_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -171,7 +171,7 @@ module "change_password_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["arm64"] # or ["arm64"]
+  architectures = ["x86_64"] # or ["arm64"]
   image_uri     = module.change_password_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
