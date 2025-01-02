@@ -43,4 +43,4 @@ class WebhookRepository:
         if "Item" not in webhook_details:
             return None
 
-        return webhook_details.get("Item")
+        return webhook_details

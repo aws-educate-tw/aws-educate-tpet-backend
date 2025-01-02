@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Initialize the repository
-WebhookRepository = WebhookRepository()
+webhook_repository = WebhookRepository()
+
 
 class DecimalEncoder(json.JSONEncoder):
     """Custom JSON Encoder to handle Decimal types."""
@@ -50,7 +51,7 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
             }
 
         # Fetch webhook details from the repository
-        webhook_details = WebhookRepository.get_item(webhook_id)
+        webhook_details = webhook_repository.get_item(webhook_id)
         if webhook_details is None:
             return {
                 "statusCode": 404,
