@@ -60,7 +60,7 @@ def lambda_handler(event: Dict, context) -> Dict: # pylint: disable=unused-argum
         }
     try:
         # Get total count from the total_count table
-        total_count = webhook_total_count_repository.get_total_count(webhook_type_enum)
+        total_count = webhook_total_count_repository.get_total_count(webhook_type_enum.value)
         if total_count == 0:
             return {
                 "statusCode": 200,
