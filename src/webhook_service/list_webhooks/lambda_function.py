@@ -16,8 +16,8 @@ from webhook_repository import WebhookRepository
 from webhook_total_count_repository import WebhookTotalCountRepository
 from webhook_type_enum import WebhookType
 
-WebhookRepository = WebhookRepository()
-WebhookTotalCountRepository = WebhookTotalCountRepository()
+webhook_repository = WebhookRepository()
+webhook_total_count_repository = WebhookTotalCountRepository()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -47,7 +47,6 @@ def lambda_handler(event: Dict, context) -> Dict: # pylint: disable=unused-argum
             'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({'error': "'webhook_type' parameter is required and cannot be empty."})
         }
-    
     try:
         # Convert string webhook_type to Enum
         webhook_type_enum = WebhookType(webhook_type.lower())
@@ -59,10 +58,9 @@ def lambda_handler(event: Dict, context) -> Dict: # pylint: disable=unused-argum
             'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({'error': f"Invalid webhook_type value: {webhook_type}. Must be one of {[e.value for e in WebhookType]}."})
         }
-
     try:
         # Get total count from the total_count table
-        total_count = WebhookTotalCountRepository.get_total_count(webhook_type_enum.value)
+        total_count = webhook_total_count_repository.get_total_count(webhook_type_enum)
         if total_count == 0:
             return {
                 "statusCode": 200,
@@ -83,22 +81,18 @@ def lambda_handler(event: Dict, context) -> Dict: # pylint: disable=unused-argum
                 "headers": {"Content-Type": "application/json"},
                 "body": json.dumps({"error": "Invalid page number."}),
             }
-        
         elif limit < 1:
             return {
                 "statusCode": 400,
                 "headers": {"Content-Type": "application/json"},
                 "body": json.dumps({"error": "Invalid limit value."}),
-            }
-        
-        
+            }  
         elif (page - 1) * limit >= total_count:
             return {
                 "statusCode": 400,
                 "headers": {"Content-Type": "application/json"},
                 "body": json.dumps({"error": "Page number out of range."}),
             }
-
         # Calculate start and end range for the page
         if sort_order == "ASC":
             start_key = (page - 1) * limit + 1
@@ -107,7 +101,7 @@ def lambda_handler(event: Dict, context) -> Dict: # pylint: disable=unused-argum
             start_key = max(total_count - (page * limit) + 1, 1)
             end_key = total_count - (page - 1) * limit
 
-        data = WebhookRepository.get_data(webhook_type, sort_order, start_key, end_key)    
+        data = webhook_repository.get_data(webhook_type, sort_order, start_key, end_key)         
 
         return {
             "statusCode": 200,
@@ -130,3 +124,4 @@ def lambda_handler(event: Dict, context) -> Dict: # pylint: disable=unused-argum
                 "message": str(e),
             }),
         }
+    
