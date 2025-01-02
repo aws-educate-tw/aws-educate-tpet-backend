@@ -107,7 +107,7 @@ def lambda_handler(event: Dict, context) -> Dict: # pylint: disable=unused-argum
             start_key = max(total_count - (page * limit) + 1, 1)
             end_key = total_count - (page - 1) * limit
 
-        data = WebhookRepository.get_data(webhook_type, limit, sort_order, page, start_key, end_key)    
+        data = WebhookRepository.get_data(webhook_type, sort_order, start_key, end_key)    
 
         return {
             "statusCode": 200,
