@@ -34,6 +34,10 @@ def lambda_handler(event, context):
     Returns:
       dict: Response object with status code, headers, and body.
     """
+    # Identify if the incoming event is a prewarm request
+    if event.get("action") == "PREWARM":
+        logger.info("Received a prewarm request. Skipping business logic.")
+        return {"statusCode": 200, "body": "Successfully warmed up"}
     try:
         logger.info("Event: %s", event)
 

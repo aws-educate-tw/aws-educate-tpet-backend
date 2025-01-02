@@ -138,6 +138,11 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: %s", event)
 
+    # Identify if the incoming event is a prewarm request
+    if event.get("action") == "PREWARM":
+        logger.info("Received a prewarm request. Skipping business logic.")
+        return {"statusCode": 200, "body": "Successfully warmed up"}
+
     # Get the access token from headers
     authorization_header = event["headers"].get("authorization")
     if not authorization_header or not authorization_header.startswith("Bearer "):

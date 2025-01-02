@@ -1,8 +1,9 @@
 import json
-import os
-from decimal import Decimal
-import uuid
 import logging
+import os
+import uuid
+from decimal import Decimal
+
 import boto3
 
 dynamodb = boto3.resource("dynamodb")
@@ -12,6 +13,7 @@ trigger_webhook_api_endpoint = os.getenv("TRIGGER_WEBHOOK_API_ENDPOINT")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, Decimal):
@@ -20,8 +22,13 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 def lambda_handler(event, context):
+    # Identify if the incoming event is a prewarm request
+    if event.get("action") == "PREWARM":
+        logger.info("Received a prewarm request. Skipping business logic.")
+        return {"statusCode": 200, "body": "Successfully warmed up"}
+
     try:
-        data = json.loads(event['body'])
+        data = json.loads(event["body"])
         webhook_id = str(uuid.uuid4())
         webhook_url = f"{trigger_webhook_api_endpoint}/{webhook_id}"
 
@@ -40,7 +47,7 @@ def lambda_handler(event, context):
             "surveycake_link": data.get("surveycake_link"),
             "hash_key": data.get("hash_key"),
             "iv_key": data.get("iv_key"),
-            "webhook_name": data.get("webhook_name")
+            "webhook_name": data.get("webhook_name"),
         }
 
         logger.info("Attempting to put item into DynamoDB: %s", item)
@@ -59,10 +66,9 @@ def lambda_handler(event, context):
                     "message": "Webhook successfully created.",
                     "webhook_id": webhook_id,
                     "webhook_url": webhook_url,
-                }, cls=DecimalEncoder),
+                },
+                cls=DecimalEncoder,
+            ),
         }
     except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"message": str(e)})
-        }
+        return {"statusCode": 500, "body": json.dumps({"message": str(e)})}

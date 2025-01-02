@@ -88,6 +88,7 @@ module "login_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
   ######################
   # Additional policies
@@ -405,6 +406,7 @@ module "get_me_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
   ######################
   # Additional policies
