@@ -23,8 +23,8 @@ from webhook_type_enum import WebhookType
 
 trigger_webhook_api_endpoint = os.getenv("TRIGGER_WEBHOOK_API_ENDPOINT")
 
-WebhookRepository = WebhookRepository()
-WebhookIncrementCountRepository = WebhookIncrementCountRepository() 
+webhook_repository = WebhookRepository()
+webhook_increment_count_repository = WebhookIncrementCountRepository()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -61,7 +61,7 @@ def lambda_handler(event, context): # pylint: disable=unused-argument
         webhook_type = webhook_type_enum.value
 
         # Increment the total count and get the new sequence_number
-        sequence_number = WebhookIncrementCountRepository.increment_total_count(webhook_type)
+        sequence_number = webhook_increment_count_repository.increment_total_count(webhook_type)
 
         # Generate webhook ID and URL
         webhook_id = str(uuid.uuid4())
@@ -94,7 +94,7 @@ def lambda_handler(event, context): # pylint: disable=unused-argument
 
         # Save the item to the main table
         logger.info("Attempting to put item into DynamoDB: %s", item)
-        response = WebhookRepository.save_data(item)
+        response = webhook_repository.save_data(item)
         logger.info("DynamoDB put_item response: %s", response)
 
         return {
