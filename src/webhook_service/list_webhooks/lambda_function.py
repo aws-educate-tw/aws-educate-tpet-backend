@@ -1,10 +1,17 @@
+"""
+This lambda function retrieves the details of a webhook from the DynamoDB table based on the
+webhook ID provided in the path parameters. The function first extracts the webhook ID from the
+event object and then fetches the webhook details using the WebhookRepository class. If the
+webhook is found, the function constructs a response with the webhook details and returns it.
+If the webhook is not found, the function returns a 404 response. If any unexpected errors occur
+during the execution, the function logs the error and returns a 500 response.
+"""
+
 import json
 import logging
-import os
 from decimal import Decimal
 from typing import Dict
 
-import boto3
 from webhook_repository import WebhookRepository
 from webhook_total_count_repository import WebhookTotalCountRepository
 from webhook_type_enum import WebhookType
@@ -16,6 +23,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 class DecimalEncoder(json.JSONEncoder):
+    """ Custom JSON Encoder to handle Decimal types. """
     def default(self, o):
         if isinstance(o, Decimal):
             # Convert Decimal to float or int, depending on your needs
@@ -23,7 +31,7 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(o)
 
 
-def lambda_handler(event: Dict, context) -> Dict:
+def lambda_handler(event: Dict, context) -> Dict: # pylint: disable=unused-argument
     """
     Lambda function to fetch data from DynamoDB with optional limit, sort order, and pagination using sequence numbers.
     """
@@ -112,8 +120,8 @@ def lambda_handler(event: Dict, context) -> Dict:
                 "sort_order": sort_order,
             }, cls=DecimalEncoder),  # Use the custom encoder here
         }
-    except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
+    except Exception as e: # pylint: disable=broad-except
+        logger.error("Error occurred: %s", str(e))
         return {
             "statusCode": 500,
             "headers": {"Content-Type": "application/json"},

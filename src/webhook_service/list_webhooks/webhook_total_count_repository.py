@@ -1,13 +1,18 @@
+"""
+This module contains the repository for fetching from a table named webhook_total_count in DynamoDB.
+"""
+
 import logging
 import os
 
-import boto3
+import boto3  # type: ignore #pylint: disable=import-error
 
 # Logger setup outside the class
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 class WebhookTotalCountRepository:
+    """ Repository for fetching total counts from DynamoDB. """
     def __init__(self):
         """
         Initialize the repository with the DynamoDB table.
