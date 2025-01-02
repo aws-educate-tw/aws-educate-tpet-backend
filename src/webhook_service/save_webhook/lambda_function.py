@@ -1,10 +1,18 @@
+"""
+This lamda function creates a new webhook in the DynamoDB table. The function first parses the
+event body to extract the webhook details, including the webhook type, subject, display name,
+template file ID, and other optional fields. The function then increments the total count for the
+webhook type and generates a webhook ID and URL. The webhook details are saved to the DynamoDB
+table using the WebhookRepository class. If the operation is successful, the function returns a
+200 response with the webhook ID, URL, type, and creation timestamp. If any errors occur during
+the execution, the function logs the error and returns a 500 response.
+"""
 import json
 import logging
 import os
 import uuid
 from decimal import Decimal
 
-import boto3
 from time_util import get_current_utc_time
 from webhook_repository import WebhookRepository
 from webhook_total_count_repository import WebhookIncrementCountRepository
@@ -22,12 +30,14 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 class DecimalEncoder(json.JSONEncoder):
+    """ Custom JSON encoder to handle Decimal types """
     def default(self, o):
         if isinstance(o, Decimal):
             return float(o)
         return super(DecimalEncoder, self).default(o)
 
-def lambda_handler(event, context):
+def lambda_handler(event, context): # pylint: disable=unused-argument
+    """ Lambda function handler to create a new webhook """
     try:
         # Parse the event body
         data = json.loads(event['body'])
@@ -104,9 +114,10 @@ def lambda_handler(event, context):
                     "created_at": created_at
                 }, cls=DecimalEncoder),
         }
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         logger.error("Error occurred: %s", str(e))
         return {
             "statusCode": 500,
             "body": json.dumps({"message": str(e)})
         }
+    

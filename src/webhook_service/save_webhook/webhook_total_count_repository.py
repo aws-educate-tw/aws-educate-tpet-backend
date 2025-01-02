@@ -1,12 +1,13 @@
 import logging
 import os
 
-import boto3
+import boto3  # type: ignore # pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 class WebhookIncrementCountRepository:
+    """ Repository for incrementing the total count of webhooks. """
     def __init__(self):
         """
         Initialize the repository with the DynamoDB table.
@@ -30,5 +31,5 @@ class WebhookIncrementCountRepository:
             logger.info("Updated total count for %s: %s", webhook_type, new_total)
             return new_total
         except Exception as e:
-            logger.error(f"Error updating counter for %s, %s", webhook_type, str(e))
+            logger.error("Error updating counter for %s, %s", webhook_type, str(e))
             raise

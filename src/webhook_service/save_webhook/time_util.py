@@ -1,3 +1,6 @@
+"""
+This module contains utility functions for working with time and date formats.
+"""
 import datetime
 
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"

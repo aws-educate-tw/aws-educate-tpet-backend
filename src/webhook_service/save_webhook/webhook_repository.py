@@ -1,15 +1,18 @@
+"""
+This module contains the repository for saving webhook data to a table named webhook in DynamoDB. 
+"""
 import logging
 import os
 
-import boto3
+import boto3  # type: ignore # pylint: disable=import-error
+from boto3.dynamodb.conditions import Key
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-from boto3.dynamodb.conditions import Key
-
 
 class WebhookRepository:
+    """ Repository for saving webhooks to DynamoDB. """
     def __init__(self):
         """
         Initialize the repository with the DynamoDB table.
@@ -31,3 +34,4 @@ class WebhookRepository:
         except Exception as e:
             logger.error("Error saving webhook: %s", str(e))
             raise
+        
