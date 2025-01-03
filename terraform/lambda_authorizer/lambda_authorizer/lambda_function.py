@@ -123,6 +123,11 @@ def lambda_handler(event, context):
     Returns:
         dict: Authorization result.
     """
+    # Identify if the incoming event is a prewarm request
+    if event.get("action") == "PREWARM":
+        logger.info("Received a prewarm request. Skipping business logic.")
+        return {"statusCode": 200, "body": "Successfully warmed up"}
+
     headers = event.get("headers", {})
     authorization_header = headers.get("authorization", "")
 

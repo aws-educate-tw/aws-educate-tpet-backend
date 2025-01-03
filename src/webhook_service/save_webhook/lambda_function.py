@@ -29,6 +29,7 @@ webhook_increment_count_repository = WebhookIncrementCountRepository()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+
 class DecimalEncoder(json.JSONEncoder):
     """ Custom JSON encoder to handle Decimal types """
     def default(self, o):
@@ -89,7 +90,7 @@ def lambda_handler(event, context): # pylint: disable=unused-argument
             "surveycake_link": data.get("surveycake_link"),
             "hash_key": data.get("hash_key"),
             "iv_key": data.get("iv_key"),
-            "webhook_name": data.get("webhook_name")
+            "webhook_name": data.get("webhook_name"),
         }
 
         # Save the item to the main table

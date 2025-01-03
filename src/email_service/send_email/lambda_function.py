@@ -203,6 +203,11 @@ def lambda_handler(event, context):
     # Log the start of Lambda execution and incoming event details
     logger.info("Lambda triggered with event: %s", event)
 
+    # Identify if the incoming event is a prewarm request
+    if event.get("action") == "PREWARM":
+        logger.info("Received a prewarm request. Skipping business logic.")
+        return {"statusCode": 200, "body": "Successfully warmed up"}
+
     for record in event["Records"]:
         try:
             sqs_message = get_sqs_message(record)

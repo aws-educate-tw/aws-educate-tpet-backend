@@ -75,6 +75,7 @@ module "upload_multiple_file_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
   ######################
   # Additional policies
@@ -200,6 +201,7 @@ module "list_files_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
   ######################
   # Additional policies
@@ -327,6 +329,7 @@ module "get_file_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
   ######################
   # Additional policies

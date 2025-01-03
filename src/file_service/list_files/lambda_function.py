@@ -101,6 +101,12 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
 
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for listing files."""
+
+    # Identify if the incoming event is a prewarm request
+    if event.get("action") == "PREWARM":
+        logger.info("Received a prewarm request. Skipping business logic.")
+        return {"statusCode": 200, "body": "Successfully warmed up"}
+
     extracted_params = extract_query_params(event)
     if isinstance(extracted_params, dict) and extracted_params.get("statusCode"):
         return extracted_params

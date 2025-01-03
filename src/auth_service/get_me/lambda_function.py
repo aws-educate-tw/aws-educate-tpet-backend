@@ -30,6 +30,10 @@ def lambda_handler(event, context):
     Returns:
     dict: API Gateway Lambda Proxy Output Format
     """
+    # Identify if the incoming event is a prewarm request
+    if event.get("action") == "PREWARM":
+        logger.info("Received a prewarm request. Skipping business logic.")
+        return {"statusCode": 200, "body": "Successfully warmed up"}
 
     # Get JWT token from Authorization header
     authorization_header = event.get("headers", {}).get("authorization", "")
