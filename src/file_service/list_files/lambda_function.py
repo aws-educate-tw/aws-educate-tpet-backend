@@ -147,6 +147,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             logger.error("Invalid last_evaluated_key format: %s", e)
             return {
                 "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
                 "body": json.dumps(
                     {
                         "message": "Invalid last_evaluated_key format. It must be a valid base64 encoded JSON string."
