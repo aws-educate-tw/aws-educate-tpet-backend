@@ -4,10 +4,6 @@ variable "aws_region" {
 
 variable "environment" {
   description = "Current environtment: prod(ap-northeast-1)/dev(us-east-1)/local-dev(us-west-2), default dev(us-east-1)"
-  validation {
-    condition     = contains(["prod", "dev", "local-dev"], var.environment)
-    error_message = "Environment must be one of: prod, dev, local-dev"
-  }
 }
 
 variable "service_underscore" {
