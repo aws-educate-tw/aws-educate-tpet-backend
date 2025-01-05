@@ -4,7 +4,7 @@ event body to extract the webhook details, including the webhook type, subject, 
 template file ID, and other optional fields. The function then increments the total count for the
 webhook type and generates a webhook ID and URL. The webhook details are saved to the DynamoDB
 table using the WebhookRepository class. If the operation is successful, the function returns a
-200 response with the webhook ID, URL, type, and creation timestamp. If any errors occur during
+200 response with the webhook ID, URL, type, and creation timestamp and if errors occur during
 the execution, the function logs the error and returns a 500 response.
 """
 import json
