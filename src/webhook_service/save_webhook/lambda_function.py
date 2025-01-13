@@ -1,5 +1,5 @@
 """
-This lamda function creates a new webhook in the DynamoDB table. The function first parses the
+This lambda function creates a new webhook in the DynamoDB table. The function first parses the
 event body to extract the webhook details, including the webhook type, subject, display name,
 template file ID, and other optional fields. The function then increments the total count for the
 webhook type and generates a webhook ID and URL. The webhook details are saved to the DynamoDB
