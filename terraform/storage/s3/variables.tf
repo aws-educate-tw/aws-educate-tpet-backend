@@ -14,3 +14,8 @@ variable "service_hyphen" {
   description = "This variable contains the current service name, but with hyphens instead of underscores. For example: demo-service."
 }
 
+variable "cors_allowed_origins" {
+  description = "Allowed origins for CORS"
+  type        = list(string)
+}
+
