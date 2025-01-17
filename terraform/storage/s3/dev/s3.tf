@@ -38,6 +38,17 @@ resource "aws_s3_bucket_policy" "aws_educate_tpet_storage_policy" {
     ]
   })
 }
+resource "aws_s3_bucket_cors_configuration" "example" {
+  bucket = aws_s3_bucket.aws_educate_tpet_storage.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET"]
+    allowed_origins = ["https://tpet.aws-educate.tw", "https://tpet-dev.aws-educate.tw", "http://localhost:3000"]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
 
 ####################################
 ####################################
