@@ -1,4 +1,5 @@
 """
+This lambda function updates an existing webhook in the DynamoDB table.
 """
 
 import json
@@ -27,14 +28,29 @@ def lambda_handler(event: Dict, context) -> Dict: # pylint: disable=unused-argum
     Lambda function to fetch data from DynamoDB with optional limit, sort order, and pagination using sequence numbers.
     """
     webhook_id = event.get("pathParameters", {}).get("webhook_id")
-    logger.info(f"Received event with webhook_id: {webhook_id}")
-
+    if not webhook_id:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "Missing webhook_id in path parameters."})
+        }
+    
     data = json.loads(event['body'])
-    logger.info(f"Received data: {data}")
 
-    attributes = webhook_repository.update_data(webhook_id, data)
-
-    return {
-        "statusCode": 200,
-        "body": json.dumps(attributes, cls=DecimalEncoder, ensure_ascii=False)
-    }
+    try:
+        attributes = webhook_repository.update_data(webhook_id, data)
+        logger.info("Updated webhook attributes: %s", attributes)
+    
+        return {
+            "statusCode": 200,
+            "body": json.dumps(attributes, cls=DecimalEncoder, ensure_ascii=False)
+        }
+    except ValueError as e:
+        return {
+            "statusCode": 404,
+            "body": json.dumps({"error": str(e)})
+        }
+    except RuntimeError as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": str(e)})
+        }

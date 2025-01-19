@@ -1,9 +1,5 @@
 FROM public.ecr.aws/lambda/python:3.11
 
-# Install dependencies
-COPY requirements.txt /var/task/
-RUN pip install -r /var/task/requirements.txt
-
 # Copy function code
 COPY . /var/task/
 

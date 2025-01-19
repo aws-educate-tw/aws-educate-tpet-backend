@@ -1,7 +1,6 @@
 """
 This module contains the repository for fetching from a table named webhook in DynamoDB.
 """
-import json
 import logging
 import os
 
@@ -65,13 +64,17 @@ class WebhookRepository:
                 ReturnValues="ALL_NEW"
             )
             attributes = response.get("Attributes", {})
-            logger.info("Updated attributes: %s", attributes)
 
             return attributes
+
+        except self.dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
+            logger.error("Webhook ID %s does not exist.", webhook_id)
+            raise ValueError(f"Webhook ID {webhook_id} does not exist.")
+
         except Exception as e:
             logger.error(
                 "Error updating webhook with ID: %s. Error: %s",
                 webhook_id,
                 str(e)
             )
-            return None
+            raise RuntimeError("Error updating webhook : %s" % str(e))
