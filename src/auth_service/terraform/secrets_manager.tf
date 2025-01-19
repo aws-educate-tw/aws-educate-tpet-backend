@@ -48,6 +48,11 @@ resource "aws_secretsmanager_secret" "surveycake_service_account_access_token" {
       }
     ]
   })
+
+  # Prevent deletion of this Secret
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Store initial access token (empty)
@@ -59,7 +64,4 @@ resource "aws_secretsmanager_secret_version" "surveycake_access_token" {
   })
 }
 
-# Output
-output "surveycake_access_token_secret_name" {
-  value = aws_secretsmanager_secret.surveycake_service_account_access_token.name
-}
+
