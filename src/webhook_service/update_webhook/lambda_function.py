@@ -8,6 +8,7 @@ from decimal import Decimal
 from typing import Dict
 
 from webhook_repository import WebhookRepository
+from webhook_type_enum import WebhookType
 
 webhook_repository = WebhookRepository()
 
@@ -35,6 +36,15 @@ def lambda_handler(event: Dict, context) -> Dict: # pylint: disable=unused-argum
         }
     
     data = json.loads(event['body'])
+    if data.get("webhook_type") not in [e.value for e in WebhookType]:
+        return {
+            "statusCode": 400,
+            "body": json.dumps(
+                {
+                    "error": f"Invalid webhook_type. Must be one of {[e.value for e in WebhookType]}."
+                }
+            )
+        }
 
     try:
         attributes = webhook_repository.update_data(webhook_id, data)
