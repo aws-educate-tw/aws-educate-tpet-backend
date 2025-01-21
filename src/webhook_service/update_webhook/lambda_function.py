@@ -56,7 +56,7 @@ def lambda_handler(event: Dict, context) -> Dict: # pylint: disable=unused-argum
         }
 
     try:
-        attributes = webhook_repository.update_data(webhook_id, data)
+        attributes = webhook_repository.update_webhook(webhook_id, data)
         logger.info("Updated webhook attributes: %s", attributes)
     
         return {
