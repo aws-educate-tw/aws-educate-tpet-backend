@@ -28,6 +28,15 @@ def lambda_handler(event: Dict, context) -> Dict: # pylint: disable=unused-argum
     """
     Lambda function to fetch data from DynamoDB with optional limit, sort order, and pagination using sequence numbers.
     """
+
+    # Check if the event is a pre-warm request
+    if event.get("action") == "PREWARM":  
+        logger.info("Received a prewarm request. Skipping business logic.")  
+        return {  
+            "statusCode": 200,  
+            "body": "Successfully warmed up"  
+        }  
+    
     webhook_id = event.get("pathParameters", {}).get("webhook_id")
     if not webhook_id:
         return {
