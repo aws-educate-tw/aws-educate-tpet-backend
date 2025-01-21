@@ -101,7 +101,7 @@ module "api_gateway" {
         timeout_milliseconds   = 29000
       }
     }
-    "PUT /webhook/{webhook_id}" = {
+    "PUT /webhooks/{webhook_id}" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40

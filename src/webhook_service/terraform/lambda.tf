@@ -142,7 +142,7 @@ module "get_webhook_docker_image" {
 ####################################
 ####################################
 ####################################
-# PUT /webhook/{webhook_id} ########
+# PUT /webhooks/{webhook_id} ########
 ####################################
 ####################################
 ####################################
@@ -152,7 +152,7 @@ module "update_webhook_lambda" {
   version = "7.7.0"
 
   function_name  = local.update_webhook_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /webhook/{webhook_id} "
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /webhooks/{webhook_id} "
   create_package = false
   timeout        = 30
 
