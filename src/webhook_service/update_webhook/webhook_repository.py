@@ -9,6 +9,8 @@ import boto3  # type: ignore # pylint: disable=import-error
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+TABLE_NAME = os.getenv("DYNAMODB_TABLE")  
+
 class WebhookRepository:
     """ Repository for fetching webhooks from DynamoDB. """
     def __init__(self):
@@ -16,9 +18,9 @@ class WebhookRepository:
         Initialize the repository with the DynamoDB table.
         """
         self.dynamodb = boto3.resource("dynamodb")
-        self.table = self.dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
+        self.table = self.dynamodb.Table(TABLE_NAME)
 
-    def update_data(self, webhook_id: str, data: dict):
+    def update_webhook(self, webhook_id: str, data: dict):
         """
         Update the webhook item in DynamoDB.
         """
@@ -67,14 +69,14 @@ class WebhookRepository:
 
             return attributes
 
-        except self.dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
-            logger.error("Webhook ID %s does not exist.", webhook_id)
-            raise ValueError(f"Webhook ID {webhook_id} does not exist.")
+        except (  
+            self.dynamodb.meta.client.exceptions.ConditionalCheckFailedException  
+        ) as exc:  
+            logger.error("Webhook ID %s does not exist.", webhook_id)  
+            raise ValueError(f"Webhook ID {webhook_id} does not exist.") from exc  
 
-        except Exception as e:
-            logger.error(
-                "Error updating webhook with ID: %s. Error: %s",
-                webhook_id,
-                str(e)
-            )
-            raise RuntimeError("Error updating webhook : %s" % str(e))
+        except Exception as e:  
+            logger.error(  
+                "Error updating webhook with ID: %s. Error: %s", webhook_id, str(e)  
+            )  
+            raise RuntimeError(f"Error updating webhook: {str(e)}") from e  
