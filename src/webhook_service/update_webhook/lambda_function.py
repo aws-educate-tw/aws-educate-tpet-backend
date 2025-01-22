@@ -22,7 +22,7 @@ class DecimalEncoder(json.JSONEncoder):
         if isinstance(o, Decimal):
             # Convert Decimal to float or int, depending on your needs
             return float(o)
-        return super(DecimalEncoder, self).default(o)
+        return super().default(o)
 
 
 def lambda_handler(event: dict, context) -> dict:  # pylint: disable=unused-argument
