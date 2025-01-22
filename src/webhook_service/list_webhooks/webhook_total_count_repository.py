@@ -11,8 +11,10 @@ import boto3  # type: ignore #pylint: disable=import-error
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+
 class WebhookTotalCountRepository:
-    """ Repository for fetching total counts from DynamoDB. """
+    """Repository for fetching total counts from DynamoDB."""
+
     def __init__(self):
         """
         Initialize the repository with the DynamoDB table.
@@ -23,7 +25,7 @@ class WebhookTotalCountRepository:
     def get_total_count(self, webhook_type: str) -> int:
         """
         Get the total count of items for a specific webhook_type.
-        
+
         :param webhook_type: The type of webhook to fetch the count for.
         :return: The total count of items for the given webhook_type.
         """

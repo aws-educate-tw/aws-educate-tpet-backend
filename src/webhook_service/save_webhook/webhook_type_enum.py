@@ -14,5 +14,6 @@ class WebhookType(Enum):
         SURVEYCAKE: Represents a webhook for SurveyCake.
         SLACK: Represents a webhook for Slack.
     """
+
     SURVEYCAKE = "surveycake"
     SLACK = "slack"

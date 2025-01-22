@@ -24,7 +24,6 @@ COORD_EVENT = (250, 265)
 def generate_certificate(
     run_id: str, participant_name: str, certificate_text: str
 ) -> str:
-
     def get_rect(coord: tuple[int, int], width: int, height: int) -> fitz.Rect:
         return fitz.Rect(coord[0], coord[1], coord[0] + width, coord[1] + height)
 

@@ -7,6 +7,7 @@ table using the WebhookRepository class. If the operation is successful, the fun
 200 response with the webhook ID, URL, type, and creation timestamp and if errors occur during
 the execution, the function logs the error and returns a 500 response.
 """
+
 import json
 import logging
 import os
@@ -31,17 +32,19 @@ logger.setLevel(logging.INFO)
 
 
 class DecimalEncoder(json.JSONEncoder):
-    """ Custom JSON encoder to handle Decimal types """
+    """Custom JSON encoder to handle Decimal types"""
+
     def default(self, o):
         if isinstance(o, Decimal):
             return float(o)
-        return super(DecimalEncoder, self).default(o)
+        return super().default(o)
 
-def lambda_handler(event, context): # pylint: disable=unused-argument
-    """ Lambda function handler to create a new webhook """
+
+def lambda_handler(event, context):  # pylint: disable=unused-argument
+    """Lambda function handler to create a new webhook"""
     try:
         # Parse the event body
-        data = json.loads(event['body'])
+        data = json.loads(event["body"])
 
         try:
             webhook_type_enum = WebhookType(data.get("webhook_type").lower())
@@ -55,14 +58,16 @@ def lambda_handler(event, context): # pylint: disable=unused-argument
                 "body": json.dumps(
                     {
                         "status": "FAILED",
-                        "message": f"Invalid webhook_type. Must be one of {[e.value for e in WebhookType]}."
+                        "message": f"Invalid webhook_type. Must be one of {[e.value for e in WebhookType]}.",
                     }
-                )
+                ),
             }
         webhook_type = webhook_type_enum.value
 
         # Increment the total count and get the new sequence_number
-        sequence_number = webhook_increment_count_repository.increment_total_count(webhook_type)
+        sequence_number = webhook_increment_count_repository.increment_total_count(
+            webhook_type
+        )
 
         # Generate webhook ID and URL
         webhook_id = str(uuid.uuid4())
@@ -112,13 +117,11 @@ def lambda_handler(event, context): # pylint: disable=unused-argument
                     "webhook_url": webhook_url,
                     "webhook_type": webhook_type,
                     # "sequence_number": sequence_number,
-                    "created_at": created_at
-                }, cls=DecimalEncoder),
+                    "created_at": created_at,
+                },
+                cls=DecimalEncoder,
+            ),
         }
-    except Exception as e: # pylint: disable=broad-except
+    except Exception as e:  # pylint: disable=broad-except
         logger.error("Error occurred: %s", str(e))
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"message": str(e)})
-        }
-    
+        return {"statusCode": 500, "body": json.dumps({"message": str(e)})}

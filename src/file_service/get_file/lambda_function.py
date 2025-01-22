@@ -17,11 +17,10 @@ class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, Decimal):
             return float(o)
-        return super(DecimalEncoder, self).default(o)
+        return super().default(o)
 
 
 def lambda_handler(event, context):
-
     # Identify if the incoming event is a prewarm request
     if event.get("action") == "PREWARM":
         logger.info("Received a prewarm request. Skipping business logic.")
