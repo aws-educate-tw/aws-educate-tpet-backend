@@ -18,10 +18,6 @@ jobs:
       # If triggered by a pull request, this ensures the source branch is checked out
       - name: Checkout PR Source Branch
         uses: actions/checkout@v4
-        with:
-          # Ensure that the PR source branch is checked out instead of the target branch
-          ref: ${{ github.event.pull_request.head.ref }}
-
       # Run Ruff for static code analysis
       - name: Run Ruff Linter
         uses: astral-sh/ruff-action@v3
