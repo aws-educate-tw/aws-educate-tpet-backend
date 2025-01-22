@@ -1,14 +1,13 @@
 import base64
 import json
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 from urllib.parse import parse_qs
 
 import boto3
 import requests
-from botocore.exceptions import ClientError
 from config import Config
-from utils import CryptoHandler, DecimalEncoder, SecretsManager
+from utils import CryptoHandler, SecretsManager
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -21,13 +20,13 @@ class WebhookHandler:
         self.secrets_manager = SecretsManager()
         self.crypto_handler = CryptoHandler()
 
-    def get_webhook_details(self, webhook_id: str) -> Optional[Dict[str, Any]]:
+    def get_webhook_details(self, webhook_id: str) -> dict[str, Any] | None:
         webhook_details = self.table.get_item(Key={"webhook_id": webhook_id})
         return webhook_details.get("Item")
 
     def process_request_body(
         self, body: str, is_base64_encoded: bool
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         if body is None:
             raise ValueError("No body in the request")
 
@@ -53,7 +52,7 @@ class WebhookHandler:
 
         return base64.b64decode(response.content)
 
-    def extract_recipient_email(self, answer_data: Dict[str, Any]) -> Optional[str]:
+    def extract_recipient_email(self, answer_data: dict[str, Any]) -> str | None:
         """
         Extract the email address from the surveycake.
         CAUTION: There should be a question named "你的信箱" in one of the surveycake questions.
@@ -63,7 +62,7 @@ class WebhookHandler:
                 return item["answer"][0]
         return None
 
-    def send_email(self, email_body: Dict[str, Any]) -> Dict[str, Any]:
+    def send_email(self, email_body: dict[str, Any]) -> dict[str, Any]:
         try:
             access_token = self.secrets_manager.get_access_token("surveycake")
             logger.info(f"Send email API endpoint: {Config.SEND_EMAIL_API_ENDPOINT}")
@@ -84,8 +83,8 @@ class WebhookHandler:
             return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
 
     def prepare_email_body(
-        self, webhook_details: Dict[str, Any], recipient_email: str
-    ) -> Dict[str, Any]:
+        self, webhook_details: dict[str, Any], recipient_email: str
+    ) -> dict[str, Any]:
         attachment_file_ids = webhook_details.get("attachment_file_ids", [])
         attachment_file_ids = [item for item in attachment_file_ids if item.strip()]
 
@@ -106,7 +105,7 @@ class WebhookHandler:
             "recipients": [{"email": recipient_email, "template_variables": {}}],
         }
 
-    def check_headers_agent(self, headers: Dict[str, str]) -> bool:
+    def check_headers_agent(self, headers: dict[str, str]) -> bool:
         allowed_user_agents = ["GuzzleHttp/7"]
         user_agent = headers.get("User-Agent")
 

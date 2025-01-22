@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import boto3
 from botocore.exceptions import ClientError
@@ -20,7 +19,7 @@ class FileServicePaginationStateRepository:
         self.dynamodb = boto3.resource("dynamodb")
         self.table = self.dynamodb.Table(TABLE_NAME)
 
-    def save_pagination_state(self, pagination_state: dict[str, Optional[str]]) -> None:
+    def save_pagination_state(self, pagination_state: dict[str, str | None]) -> None:
         """
         Save the pagination state in the DynamoDB table.
 
@@ -34,7 +33,7 @@ class FileServicePaginationStateRepository:
 
     def get_pagination_state_by_user_id_and_index_name(
         self, user_id: str, index_name: str
-    ) -> dict[str, Optional[str]]:
+    ) -> dict[str, str | None]:
         """
         Retrieve the pagination state for a given user ID and index name from the DynamoDB table.
 

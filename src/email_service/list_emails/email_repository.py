@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import Optional
 
 import boto3
 import time_util
@@ -27,7 +26,7 @@ class EmailRepository:
         self,
         run_id: str,
         limit: int,
-        last_evaluated_key: Optional[dict[str, str]],
+        last_evaluated_key: dict[str, str] | None,
         sort_order: str,
     ) -> dict[str, str]:
         """
@@ -60,7 +59,7 @@ class EmailRepository:
         run_id: str,
         status: str,
         limit: int,
-        last_evaluated_key: Optional[dict[str, str]],
+        last_evaluated_key: dict[str, str] | None,
         sort_order: str,
     ) -> dict[str, str]:
         """
@@ -95,7 +94,7 @@ class EmailRepository:
         self,
         run_id: str,
         limit: int,
-        last_evaluated_key: Optional[dict[str, str]],
+        last_evaluated_key: dict[str, str] | None,
         sort_order: str,
     ) -> dict[str, str]:
         """
@@ -156,7 +155,7 @@ class EmailRepository:
 
         return all_emails
 
-    def get_email_by_id(self, run_id: str, email_id: str) -> Optional[dict[str, str]]:
+    def get_email_by_id(self, run_id: str, email_id: str) -> dict[str, str] | None:
         """
         Retrieve an email by its run ID and email ID from the DynamoDB table.
 
@@ -171,7 +170,7 @@ class EmailRepository:
             logger.error("Error getting email by ID: %s", e)
             return None
 
-    def save_email(self, email: dict[str, str]) -> Optional[str]:
+    def save_email(self, email: dict[str, str]) -> str | None:
         """
         Save an email to the DynamoDB table.
 

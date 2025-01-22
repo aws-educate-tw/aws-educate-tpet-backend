@@ -1,7 +1,6 @@
 import json
 import logging
 from decimal import Decimal
-from typing import Optional
 
 from botocore.exceptions import ClientError
 from current_user_util import CurrentUserUtil
@@ -23,15 +22,15 @@ class DecimalEncoder(json.JSONEncoder):
     def default(self, o: object) -> object:
         if isinstance(o, Decimal):
             return float(o)
-        return super(DecimalEncoder, self).default(o)
+        return super().default(o)
 
 
 def extract_query_params(event: dict[str, any]) -> dict[str, any]:
     """Extract query parameters from the API Gateway event."""
     limit: int = 10
-    last_evaluated_key: Optional[str] = None
+    last_evaluated_key: str | None = None
     sort_order: str = "DESC"
-    created_year: Optional[str] = None
+    created_year: str | None = None
 
     # Extract query parameters if they exist
     if event.get("queryStringParameters"):
@@ -79,9 +78,9 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         return extracted_params
 
     limit: int = extracted_params["limit"]
-    last_evaluated_key: Optional[str] = extracted_params["last_evaluated_key"]
+    last_evaluated_key: str | None = extracted_params["last_evaluated_key"]
     sort_order: str = extracted_params["sort_order"]
-    created_year: Optional[str] = extracted_params["created_year"]
+    created_year: str | None = extracted_params["created_year"]
 
     index_name = "created_year-created_at-gsi"
 
