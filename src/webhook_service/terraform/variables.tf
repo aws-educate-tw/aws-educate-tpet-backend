@@ -25,7 +25,7 @@ variable "dynamodb_table" {
 
 variable "dynamodb_table_total_count" {
   description = "Current service's DynamoDB table for total count"
-  
+
 }
 
 variable "enable_pitr" {
@@ -42,4 +42,3 @@ variable "docker_host" {
   description = "Docker host"
   type        = string
 }
-

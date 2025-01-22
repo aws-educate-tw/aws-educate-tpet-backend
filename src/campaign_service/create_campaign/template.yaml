@@ -27,11 +27,11 @@ Resources:
                 - s3:PutObject
                 - s3:GetObject
                 - s3:DeleteObject
-              Resource: arn:aws:s3:::email-sender-excel/*  
+              Resource: arn:aws:s3:::email-sender-excel/*
             - Effect: Allow
               Action:
                 - s3:ListBucket
-              Resource: arn:aws:s3:::email-sender-excel  
+              Resource: arn:aws:s3:::email-sender-excel
       Events:
         CampaignApi:
           Type: Api

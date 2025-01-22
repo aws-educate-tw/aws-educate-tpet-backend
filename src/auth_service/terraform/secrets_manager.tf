@@ -63,5 +63,3 @@ resource "aws_secretsmanager_secret_version" "surveycake_access_token" {
     access_token = ""
   })
 }
-
-

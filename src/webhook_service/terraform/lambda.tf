@@ -326,7 +326,7 @@ module "list_webhooks_docker_image" {
   keep_remotely        = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = local.list_webhooks_function_name_and_ecr_repo_name  
+  ecr_repo             = local.list_webhooks_function_name_and_ecr_repo_name
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
