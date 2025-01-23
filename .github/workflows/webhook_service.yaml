@@ -16,6 +16,15 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   TF_DIR: ./src/webhook_service/terraform
+  GREP_FILTER: >-
+    grep -v -E '^[[:space:]]*(module\.|random_|aws_).*: (Creating|Creation complete|Still creating|Modifications complete|Destroying|Destruction complete|Reading\.\.\.|Plan:|Read complete after)' |
+    grep -v -E '^\[.*\][[:space:]]*module\..*$' |
+    grep -v '^[0-9]+[[:space:]]' |
+    grep -v 'Creation complete after' |
+    grep -v 'Still creating\.\.\.' |
+    grep -v ': Reading\.\.\.' |
+    grep -v ': Read complete' |
+    grep -v 'Refreshing state\.\.\.'
 
 permissions:
   contents: write
@@ -35,6 +44,16 @@ jobs:
           echo "Event Name: ${{ github.event_name }}"
           echo "Event Action: ${{ github.event.action }}"
           echo "Merged: ${{ github.event.pull_request.merged }}"
+          echo "PULL_REQUEST_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "COMMIT_SHA=${{ github.sha }}" >> $GITHUB_ENV
+          echo "TIMESTAMP=$(date -u '+%Y-%m-%dT%H-%M-%SZ')" >> $GITHUB_ENV
+
+      # Disable Terraform command output logging to prevent credential leaks
+      - name: Disable Terraform command logging
+        run: |
+          echo "TF_CLI_ARGS=-no-color" >> $GITHUB_ENV
+          echo "TF_LOG=" >> $GITHUB_ENV
+
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -45,28 +64,108 @@ jobs:
         run: terraform init -backend-config="preview.tfbackend" -reconfigure
         working-directory: ${{ env.TF_DIR }}
 
-      - name: Terraform Destroy (Cleanup)
-        id: destroy
-        run: terraform destroy -auto-approve -var-file='preview.tfvars'
-        working-directory: ${{ env.TF_DIR }}
-        continue-on-error: true
-
       - name: Terraform Plan
         id: plan
-        run: terraform plan -var-file='preview.tfvars'
+        run: |
+          terraform plan -var-file='preview.tfvars' 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
       - name: Terraform Apply
         id: apply
-        run: terraform apply -var-file='preview.tfvars' -auto-approve
+        run: |
+          terraform apply -var-file='preview.tfvars' -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1 # Preview environment region
+
+      # Enhanced security for token handling
+      - name: Get Postman Service Account Token
+        id: get-token
+        run: |
+          # Mask all outputs
+          set +x
+
+          # Get secret and mask the response
+          SECRET_RESPONSE=$(aws secretsmanager get-secret-value \
+            --secret-id "aws-educate-tpet/preview/service-accounts/postman/access-token" \
+            --query 'SecretString' \
+            --output text)
+          echo "::add-mask::$SECRET_RESPONSE"
+
+          # Parse and mask the token
+          ACCESS_TOKEN=$(echo $SECRET_RESPONSE | jq -r '.access_token')
+          echo "::add-mask::$ACCESS_TOKEN"
+
+          # Store token securely
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
+
+          # Validate without exposing token
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "Error: Failed to retrieve access token"
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install Newman
+        run: npm install -g newman newman-reporter-htmlextra
+
+      - name: Wait for API Gateway Deployment
+        run: |
+          echo "Waiting for API Gateway to be ready..."
+          sleep 30
+
+      # Enhanced security for Newman tests
+      - name: Run API Tests
+        id: newman
+        run: |
+          # Create report directory with meaningful name
+          REPORT_DIR="newman/pr_${{ env.PULL_REQUEST_NUMBER }}_${{ env.TIMESTAMP }}_${{ env.COMMIT_SHA }}"
+          mkdir -p $REPORT_DIR
+
+          # Create temporary environment file that combines base environment and token
+          TEMP_ENV_FILE=$(mktemp)
+
+          # Merge base environment with token and contextual information
+          jq -s '.[0].values + [
+            {"key":"access_token", "value":"${{ env.ACCESS_TOKEN }}"},
+            {"key":"pull_request_number", "value":"${{ env.PULL_REQUEST_NUMBER }}"},
+            {"key":"commit_sha", "value":"${{ env.COMMIT_SHA }}"},
+            {"key":"timestamp", "value":"${{ env.TIMESTAMP }}"}
+          ] | {values: .}' \
+            ./tests/webhook_service/api_regression/webhook_service_preview_environment.json \
+            > $TEMP_ENV_FILE
+
+          # Run tests with combined environment file
+          newman run ./tests/webhook_service/api_regression/webhook_service_regression_test_collection.json \
+            --environment $TEMP_ENV_FILE \
+            --reporters cli,htmlextra \
+            --reporter-htmlextra-export "$REPORT_DIR/report.html" \
+            --silent
+
+          # Cleanup
+          rm -f $TEMP_ENV_FILE
+        continue-on-error: true
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}
+          path: newman/
+
       - uses: actions/github-script@v6
         if: github.event_name == 'pull_request'
-        env:
-          APPLY: "terraform\n${{ steps.apply.outputs.stdout }}"
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -80,18 +179,25 @@ jobs:
               return comment.user.type === 'Bot' && comment.body.includes('Terraform Apply Results');
             });
 
-            const output = `#### Terraform Apply Results 🌟
-            Preview environment has been deployed. You can now test your changes.
+            const tfExitCode = '${{ steps.apply.outcome }}' === 'success' ? 0 : 1;
+            const testExitCode = '${{ steps.newman.outcome }}' === 'success' ? 0 : 1;
 
-            <details><summary>Show Actual Apply</summary>
+            let output = `#### Deployment and Test Results 🌟\n`;
+            if (tfExitCode === 0) {
+              output += '✅ Deployment completed successfully!\n';
+            } else {
+              output += '❌ Deployment encountered errors. Please check the workflow logs for details.\n';
+            }
 
-            \`\`\`\n
-            ${{ steps.apply.outputs.stdout }}
-            \`\`\`
+            output += `\n#### API Test Results 🧪\n`;
+            if (testExitCode === 0) {
+              output += '✅ All API tests passed!\n';
+            } else {
+              output += '❌ Some API tests failed. Please check the test report for details.\n';
+            }
 
-            </details>
-
-            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            output += `\nAPI Test Report: Check the 'newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}' artifact in the Actions tab\n`;
+            output += `\n*Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
 
             if (botComment) {
               await github.rest.issues.updateComment({
@@ -109,40 +215,23 @@ jobs:
               });
             }
 
-  cleanup_preview:
-    name: "Cleanup Preview Environment"
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' || github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - name: "Print Debug Information"
-        run: |
-          echo "Event Name: ${{ github.event_name }}"
-          echo "Event Action: ${{ github.event.action }}"
-          echo "Merged: ${{ github.event.pull_request.merged }}"
-      - uses: actions/checkout@v3
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.3
-
-      - name: Terraform Init
-        run: terraform init -backend-config="preview.tfbackend" -reconfigure
-        working-directory: ${{ env.TF_DIR }}
-
-      - name: Terraform Destroy
-        run: terraform destroy -auto-approve -var-file='preview.tfvars'
-        working-directory: ${{ env.TF_DIR }}
-
   deploy:
     name: "Deploy to Target Environment"
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
-    needs: [cleanup_preview]
     steps:
       - name: "Print Debug Information"
         run: |
           echo "Event Name: ${{ github.event_name }}"
           echo "Event Action: ${{ github.event.action }}"
           echo "Merged: ${{ github.event.pull_request.merged }}"
+
+      # Disable Terraform command output logging
+      - name: Disable Terraform command logging
+        run: |
+          echo "TF_CLI_ARGS=-no-color" >> $GITHUB_ENV
+          echo "TF_LOG=" >> $GITHUB_ENV
+
       - uses: actions/checkout@v3
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -174,12 +263,14 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -var-file='${{ env.TF_VARS_FILE }}' -out=tfplan
+        run: |
+          terraform plan -var-file='${{ env.TF_VARS_FILE }}' 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
       - name: Terraform Apply
         id: apply
-        run: terraform apply -var-file='${{ env.TF_VARS_FILE }}' -auto-approve
+        run: |
+          terraform apply -var-file='${{ env.TF_VARS_FILE }}' -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
