@@ -221,26 +221,8 @@ jobs:
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
-          fields: repo,workflow,job,commit,author
-          author_name: "Auth Service Deployment"
-          icon_emoji: ":rocket:"
-          custom_payload: |
-            {
-              "attachments": [{
-                "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
-                "title": "[Auth Service] Deployment ${{ job.status }}",
-                "fields": [
-                  { "title": "Environment", "value": "${{ env.ENVIRONMENT }}", "short": true },
-                  { "title": "Branch", "value": "${{ github.ref_name }}", "short": true },
-                  { "title": "Commit", "value": "${{ github.sha }}".substring(0, 7), "short": true },
-                  { "title": "Author", "value": "${{ github.actor }}", "short": true },
-                  { "title": "Duration", "value": "${{ steps.duration.outputs.time_taken }}", "short": true }
-                ],
-                "footer": "GitHub Actions",
-                "footer_icon": "https://github.githubassets.com/favicon.ico",
-                "ts": Math.floor(Date.now() / 1000)
-              }]
-            }
+          author_name: "[Auth Service] Preview environment deployment"
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took,pullRequest
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         if: always()
@@ -314,26 +296,8 @@ jobs:
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
-          fields: repo,workflow,job,commit,author
-          author_name: "Auth Service Deployment"
-          icon_emoji: ":rocket:"
-          custom_payload: |
-            {
-              "attachments": [{
-                "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
-                "title": "[Auth Service] Deployment ${{ job.status }}",
-                "fields": [
-                  { "title": "Environment", "value": "${{ env.ENVIRONMENT }}", "short": true },
-                  { "title": "Branch", "value": "${{ github.ref_name }}", "short": true },
-                  { "title": "Commit", "value": "${{ github.sha }}".substring(0, 7), "short": true },
-                  { "title": "Author", "value": "${{ github.actor }}", "short": true },
-                  { "title": "Duration", "value": "${{ steps.duration.outputs.time_taken }}", "short": true }
-                ],
-                "footer": "GitHub Actions",
-                "footer_icon": "https://github.githubassets.com/favicon.ico",
-                "ts": Math.floor(Date.now() / 1000)
-              }]
-            }
+          author_name: "[Auth Service] ${{ env.ENVIRONMENT }} environment deployment"
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took,pullRequest
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         if: always()
