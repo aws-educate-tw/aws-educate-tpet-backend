@@ -175,8 +175,11 @@ jobs:
               issue_number: context.issue.number,
             });
 
+            // Find the bot comment
             const botComment = comments.find(comment => {
-              return comment.user.type === 'Bot' && comment.body.includes('Terraform Apply Results');
+              return comment.user.type === 'Bot' && 
+                     (comment.body.includes('Deployment and Test Results') ||
+                      comment.body.includes('Terraform Apply Results'));
             });
 
             const tfExitCode = '${{ steps.apply.outcome }}' === 'success' ? 0 : 1;
