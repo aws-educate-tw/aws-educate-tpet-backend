@@ -62,6 +62,53 @@
 						"type": "text/javascript",
 						"packages": {}
 					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Verify status code is 202",
+							"pm.test(\"Status code is 202\", function () {",
+							"    pm.response.to.have.status(202);",
+							"});",
+							"",
+							"// Parse the JSON response body",
+							"const responseData = pm.response.json();",
+							"",
+							"// Verify the response contains the required fields",
+							"pm.test(\"Response contains all required fields\", function () {",
+							"    pm.expect(responseData).to.have.property(\"status\");",
+							"    pm.expect(responseData).to.have.property(\"message\");",
+							"    pm.expect(responseData).to.have.property(\"recipient_source\");",
+							"    pm.expect(responseData).to.have.property(\"run_id\");",
+							"    pm.expect(responseData).to.have.property(\"template_file_id\");",
+							"    pm.expect(responseData).to.have.property(\"subject\");",
+							"    pm.expect(responseData).to.have.property(\"display_name\");",
+							"    pm.expect(responseData).to.have.property(\"attachment_file_ids\");",
+							"    pm.expect(responseData).to.have.property(\"is_generate_certificate\");",
+							"    pm.expect(responseData).to.have.property(\"sender_id\");",
+							"    pm.expect(responseData).to.have.property(\"reply_to\");",
+							"    pm.expect(responseData).to.have.property(\"sender_local_part\");",
+							"    pm.expect(responseData).to.have.property(\"cc\");",
+							"    pm.expect(responseData).to.have.property(\"bcc\");",
+							"    pm.expect(responseData).to.have.property(\"recipients\");",
+							"    pm.expect(responseData).to.have.property(\"success_email_count\");",
+							"    pm.expect(responseData).to.have.property(\"expected_email_send_count\");",
+							"});",
+							"",
+							"// Verify status is \"SUCCESS\"",
+							"pm.test(\"Status is SUCCESS\", function () {",
+							"    pm.expect(responseData.status).to.eql(\"SUCCESS\");",
+							"});",
+							"",
+							"// Verify run_id is not null",
+							"pm.test(\"Run ID is present\", function () {",
+							"    pm.expect(responseData.run_id).to.not.be.null;",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
 				}
 			],
 			"request": {
@@ -79,7 +126,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"recipient_source\": \"DIRECT\",\n    \"subject\": \"[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}\",\n    \"display_name\": \"GitHub Actions{{pull_request_number}} - API Regression Test\",\n    \"template_file_id\": \"{{template_file_id}}\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"harry鍾\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"{{template_file_id}}\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ]\n}",
+					"raw": "{\n    \"recipient_source\": \"DIRECT\",\n    \"subject\": \"[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}\",\n    \"display_name\": \"GitHub Actions - PR{{pull_request_number}} - API Regression Test\",\n    \"template_file_id\": \"{{template_file_id}}\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"harry鍾\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"{{template_file_id}}\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ]\n}",
 					"options": {
 						"raw": {
 							"language": "json"
