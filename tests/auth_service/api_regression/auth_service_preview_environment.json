@@ -34,9 +34,51 @@
 			"value": "",
 			"type": "secret",
 			"enabled": true
+		},
+		{
+			"key": "[postman_email_address",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "domain",
+			"value": "aws-educate.tw",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "template_file_id",
+			"value": "c4941cc9ef8a49d7b7dabe84253c4e8d",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "template_file_name",
+			"value": "",
+			"type": "any",
+			"enabled": true
+		},
+		{
+			"key": "template_file_url",
+			"value": "",
+			"type": "any",
+			"enabled": true
+		},
+		{
+			"key": "pull_request_number",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "commit_sha",
+			"value": "",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2025-01-23T03:17:30.767Z",
+	"_postman_exported_at": "2025-01-23T05:06:52.408Z",
 	"_postman_exported_using": "Postman/11.22.0"
 }

@@ -44,6 +44,9 @@ jobs:
           echo "Event Name: ${{ github.event_name }}"
           echo "Event Action: ${{ github.event.action }}"
           echo "Merged: ${{ github.event.pull_request.merged }}"
+          echo "PULL_REQUEST_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "COMMIT_SHA=${{ github.sha }}" >> $GITHUB_ENV
+          echo "TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
 
       # Disable Terraform command output logging to prevent credential leaks
       - name: Disable Terraform command logging
@@ -122,15 +125,24 @@ jobs:
           echo "Waiting for API Gateway to be ready..."
           sleep 30
 
-      # Enhanced security for Newman tests
+      # Enhanced security for Newman tests with report naming
       - name: Run API Tests
         id: newman
         run: |
+          # Create report directory with meaningful name
+          REPORT_DIR="newman/pr_${{ env.PULL_REQUEST_NUMBER }}_${{ env.TIMESTAMP }}_${{ env.COMMIT_SHA }}"
+          mkdir -p $REPORT_DIR
+
           # Create temporary environment file that combines base environment and token
           TEMP_ENV_FILE=$(mktemp)
 
-          # Merge base environment with token
-          jq -s '.[0].values + [{"key":"access_token", "value":"${{ env.ACCESS_TOKEN }}"}] | {values: .}' \
+          # Merge base environment with token and contextual information
+          jq -s '.[0].values + [
+            {"key":"access_token", "value":"${{ env.ACCESS_TOKEN }}"},
+            {"key":"pull_request_number", "value":"${{ env.PULL_REQUEST_NUMBER }}"},
+            {"key":"commit_sha", "value":"${{ env.COMMIT_SHA }}"},
+            {"key":"timestamp", "value":"${{ env.TIMESTAMP }}"}
+          ] | {values: .}' \
             ./tests/auth_service/api_regression/auth_service_preview_environment.json \
             > $TEMP_ENV_FILE
 
@@ -138,7 +150,7 @@ jobs:
           newman run ./tests/auth_service/api_regression/auth_service_regression_test_collection.json \
             --environment $TEMP_ENV_FILE \
             --reporters cli,htmlextra \
-            --reporter-htmlextra-export "newman/report.html" \
+            --reporter-htmlextra-export "$REPORT_DIR/report.html" \
             --silent
 
           # Cleanup
@@ -149,7 +161,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: newman-test-results
+          name: newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}
           path: newman/
 
       - uses: actions/github-script@v6
@@ -184,7 +196,7 @@ jobs:
               output += '❌ Some API tests failed. Please check the test report for details.\n';
             }
 
-            output += `\nAPI Test Report: Check the 'newman-test-results' artifact in the Actions tab\n`;
+            output += `\nAPI Test Report: Check the 'newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}' artifact in the Actions tab\n`;
             output += `\n*Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
 
             if (botComment) {

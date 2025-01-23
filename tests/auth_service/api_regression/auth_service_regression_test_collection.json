@@ -9,15 +9,42 @@
 	},
 	"item": [
 		{
-			"name": "Get user",
+			"name": "Get me",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
+							"// Validate that the status code is 200",
 							"pm.test(\"Status code is 200\", function () {",
 							"    pm.response.to.have.status(200);",
-							"});"
+							"});",
+							"",
+							"// Validate that the response is in JSON format",
+							"pm.test(\"Response is JSON\", function () {",
+							"    pm.response.to.be.json;",
+							"});",
+							"",
+							"// Validate that the response body contains the required fields",
+							"pm.test(\"Response has required fields\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property(\"email\");",
+							"    pm.expect(jsonData).to.have.property(\"user_id\");",
+							"    pm.expect(jsonData).to.have.property(\"username\");",
+							"});",
+							"",
+							"// Validate that the email matches the expected value (optional, specific to certain test scenarios)",
+							"pm.test(\"Email matches expected value\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData.email).to.eql(\"postman@aws-educate.tw\");",
+							"});",
+							"",
+							"// Validate that the username matches the expected value (optional, specific to certain test scenarios)",
+							"pm.test(\"Username matches expected value\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData.username).to.eql(\"postman\");",
+							"});",
+							""
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -38,7 +65,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "https://{{environment}}-{{service_hyphen}}-internal-api-tpet.aws-educate.tw/{{environment}}/auth/users/9881b370-0031-7037-b42e-ef737d3aa382",
+					"raw": "https://{{environment}}-{{service_hyphen}}-internal-api-tpet.aws-educate.tw/{{environment}}/auth/users/me",
 					"protocol": "https",
 					"host": [
 						"{{environment}}-{{service_hyphen}}-internal-api-tpet",
@@ -49,7 +76,7 @@
 						"{{environment}}",
 						"auth",
 						"users",
-						"9881b370-0031-7037-b42e-ef737d3aa382"
+						"me"
 					]
 				}
 			},
@@ -60,7 +87,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "https://{{environment}}-{{service_hyphen}}-internal-api-tpet.aws-educate.tw/{{environment}}/auth/users/9881b370-0031-7037-b42e-ef737d3aa382",
+							"raw": "https://{{environment}}-{{service_hyphen}}-internal-api-tpet.aws-educate.tw/{{environment}}/auth/users/me",
 							"protocol": "https",
 							"host": [
 								"{{environment}}-{{service_hyphen}}-internal-api-tpet",
@@ -71,7 +98,7 @@
 								"{{environment}}",
 								"auth",
 								"users",
-								"9881b370-0031-7037-b42e-ef737d3aa382"
+								"me"
 							]
 						}
 					},
