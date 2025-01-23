@@ -217,6 +217,33 @@ jobs:
                 body: output,
               });
             }
+      - name: Slack Notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,workflow,job,commit,author
+          author_name: "Auth Service Deployment"
+          icon_emoji: ":rocket:"
+          custom_payload: |
+            {
+              "attachments": [{
+                "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
+                "title": "[Auth Service] Deployment ${{ job.status }}",
+                "fields": [
+                  { "title": "Environment", "value": "${{ env.ENVIRONMENT }}", "short": true },
+                  { "title": "Branch", "value": "${{ github.ref_name }}", "short": true },
+                  { "title": "Commit", "value": "${{ github.sha }}".substring(0, 7), "short": true },
+                  { "title": "Author", "value": "${{ github.actor }}", "short": true },
+                  { "title": "Duration", "value": "${{ steps.duration.outputs.time_taken }}", "short": true }
+                ],
+                "footer": "GitHub Actions",
+                "footer_icon": "https://github.githubassets.com/favicon.ico",
+                "ts": Math.floor(Date.now() / 1000)
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: always()
 
   deploy:
     name: "Deploy to Target Environment"
@@ -228,6 +255,10 @@ jobs:
           echo "Event Name: ${{ github.event_name }}"
           echo "Event Action: ${{ github.event.action }}"
           echo "Merged: ${{ github.event.pull_request.merged }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "PULL_REQUEST_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "COMMIT_SHA=${{ github.sha }}" >> $GITHUB_ENV
+          echo "TIMESTAMP=$(date -u '+%Y-%m-%dT%H-%M-%SZ')" >> $GITHUB_ENV
 
       # Disable Terraform command output logging
       - name: Disable Terraform command logging
@@ -278,3 +309,31 @@ jobs:
           terraform apply -var-file='${{ env.TF_VARS_FILE }}' -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
+
+      - name: Slack Notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,workflow,job,commit,author
+          author_name: "Auth Service Deployment"
+          icon_emoji: ":rocket:"
+          custom_payload: |
+            {
+              "attachments": [{
+                "color": "${{ job.status == 'success' && 'good' || 'danger' }}",
+                "title": "[Auth Service] Deployment ${{ job.status }}",
+                "fields": [
+                  { "title": "Environment", "value": "${{ env.ENVIRONMENT }}", "short": true },
+                  { "title": "Branch", "value": "${{ github.ref_name }}", "short": true },
+                  { "title": "Commit", "value": "${{ github.sha }}".substring(0, 7), "short": true },
+                  { "title": "Author", "value": "${{ github.actor }}", "short": true },
+                  { "title": "Duration", "value": "${{ steps.duration.outputs.time_taken }}", "short": true }
+                ],
+                "footer": "GitHub Actions",
+                "footer_icon": "https://github.githubassets.com/favicon.ico",
+                "ts": Math.floor(Date.now() / 1000)
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: always()
