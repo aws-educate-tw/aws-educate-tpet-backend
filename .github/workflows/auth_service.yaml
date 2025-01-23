@@ -222,9 +222,11 @@ jobs:
         with:
           status: ${{ job.status }}
           author_name: "[Auth Service] Preview environment deployment"
+          job_name: Deploy Preview Environment
           fields: repo,message,commit,author,action,eventName,ref,workflow,job,took,pullRequest
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          MATRIX_CONTEXT: ${{ toJson(matrix) }}
         if: always()
 
   deploy:
@@ -297,7 +299,9 @@ jobs:
         with:
           status: ${{ job.status }}
           author_name: "[Auth Service] ${{ env.ENVIRONMENT }} environment deployment"
+          job_name: Deploy to Target Environment
           fields: repo,message,commit,author,action,eventName,ref,workflow,job,took,pullRequest
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          MATRIX_CONTEXT: ${{ toJson(matrix) }}
         if: always()
