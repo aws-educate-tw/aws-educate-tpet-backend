@@ -240,9 +240,6 @@ jobs:
           echo "Event Action: ${{ github.event.action }}"
           echo "Merged: ${{ github.event.pull_request.merged }}"
           echo "Branch: ${{ github.ref }}"
-          echo "PULL_REQUEST_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-          echo "COMMIT_SHA=${{ github.sha }}" >> $GITHUB_ENV
-          echo "TIMESTAMP=$(date -u '+%Y-%m-%dT%H-%M-%SZ')" >> $GITHUB_ENV
 
       # Disable Terraform command output logging
       - name: Disable Terraform command logging
