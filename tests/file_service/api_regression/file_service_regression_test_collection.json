@@ -62,6 +62,16 @@
 						"type": "text/javascript",
 						"packages": {}
 					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
 				}
 			],
 			"request": {
@@ -112,16 +122,6 @@
 					{
 						"key": "Connection",
 						"value": "keep-alive"
-					},
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"disabled": true
-					},
-					{
-						"key": "Content-Type",
-						"value": "application/octet-stream",
-						"disabled": true
 					}
 				],
 				"body": {
@@ -130,7 +130,7 @@
 						{
 							"key": "file",
 							"type": "file",
-							"src": "./tests/file_service/api_regression/test_template_file.html"
+							"src": "test_template_file.html"
 						}
 					]
 				},
