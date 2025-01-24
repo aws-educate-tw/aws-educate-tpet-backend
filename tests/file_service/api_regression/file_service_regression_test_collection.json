@@ -130,7 +130,7 @@
 						{
 							"key": "file",
 							"type": "file",
-							"src": "test_template_file.html"
+							"src": "./tests/file_service/api_regression/test_template_file.html"
 						}
 					]
 				},
