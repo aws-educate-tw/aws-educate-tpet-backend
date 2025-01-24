@@ -86,44 +86,7 @@
 					]
 				},
 				"method": "POST",
-				"header": [
-					{
-						"key": "Cache-Control",
-						"value": "no-cache"
-					},
-					{
-						"key": "Postman-Token",
-						"value": "<calculated when request is sent>"
-					},
-					{
-						"key": "Content-Type",
-						"value": "multipart/form-data; boundary=<calculated when request is sent>"
-					},
-					{
-						"key": "Content-Length",
-						"value": "<calculated when request is sent>"
-					},
-					{
-						"key": "Host",
-						"value": "<calculated when request is sent>"
-					},
-					{
-						"key": "User-Agent",
-						"value": "PostmanRuntime/7.32.1"
-					},
-					{
-						"key": "Accept",
-						"value": "*/*"
-					},
-					{
-						"key": "Accept-Encoding",
-						"value": "gzip, deflate, br"
-					},
-					{
-						"key": "Connection",
-						"value": "keep-alive"
-					}
-				],
+				"header": [],
 				"body": {
 					"mode": "formdata",
 					"formdata": [
