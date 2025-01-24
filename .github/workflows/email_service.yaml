@@ -150,6 +150,7 @@ jobs:
           newman run ./tests/email_service/api_regression/email_service_regression_test_collection.json \
             --environment $TEMP_ENV_FILE \
             --reporters cli,htmlextra \
+            --reporter-htmlextra-skipHeaders Authorization \
             --reporter-htmlextra-export "$REPORT_DIR/report.html" \
             --silent
 
