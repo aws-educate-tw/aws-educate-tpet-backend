@@ -51,7 +51,7 @@ module "health_check_lambda" {
   function_name  = local.health_check_function_name_and_ecr_repo_name
   description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /webhook-service/health"
   create_package = false
-  timeout        = 300
+  timeout        = 15
 
   ##################
   # Container Image
@@ -64,10 +64,8 @@ module "health_check_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"       = var.environment,
-    "SERVICE"           = var.service_underscore
-    "DYNAMODB_TABLE"    = var.dynamodb_table
-    "COGNITO_CLIENT_ID" = data.aws_ssm_parameter.aws_educate_tpet_cognito_client_id.value
+    "ENVIRONMENT" = var.environment,
+    "SERVICE"     = var.service_underscore
   }
 
   allowed_triggers = {

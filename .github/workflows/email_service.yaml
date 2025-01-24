@@ -126,7 +126,7 @@ jobs:
           RETRY_INTERVAL=5
           COUNTER=0
 
-          HEALTH_CHECK_URL="https://preview-auth-service-internal-api-tpet.aws-educate.tw/preview/email-service/health"
+          HEALTH_CHECK_URL="https://preview-email-service-internal-api-tpet.aws-educate.tw/preview/email-service/health"
 
           echo "Checking health endpoint: ${HEALTH_CHECK_URL}"
 

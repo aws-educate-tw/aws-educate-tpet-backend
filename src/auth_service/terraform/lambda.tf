@@ -59,7 +59,7 @@ module "health_check_lambda" {
   function_name  = local.health_check_function_name_and_ecr_repo_name
   description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /auth-service/health"
   create_package = false
-  timeout        = 300
+  timeout        = 15
 
   ##################
   # Container Image
