@@ -196,6 +196,12 @@ jobs:
           name: newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}
           path: newman/
 
+      - name: Get Artifact ID
+        if: always()
+        run: |
+          ARTIFACT_ID=$(echo "${{ steps.upload-artifact.outputs.artifact-id }}")
+          echo "ARTIFACT_ID=$ARTIFACT_ID" >> $GITHUB_ENV
+
       - uses: actions/github-script@v6
         if: github.event_name == 'pull_request'
         with:
@@ -218,31 +224,32 @@ jobs:
             const tfExitCode = '${{ steps.apply.outcome }}' === 'success' ? 0 : 1;
             const testExitCode = '${{ steps.newman.outcome }}' === 'success' ? 0 : 1;
 
-            // Get deployment timestamp
-            const deployTime = new Date().toISOString();
+            // Get short SHA
+            const shortSHA = '${{ env.COMMIT_SHA }}'.substring(0, 6);
+
+            // Get workflow run URL and artifact URL
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const artifactUrl = `${runUrl}/artifacts/${process.env.ARTIFACT_ID}`;
 
             let output = `### [Auth Service] Preview Deployment Status\n\n`;
-            output += `| Service | Environment | Status | Details |\n`;
-            output += `|:--------|:------------|:-------|:--------|\n`;
+            output += `| Service | Environment | Commit | Status | Details |\n`;
+            output += `|:--------|:------------|:-------|:-------|:--------|\n`;
 
             // Deployment Status
-            output += `| Auth Service | Preview | ${tfExitCode === 0 ? '✅' : '❌'} | ${
+            output += `| Auth Service | Preview | \`${shortSHA}\` | ${tfExitCode === 0 ? '✅' : '❌'} | ${
               tfExitCode === 0 
                 ? 'Successfully deployed'
-                : 'Deployment failed - [Check logs](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})'
+                : `[Check deployment logs](${runUrl})`
             } |\n`;
 
             output += `\n### Test Results\n\n`;
-            output += `| Test Suite | Status | Duration | Details |\n`;
-            output += `|:-----------|:-------|:---------|:--------|\n`;
-            output += `| API Tests | ${testExitCode === 0 ? '✅' : '❌'} | ${
-              '${{ steps.newman.outputs.duration }}' || 'N/A'
-            } | [View Report](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts) |\n`;
+            output += `| Test Suite | Status | Report |\n`;
+            output += `|:-----------|:-------|:--------|\n`;
+            output += `| API Tests | ${testExitCode === 0 ? '✅' : '❌'} | [Download Report](${runUrl}/artifacts) |\n`;
 
             output += `\n---\n`;
             output += `🔍 **Details**\n`;
-            output += `- Deployment ID: \`${context.runId}\`\n`;
-            output += `- Timestamp: ${deployTime}\n`;
+            output += `- Run ID: \`${context.runId}\`\n`;
             output += `- Triggered by: @${{ github.actor }}\n`;
             output += `- Environment: Preview\n`;
 
