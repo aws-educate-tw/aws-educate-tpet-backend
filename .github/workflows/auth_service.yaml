@@ -158,6 +158,16 @@ jobs:
           rm -f $TEMP_ENV_FILE
         continue-on-error: true
 
+      - name: Check Newman Test Results
+        if: always()
+        run: |
+          if [[ ${{ steps.newman.outcome }} != "success" ]]; then
+            echo "❌ Newman tests failed."
+            exit 1
+          else
+            echo "✅ Newman tests passed."
+          fi
+
       - name: Upload Test Results
         if: always()
         uses: actions/upload-artifact@v4
