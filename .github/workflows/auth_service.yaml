@@ -225,8 +225,8 @@ jobs:
             const botComment = comments.find(comment => {
               return comment.user.type === 'Bot' && 
                       comment.body.includes('[Auth Service]') &&
-                      (comment.body.includes('Deployment and Test Results') ||
-                      comment.body.includes('Terraform Apply Results'));
+                      (comment.body.includes('Deployment Status') ||
+                      comment.body.includes('Test Results'));
             });
 
             const tfExitCode = '${{ steps.apply.outcome }}' === 'success' ? 0 : 1;

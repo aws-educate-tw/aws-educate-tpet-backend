@@ -196,6 +196,21 @@ jobs:
           name: newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}
           path: newman/
 
+      - name: Get Artifact URL
+        if: always()
+        id: get-artifact-url
+        run: |
+
+          ARTIFACTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)
+
+
+          ARTIFACT_NAME="newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}"
+          ARTIFACT_ID=$(echo "$ARTIFACTS" | jq -r --arg name "$ARTIFACT_NAME" '.artifacts[] | select(.name==$name).id')
+
+
+          echo "ARTIFACT_ID=$ARTIFACT_ID" >> $GITHUB_ENV
+
       - uses: actions/github-script@v6
         if: github.event_name == 'pull_request'
         with:
@@ -207,42 +222,39 @@ jobs:
               issue_number: context.issue.number,
             });
 
-            // Find the bot comment specific to File Service
             const botComment = comments.find(comment => {
               return comment.user.type === 'Bot' && 
                       comment.body.includes('[File Service]') &&
-                      (comment.body.includes('Deployment and Test Results') ||
-                      comment.body.includes('Terraform Apply Results'));
+                      (comment.body.includes('Deployment Status') ||
+                      comment.body.includes('Test Results'));
             });
 
             const tfExitCode = '${{ steps.apply.outcome }}' === 'success' ? 0 : 1;
             const testExitCode = '${{ steps.newman.outcome }}' === 'success' ? 0 : 1;
 
-            // Get deployment timestamp
-            const deployTime = new Date().toISOString();
+            // Get short SHA
+            const shortSHA = '${{ env.COMMIT_SHA }}'.substring(0, 6);
+
+            // Combine artifact URL
+            const artifactUrl = `${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${process.env.ARTIFACT_ID}`;
 
             let output = `### [File Service] Preview Deployment Status\n\n`;
-            output += `| Service | Environment | Status | Details |\n`;
-            output += `|:--------|:------------|:-------|:--------|\n`;
-
-            // Deployment Status
-            output += `| File Service | Preview | ${tfExitCode === 0 ? '✅' : '❌'} | ${
+            output += `| Service | Environment | Commit | Status | Details |\n`;
+            output += `|:--------|:------------|:-------|:-------|:--------|\n`;
+            output += `| File Service | Preview | \`${shortSHA}\` | ${tfExitCode === 0 ? '✅' : '❌'} | ${
               tfExitCode === 0 
                 ? 'Successfully deployed'
-                : 'Deployment failed - [Check logs](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})'
+                : `[Check deployment logs](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
             } |\n`;
 
             output += `\n### Test Results\n\n`;
-            output += `| Test Suite | Status | Duration | Details |\n`;
-            output += `|:-----------|:-------|:---------|:--------|\n`;
-            output += `| API Tests | ${testExitCode === 0 ? '✅' : '❌'} | ${
-              '${{ steps.newman.outputs.duration }}' || 'N/A'
-            } | [View Report](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts) |\n`;
+            output += `| Test Suite | Status | Report |\n`;
+            output += `|:-----------|:-------|:--------|\n`;
+            output += `| API Tests | ${testExitCode === 0 ? '✅' : '❌'} | [Download Report](${artifactUrl}) |\n`;
 
             output += `\n---\n`;
             output += `🔍 **Details**\n`;
-            output += `- Deployment ID: \`${context.runId}\`\n`;
-            output += `- Timestamp: ${deployTime}\n`;
+            output += `- Run ID: \`${context.runId}\`\n`;
             output += `- Triggered by: @${{ github.actor }}\n`;
             output += `- Environment: Preview\n`;
 
