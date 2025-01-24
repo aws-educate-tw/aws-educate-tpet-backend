@@ -122,8 +122,29 @@ jobs:
 
       - name: Wait for API Gateway Deployment
         run: |
-          echo "Waiting for API Gateway to be ready..."
-          sleep 30
+          MAX_RETRIES=10
+          RETRY_INTERVAL=5
+          COUNTER=0
+
+          HEALTH_CHECK_URL="https://preview-auth-service-internal-api-tpet.aws-educate.tw/preview/email-service/health"
+
+          echo "Checking health endpoint: ${HEALTH_CHECK_URL}"
+
+          while [ $COUNTER -lt $MAX_RETRIES ]; do
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_CHECK_URL}")
+
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              echo "✅ API Gateway is ready!"
+              exit 0
+            fi
+
+            echo "API not ready yet (Status: ${HTTP_STATUS}). Retrying in ${RETRY_INTERVAL} seconds..."
+            sleep $RETRY_INTERVAL
+            COUNTER=$((COUNTER + 1))
+          done
+
+          echo "❌ API Gateway failed to become ready within the timeout period"
+          exit 1
 
       # Enhanced security for Newman tests with report naming
       - name: Run API Tests
