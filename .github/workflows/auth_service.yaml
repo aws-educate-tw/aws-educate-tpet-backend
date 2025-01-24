@@ -196,10 +196,19 @@ jobs:
           name: newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}
           path: newman/
 
-      - name: Get Artifact ID
+      - name: Get Artifact URL
         if: always()
+        id: get-artifact-url
         run: |
-          ARTIFACT_ID=$(echo "${{ steps.upload-artifact.outputs.artifact-id }}")
+
+          ARTIFACTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)
+
+
+          ARTIFACT_NAME="newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}"
+          ARTIFACT_ID=$(echo "$ARTIFACTS" | jq -r --arg name "$ARTIFACT_NAME" '.artifacts[] | select(.name==$name).id')
+
+
           echo "ARTIFACT_ID=$ARTIFACT_ID" >> $GITHUB_ENV
 
       - uses: actions/github-script@v6
@@ -213,7 +222,6 @@ jobs:
               issue_number: context.issue.number,
             });
 
-            // Find the bot comment specific to Auth Service
             const botComment = comments.find(comment => {
               return comment.user.type === 'Bot' && 
                       comment.body.includes('[Auth Service]') &&
@@ -227,25 +235,22 @@ jobs:
             // Get short SHA
             const shortSHA = '${{ env.COMMIT_SHA }}'.substring(0, 6);
 
-            // Get workflow run URL and artifact URL
-            const runUrl = `${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const artifactUrl = `${runUrl}/artifacts/${process.env.ARTIFACT_ID}`;
+            // Combine artifact URL
+            const artifactUrl = `${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${process.env.ARTIFACT_ID}`;
 
             let output = `### [Auth Service] Preview Deployment Status\n\n`;
             output += `| Service | Environment | Commit | Status | Details |\n`;
             output += `|:--------|:------------|:-------|:-------|:--------|\n`;
-
-            // Deployment Status
             output += `| Auth Service | Preview | \`${shortSHA}\` | ${tfExitCode === 0 ? '✅' : '❌'} | ${
               tfExitCode === 0 
                 ? 'Successfully deployed'
-                : `[Check deployment logs](${runUrl})`
+                : `[Check deployment logs](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
             } |\n`;
 
             output += `\n### Test Results\n\n`;
             output += `| Test Suite | Status | Report |\n`;
             output += `|:-----------|:-------|:--------|\n`;
-            output += `| API Tests | ${testExitCode === 0 ? '✅' : '❌'} | [Download Report](${runUrl}/artifacts) |\n`;
+            output += `| API Tests | ${testExitCode === 0 ? '✅' : '❌'} | [Download Report](${artifactUrl}) |\n`;
 
             output += `\n---\n`;
             output += `🔍 **Details**\n`;
