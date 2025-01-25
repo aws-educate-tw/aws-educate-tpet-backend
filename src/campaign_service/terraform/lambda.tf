@@ -132,4 +132,3 @@ module "create_campaign_docker_image" {
   }
 
 }
-

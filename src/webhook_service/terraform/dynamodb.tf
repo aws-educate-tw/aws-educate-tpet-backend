@@ -27,11 +27,11 @@ resource "aws_dynamodb_table" "webhook" {
     projection_type    = "ALL"                 # Include all attributes in the GSI
   }
 
-  deletion_protection_enabled = var.enable_deletion_protection_for_dynamodb_table  
+  deletion_protection_enabled = var.enable_deletion_protection_for_dynamodb_table
 
-  point_in_time_recovery {  
-    enabled = var.enable_pitr  
-  }  
+  point_in_time_recovery {
+    enabled = var.enable_pitr
+  }
 
   tags = {
     Name = "webhook"
@@ -48,12 +48,12 @@ resource "aws_dynamodb_table" "webhook_total_count" {
     type = "S"
   }
 
-  deletion_protection_enabled = var.enable_deletion_protection_for_dynamodb_table  
+  deletion_protection_enabled = var.enable_deletion_protection_for_dynamodb_table
 
-  point_in_time_recovery {  
-    enabled = var.enable_pitr  
-  }  
-  
+  point_in_time_recovery {
+    enabled = var.enable_pitr
+  }
+
   tags = {
     Name = "webhook"
   }

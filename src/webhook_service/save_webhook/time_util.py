@@ -1,6 +1,7 @@
 """
 This module contains utility functions for working with time and date formats.
 """
+
 import datetime
 
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -12,7 +13,7 @@ def get_current_utc_time() -> str:
 
     :return: Current UTC time in ISO 8601 format.
     """
-    return datetime.datetime.now(datetime.timezone.utc).strftime(TIME_FORMAT)
+    return datetime.datetime.now(datetime.UTC).strftime(TIME_FORMAT)
 
 
 def format_time_to_iso8601(dt: datetime.datetime) -> str:
@@ -23,7 +24,7 @@ def format_time_to_iso8601(dt: datetime.datetime) -> str:
     :return: Formatted time as ISO 8601 string.
     """
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=datetime.timezone.utc)
+        dt = dt.replace(tzinfo=datetime.UTC)
     return dt.strftime(TIME_FORMAT)
 
 
@@ -35,7 +36,7 @@ def parse_iso8601_to_datetime(iso8601_str: str) -> datetime.datetime:
     :return: Datetime object.
     """
     return datetime.datetime.strptime(iso8601_str, TIME_FORMAT).replace(
-        tzinfo=datetime.timezone.utc
+        tzinfo=datetime.UTC
     )
 
 

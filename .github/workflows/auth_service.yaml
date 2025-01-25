@@ -231,7 +231,7 @@ jobs:
             });
 
             const botComment = comments.find(comment => {
-              return comment.user.type === 'Bot' && 
+              return comment.user.type === 'Bot' &&
                       comment.body.includes('[Auth Service]') &&
                       (comment.body.includes('Deployment Status') ||
                       comment.body.includes('Test Results'));
@@ -250,7 +250,7 @@ jobs:
             output += `| Service | Environment | Commit | Status | Details |\n`;
             output += `|:--------|:------------|:-------|:-------|:--------|\n`;
             output += `| Auth Service | Preview | \`${shortSHA}\` | ${tfExitCode === 0 ? '✅' : '❌'} | ${
-              tfExitCode === 0 
+              tfExitCode === 0
                 ? 'Successfully deployed'
                 : `[Check deployment logs](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
             } |\n`;

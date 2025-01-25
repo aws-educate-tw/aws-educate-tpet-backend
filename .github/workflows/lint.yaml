@@ -1,0 +1,26 @@
+name: Lint
+
+on:
+  # Trigger the workflow when code is pushed to the main or dev branches
+  push:
+    branches:
+      - main
+      - dev
+  # Trigger the workflow for any pull request to any branch
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the source code of the pull request
+      # If triggered by a pull request, this ensures the source branch is checked out
+      - name: Checkout PR Source Branch
+        uses: actions/checkout@v4
+      # Run Ruff for static code analysis
+      - name: Run Ruff Linter
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: 0.9.2 # Specify the version of Ruff to use
+          args: check --output-format=github # Output results in GitHub's inline annotation format

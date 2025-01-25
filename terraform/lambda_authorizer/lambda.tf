@@ -132,4 +132,3 @@ module "lambda_authorizer_docker_image" {
   }
 
 }
-

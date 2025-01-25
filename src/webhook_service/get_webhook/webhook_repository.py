@@ -2,6 +2,7 @@
 This module provides a repository class for interacting with a DynamoDB table
 to manage webhook items.
 """
+
 import logging
 import os
 

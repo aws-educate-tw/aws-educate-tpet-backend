@@ -1,9 +1,9 @@
 """
-This lambda function retrieves the details of a webhook from the DynamoDB table based on the 
-webhook ID provided in the path parameters. The function first extracts the webhook ID from the 
-event object and then fetches the webhook details using the WebhookRepository class. If the 
-webhook is found, the function constructs a response with the webhook details and returns it. 
-If the webhook is not found, the function returns a 404 response. If any unexpected errors occur 
+This lambda function retrieves the details of a webhook from the DynamoDB table based on the
+webhook ID provided in the path parameters. The function first extracts the webhook ID from the
+event object and then fetches the webhook details using the WebhookRepository class. If the
+webhook is found, the function constructs a response with the webhook details and returns it.
+If the webhook is not found, the function returns a 404 response. If any unexpected errors occur
 during the execution, the function logs the error and returns a 500 response.
 """
 
@@ -28,7 +28,6 @@ class DecimalEncoder(json.JSONEncoder):
         if isinstance(o, Decimal):
             return float(o)
         return super().default(o)
-
 
 
 def lambda_handler(event, context):  # pylint: disable=unused-argument
@@ -69,7 +68,9 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
             "subject": webhook_details_item.get("subject"),
             "display_name": webhook_details_item.get("display_name"),
             "template_file_id": webhook_details_item.get("template_file_id"),
-            "is_generate_certificate": webhook_details_item.get("is_generate_certificate"),
+            "is_generate_certificate": webhook_details_item.get(
+                "is_generate_certificate"
+            ),
             "reply_to": webhook_details_item.get("reply_to"),
             "sender_local_part": webhook_details_item.get("sender_local_part"),
             "attachment_file_ids": webhook_details_item.get("attachment_file_ids"),

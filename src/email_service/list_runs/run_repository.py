@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import Optional
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -26,7 +25,7 @@ class RunRepository:
         self,
         created_year: str,
         limit: int,
-        last_evaluated_key: Optional[dict[str, str]],
+        last_evaluated_key: dict[str, str] | None,
         sort_order: str,
     ) -> dict[str, str]:
         """
@@ -55,7 +54,7 @@ class RunRepository:
             logger.error("Error querying runs by created year: %s", e)
             raise
 
-    def get_run_by_id(self, run_id: str) -> Optional[dict[str, str]]:
+    def get_run_by_id(self, run_id: str) -> dict[str, str] | None:
         """
         Retrieve a run by its ID from the DynamoDB table.
 
@@ -69,7 +68,7 @@ class RunRepository:
             logger.error("Error getting run by ID: %s", e)
             return None
 
-    def save_run(self, run: dict[str, str]) -> Optional[str]:
+    def save_run(self, run: dict[str, str]) -> str | None:
         """
         Save a run to the DynamoDB table.
 
