@@ -54,6 +54,18 @@ module "api_gateway" {
   # Routes & Integration(s)
   routes = {
 
+    "GET /auth-service/health" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+      integration = {
+        uri                    = module.health_check_lambda.lambda_function_arn # Remember to change
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
+
     "POST /auth/login" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80

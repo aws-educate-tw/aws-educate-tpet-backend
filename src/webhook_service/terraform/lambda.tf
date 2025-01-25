@@ -11,9 +11,10 @@ resource "random_string" "this" {
 }
 
 locals {
-  source_path = "${path.module}/.."
+  source_path                                     = "${path.module}/.."
+  health_check_function_name_and_ecr_repo_name    = "${var.environment}-${var.service_underscore}-health_check-${random_string.this.result}"
   get_webhook_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-get_webhook-${random_string.this.result}"
-  update_webhook_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-update_webhook-${random_string.this.result}"
+  update_webhook_function_name_and_ecr_repo_name  = "${var.environment}-${var.service_underscore}-update_webhook-${random_string.this.result}"
   list_webhooks_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-list_webhooks-${random_string.this.result}"
   save_webhook_function_name_and_ecr_repo_name    = "${var.environment}-${var.service_underscore}-save_webhook-${random_string.this.result}"
   trigger_webhook_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-trigger_webhook-${random_string.this.result}"
@@ -34,6 +35,89 @@ provider "docker" {
     password = data.aws_ecr_authorization_token.token.password
   }
 }
+
+####################################
+####################################
+####################################
+# GET /webhook-service/health ######
+####################################
+####################################
+####################################
+
+module "health_check_lambda" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "7.7.0"
+
+  function_name  = local.health_check_function_name_and_ecr_repo_name
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /webhook-service/health"
+  create_package = false
+  timeout        = 15
+
+  ##################
+  # Container Image
+  ##################
+  package_type  = "Image"
+  architectures = ["x86_64"] # or ["arm64"]
+  image_uri     = module.health_check_docker_image.image_uri
+
+  publish = true # Whether to publish creation/change as new Lambda Function Version.
+
+
+  environment_variables = {
+    "ENVIRONMENT" = var.environment,
+    "SERVICE"     = var.service_underscore
+  }
+
+  allowed_triggers = {
+    AllowExecutionFromAPIGateway = {
+      service    = "apigateway"
+      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+    }
+  }
+
+  tags = {
+    "Terraform"   = "true",
+    "Environment" = var.environment,
+    "Service"     = var.service_underscore
+  }
+
+}
+
+module "health_check_docker_image" {
+  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version = "7.7.0"
+
+  create_ecr_repo      = true
+  keep_remotely        = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = local.health_check_function_name_and_ecr_repo_name
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
+  source_path = "${local.source_path}/health_check/" # Remember to change
+  triggers = {
+    dir_sha = local.dir_sha
+  }
+
+}
+
+
 ####################################
 ####################################
 ####################################
@@ -54,7 +138,7 @@ module "get_webhook_lambda" {
   ##################
   # Container Image
   ##################
-  package_type = "Image"
+  package_type  = "Image"
   architectures = ["x86_64"] # or ["arm64"]
   # architectures = ["arm64"]
   image_uri = module.get_webhook_docker_image.image_uri
@@ -159,7 +243,7 @@ module "update_webhook_lambda" {
   ##################
   # Container Image
   ##################
-  package_type = "Image"
+  package_type  = "Image"
   architectures = ["x86_64"] # or ["arm64"]
   # architectures = ["arm64"]
   image_uri = module.update_webhook_docker_image.image_uri
@@ -264,7 +348,7 @@ module "list_webhooks_lambda" {
   ##################
   # Container Image
   ##################
-  package_type = "Image"
+  package_type  = "Image"
   architectures = ["x86_64"] # or ["arm64"]
   # architectures = ["arm64"]
   image_uri = module.list_webhooks_docker_image.image_uri
@@ -272,9 +356,9 @@ module "list_webhooks_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore,
-    "DYNAMODB_TABLE" = var.dynamodb_table
+    "ENVIRONMENT"                = var.environment,
+    "SERVICE"                    = var.service_underscore,
+    "DYNAMODB_TABLE"             = var.dynamodb_table
     "DYNAMODB_TABLE_TOTAL_COUNT" = var.dynamodb_table_total_count
   }
 
@@ -373,7 +457,7 @@ module "save_webhook_lambda" {
   ##################
   # Container Image
   ##################
-  package_type = "Image"
+  package_type  = "Image"
   architectures = ["x86_64"] # or ["arm64"]
   # architectures = ["arm64"]
   image_uri = module.save_webhook_docker_image.image_uri
@@ -384,7 +468,7 @@ module "save_webhook_lambda" {
     "ENVIRONMENT"                  = var.environment,
     "SERVICE"                      = var.service_underscore,
     "DYNAMODB_TABLE"               = var.dynamodb_table
-    "DYNAMODB_TABLE_TOTAL_COUNT" = var.dynamodb_table_total_count
+    "DYNAMODB_TABLE_TOTAL_COUNT"   = var.dynamodb_table_total_count
     "TRIGGER_WEBHOOK_API_ENDPOINT" = local.api_endpoints.trigger_webhook
   }
 
@@ -481,7 +565,7 @@ module "trigger_webhook_lambda" {
   ##################
   # Container Image
   ##################
-  package_type = "Image"
+  package_type  = "Image"
   architectures = ["x86_64"] # or ["arm64"]
   # architectures = ["arm64"]
   image_uri = module.trigger_webhook_docker_image.image_uri

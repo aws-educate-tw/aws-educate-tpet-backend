@@ -58,9 +58,8 @@ module "create_campaign_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore
-    "DYNAMODB_TABLE" = var.dynamodb_table
+    "ENVIRONMENT" = var.environment,
+    "SERVICE"     = var.service_underscore
   }
 
   allowed_triggers = {

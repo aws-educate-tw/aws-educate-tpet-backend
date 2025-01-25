@@ -20,6 +20,7 @@ ENVIRONMENT = os.getenv("ENVIRONMENT")
 # List of service accounts that need token refresh
 SERVICE_ACCOUNTS = [
     "surveycake",
+    "postman",
 ]
 
 
@@ -28,7 +29,7 @@ def get_secret_path(service_account: str, secret_type: str) -> str:
     Generate secret path based on environment and service account.
 
     Args:
-        service_account (str): Name of the service account (e.g., 'surveycake', 'slack')
+        service_account (str): Name of the service account (e.g., 'surveycake', 'postman')
         secret_type (str): Type of secret ("password" or "access-token")
 
     Returns:
