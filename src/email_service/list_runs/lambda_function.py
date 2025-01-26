@@ -113,7 +113,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                         "statusCode": 400,
                         "body": json.dumps(
                             {
-                                "message": f"created_year {last_evaluated_key.get('created_year')} in last_evaluated_key does not match the provided created_year {created_year}."
+                                "message": f"The created_year from the last_evaluated_key ({last_evaluated_key.get('created_year')}) does not match the provided created_year ({created_year})."
                             }
                         ),
                     }
