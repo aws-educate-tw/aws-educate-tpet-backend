@@ -82,6 +82,12 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     sort_order: str = extracted_params["sort_order"]
     created_year: str | None = extracted_params["created_year"]
 
+    # Check if the created_year is provided by the client
+    if created_year is not None:
+        is_created_year_provided_by_client = True
+    else:
+        is_created_year_provided_by_client = False
+
     index_name = "created_year-created_at-gsi"
 
     # Get access token from headers and retrieve user_id
@@ -144,13 +150,15 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             }
         )
 
-    # Default to current and previous year for querying if created_year is not provided
+    # Determine the years to query based on the provided created_year
+    years_to_query = []
     if created_year:
-        years_to_query = [created_year]
+        years_to_query.append(created_year)
+        if not is_created_year_provided_by_client:
+            years_to_query.append(get_previous_year(created_year))
     else:
         current_year = get_current_utc_time()[:4]
-        previous_year = get_previous_year(current_year)
-        years_to_query = [current_year, previous_year]
+        years_to_query.extend([current_year, get_previous_year(current_year)])
 
     runs = []
 
