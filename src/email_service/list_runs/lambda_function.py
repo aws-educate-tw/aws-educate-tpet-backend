@@ -104,6 +104,22 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             current_last_evaluated_key = last_evaluated_key
             last_evaluated_key = decode_key(last_evaluated_key)
             logger.info("Decoded last_evaluated_key: %s", last_evaluated_key)
+
+            # Client provide a created_year in the query params, validate it against the last_evaluated_key
+            if created_year:
+                # Check if the created_year in the last_evaluated_key matches the provided created_year
+                if last_evaluated_key.get("created_year") != created_year:
+                    return {
+                        "statusCode": 400,
+                        "body": json.dumps(
+                            {
+                                "message": f"created_year {last_evaluated_key.get('created_year')} in last_evaluated_key does not match the provided created_year {created_year}."
+                            }
+                        ),
+                    }
+            # Client did not provide a created_year in the query params, extract it from the last_evaluated_key
+            created_year = last_evaluated_key.get("created_year")
+
         except ValueError as e:
             logger.error("Invalid last_evaluated_key format: %s", e)
             return {
