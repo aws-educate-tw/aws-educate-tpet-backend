@@ -17,4 +17,3 @@ variable "domain_name" {
   description = "Domain name, for example: example.com"
   default     = "aws-educate.tw"
 }
-

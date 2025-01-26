@@ -1,0 +1,367 @@
+name: "Webhook Service Infrastructure Change Management Pipeline with GitHub Actions"
+
+on:
+  pull_request:
+    paths:
+      - src/webhook_service/**
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - src/webhook_service/**
+
+env:
+  TF_LOG: INFO
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  TF_DIR: ./src/webhook_service/terraform
+  GREP_FILTER: >-
+    grep -v -E '^[[:space:]]*(module\.|random_|aws_).*: (Creating|Creation complete|Still creating|Modifications complete|Destroying|Destruction complete|Reading\.\.\.|Plan:|Read complete after)' |
+    grep -v -E '^\[.*\][[:space:]]*module\..*$' |
+    grep -v '^[0-9]+[[:space:]]' |
+    grep -v 'Creation complete after' |
+    grep -v 'Still creating\.\.\.' |
+    grep -v ': Reading\.\.\.' |
+    grep -v ': Read complete' |
+    grep -v 'Refreshing state\.\.\.'
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: read
+  checks: write
+
+jobs:
+  preview:
+    name: "Deploy Preview Environment"
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Print Debug Information"
+        run: |
+          echo "Event Name: ${{ github.event_name }}"
+          echo "Event Action: ${{ github.event.action }}"
+          echo "Merged: ${{ github.event.pull_request.merged }}"
+
+          # Set commit SHA for pull request
+          if [[ "${{ github.event.pull_request.head.sha }}" != "" ]]; then
+            COMMIT_SHA=${{ github.event.pull_request.head.sha }}
+          else
+            COMMIT_SHA="unknown-sha"
+          fi
+
+          echo "PULL_REQUEST_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
+          echo "TIMESTAMP=$(date -u '+%Y-%m-%dT%H-%M-%SZ')" >> $GITHUB_ENV
+
+      # Disable Terraform command output logging to prevent credential leaks
+      - name: Disable Terraform command logging
+        run: |
+          echo "TF_CLI_ARGS=-no-color" >> $GITHUB_ENV
+          echo "TF_LOG=" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.3
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config="preview.tfbackend" -reconfigure
+        working-directory: ${{ env.TF_DIR }}
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -var-file='preview.tfvars' 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      - name: Terraform Apply
+        id: apply
+        run: |
+          terraform apply -var-file='preview.tfvars' -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1 # Preview environment region
+
+      # Enhanced security for token handling
+      - name: Get Postman Service Account Token
+        id: get-token
+        run: |
+          # Mask all outputs
+          set +x
+
+          # Get secret and mask the response
+          SECRET_RESPONSE=$(aws secretsmanager get-secret-value \
+            --secret-id "aws-educate-tpet/preview/service-accounts/postman/access-token" \
+            --query 'SecretString' \
+            --output text)
+          echo "::add-mask::$SECRET_RESPONSE"
+
+          # Parse and mask the token
+          ACCESS_TOKEN=$(echo $SECRET_RESPONSE | jq -r '.access_token')
+          echo "::add-mask::$ACCESS_TOKEN"
+
+          # Store token securely
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
+
+          # Validate without exposing token
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "Error: Failed to retrieve access token"
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install Newman
+        run: npm install -g newman newman-reporter-htmlextra
+
+      - name: Wait for API Gateway Deployment
+        run: |
+          MAX_RETRIES=10
+          RETRY_INTERVAL=5
+          COUNTER=0
+
+          HEALTH_CHECK_URL="https://preview-webhook-service-internal-api-tpet.aws-educate.tw/preview/webhook-service/health"
+
+          echo "Checking health endpoint: ${HEALTH_CHECK_URL}"
+
+          while [ $COUNTER -lt $MAX_RETRIES ]; do
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_CHECK_URL}")
+
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              echo "✅ API Gateway is ready!"
+              exit 0
+            fi
+
+            echo "API not ready yet (Status: ${HTTP_STATUS}). Retrying in ${RETRY_INTERVAL} seconds..."
+            sleep $RETRY_INTERVAL
+            COUNTER=$((COUNTER + 1))
+          done
+
+          echo "❌ API Gateway failed to become ready within the timeout period"
+          exit 1
+
+      # Enhanced security for Newman tests
+      - name: Run API Tests
+        id: newman
+        run: |
+          # Create report directory with meaningful name
+          REPORT_DIR="newman/pr_${{ env.PULL_REQUEST_NUMBER }}_${{ env.TIMESTAMP }}_${{ env.COMMIT_SHA }}"
+          mkdir -p $REPORT_DIR
+
+          # Create temporary environment file that combines base environment and token
+          TEMP_ENV_FILE=$(mktemp)
+
+          # Merge base environment with token and contextual information
+          jq -s '.[0].values + [
+            {"key":"access_token", "value":"${{ env.ACCESS_TOKEN }}"},
+            {"key":"pull_request_number", "value":"${{ env.PULL_REQUEST_NUMBER }}"},
+            {"key":"commit_sha", "value":"${{ env.COMMIT_SHA }}"},
+            {"key":"timestamp", "value":"${{ env.TIMESTAMP }}"}
+          ] | {values: .}' \
+            ./tests/webhook_service/api_regression/webhook_service_preview_environment.json \
+            > $TEMP_ENV_FILE
+
+          # Run tests with combined environment file
+          newman run ./tests/webhook_service/api_regression/webhook_service_regression_test_collection.json \
+            --environment $TEMP_ENV_FILE \
+            --reporters cli,htmlextra \
+            --reporter-htmlextra-skipHeaders Authorization \
+            --reporter-htmlextra-export "$REPORT_DIR/report.html" \
+            --silent
+
+          # Cleanup
+          rm -f $TEMP_ENV_FILE
+        continue-on-error: true
+
+      - name: Check Newman Test Results
+        if: always()
+        run: |
+          if [[ ${{ steps.newman.outcome }} != "success" ]]; then
+            echo "❌ Newman tests failed."
+            exit 1
+          else
+            echo "✅ Newman tests passed."
+          fi
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}
+          path: newman/
+
+      - name: Get Artifact URL
+        if: always()
+        id: get-artifact-url
+        run: |
+
+          ARTIFACTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)
+
+
+          ARTIFACT_NAME="newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}"
+          ARTIFACT_ID=$(echo "$ARTIFACTS" | jq -r --arg name "$ARTIFACT_NAME" '.artifacts[] | select(.name==$name).id')
+
+
+          echo "ARTIFACT_ID=$ARTIFACT_ID" >> $GITHUB_ENV
+
+      - uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => {
+              return comment.user.type === 'Bot' &&
+                      comment.body.includes('[Webhook Service]') &&
+                      (comment.body.includes('Deployment Status') ||
+                      comment.body.includes('Test Results'));
+            });
+
+            const tfExitCode = '${{ steps.apply.outcome }}' === 'success' ? 0 : 1;
+            const testExitCode = '${{ steps.newman.outcome }}' === 'success' ? 0 : 1;
+
+            // Get short SHA
+            const shortSHA = '${{ env.COMMIT_SHA }}'.substring(0, 6);
+
+            // Combine artifact URL
+            const artifactUrl = `${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${process.env.ARTIFACT_ID}`;
+
+            let output = `### [Webhook Service] Preview Deployment Status\n\n`;
+            output += `| Service | Environment | Commit | Status | Details |\n`;
+            output += `|:--------|:------------|:-------|:-------|:--------|\n`;
+            output += `| Webhook Service | Preview | \`${shortSHA}\` | ${tfExitCode === 0 ? '✅' : '❌'} | ${
+              tfExitCode === 0
+                ? 'Successfully deployed'
+                : `[Check deployment logs](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+            } |\n`;
+
+            output += `\n### Test Results\n\n`;
+            output += `| Test Suite | Status | Report |\n`;
+            output += `|:-----------|:-------|:--------|\n`;
+            output += `| API Tests | ${testExitCode === 0 ? '✅' : '❌'} | [Download Report](${artifactUrl}) |\n`;
+
+            output += `\n---\n`;
+            output += `🔍 **Details**\n`;
+            output += `- Run ID: \`${context.runId}\`\n`;
+            output += `- Triggered by: @${{ github.actor }}\n`;
+            output += `- Environment: Preview\n`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: output,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output,
+              });
+            }
+
+      - name: Slack Notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          author_name: "[Webhook Service] Preview environment deployment"
+          job_name: Deploy Preview Environment
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took,pullRequest
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          MATRIX_CONTEXT: ${{ toJson(matrix) }}
+        if: always()
+
+  deploy:
+    name: "Deploy to Target Environment"
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Print Debug Information"
+        run: |
+          echo "Event Name: ${{ github.event_name }}"
+          echo "Event Action: ${{ github.event.action }}"
+          echo "Merged: ${{ github.event.pull_request.merged }}"
+
+      # Disable Terraform command output logging
+      - name: Disable Terraform command logging
+        run: |
+          echo "TF_CLI_ARGS=-no-color" >> $GITHUB_ENV
+          echo "TF_LOG=" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.3
+
+      - name: Set Environment Variables
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+            echo "TF_VARS_FILE=prod.tfvars" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+            echo "TF_VARS_FILE=dev.tfvars" >> $GITHUB_ENV
+          else
+            echo "Unsupported branch: ${{ github.ref }}"
+            exit 1
+          fi
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config="${{ env.ENVIRONMENT }}.tfbackend" -reconfigure
+        working-directory: ${{ env.TF_DIR }}
+
+      - name: Terraform Destroy (Cleanup)
+        id: destroy
+        run: terraform destroy -auto-approve -var-file='${{ env.TF_VARS_FILE }}'
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -var-file='${{ env.TF_VARS_FILE }}' 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      - name: Terraform Apply
+        id: apply
+        run: |
+          terraform apply -var-file='${{ env.TF_VARS_FILE }}' -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      - name: Slack Notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          author_name: "[Webhook Service] ${{ env.ENVIRONMENT }} environment deployment"
+          job_name: Deploy to Target Environment
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took,pullRequest
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          MATRIX_CONTEXT: ${{ toJson(matrix) }}
+        if: always()

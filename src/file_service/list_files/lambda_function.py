@@ -2,7 +2,6 @@ import base64
 import json
 import logging
 from decimal import Decimal
-from typing import Optional
 
 from botocore.exceptions import ClientError
 from current_user_util import CurrentUserUtil
@@ -23,7 +22,7 @@ class DecimalEncoder(json.JSONEncoder):
     def default(self, o: object) -> object:
         if isinstance(o, Decimal):
             return float(o)
-        return super(DecimalEncoder, self).default(o)
+        return super().default(o)
 
 
 def decode_key(encoded_key: str) -> dict[str, str]:
@@ -49,10 +48,10 @@ def encode_key(decoded_key: dict[str, str]) -> str:
 def extract_query_params(event: dict[str, any]) -> dict[str, any]:
     """Extract query parameters from the API Gateway event."""
     limit: int = 10
-    last_evaluated_key: Optional[str] = None
-    file_extension: Optional[str] = None
+    last_evaluated_key: str | None = None
+    file_extension: str | None = None
     sort_order: str = "DESC"
-    created_year: Optional[str] = None
+    created_year: str | None = None
 
     # Extract query parameters if they exist
     if event.get("queryStringParameters"):
@@ -101,15 +100,21 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
 
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for listing files."""
+
+    # Identify if the incoming event is a prewarm request
+    if event.get("action") == "PREWARM":
+        logger.info("Received a prewarm request. Skipping business logic.")
+        return {"statusCode": 200, "body": "Successfully warmed up"}
+
     extracted_params = extract_query_params(event)
     if isinstance(extracted_params, dict) and extracted_params.get("statusCode"):
         return extracted_params
 
     limit: int = extracted_params["limit"]
-    last_evaluated_key: Optional[str] = extracted_params["last_evaluated_key"]
-    file_extension: Optional[str] = extracted_params["file_extension"]
+    last_evaluated_key: str | None = extracted_params["last_evaluated_key"]
+    file_extension: str | None = extracted_params["file_extension"]
     sort_order: str = extracted_params["sort_order"]
-    created_year: Optional[str] = extracted_params["created_year"]
+    created_year: str | None = extracted_params["created_year"]
 
     # Determine the correct index_name based on the query parameters
     if file_extension:
@@ -141,6 +146,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             logger.error("Invalid last_evaluated_key format: %s", e)
             return {
                 "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
                 "body": json.dumps(
                     {
                         "message": "Invalid last_evaluated_key format. It must be a valid base64 encoded JSON string."

@@ -1,0 +1,870 @@
+{
+	"info": {
+		"_postman_id": "32b8be85-0997-42aa-8ce2-a210a777cb3a",
+		"name": "Email Service Regression Test",
+		"description": "# 🧪 Get started here\n\nThis template helps ensure your API continues to work as expected after updates or changes. It contains sample requests and [scripts](https://learning.postman.com/docs/writing-scripts/intro-to-scripts/) for a series of tests that validate different aspects of an API, including:\n\n1. **Status code verification:** We'll check if the API returns the expected status codes for various requests, ensuring reliability and proper error handling.\n    \n2. **JSON schema verification:** We'll make sure the JSON response conforms to a specified JSON Schema, ensuring API contracts are honored.\n    \n3. **Response time verification:** We'll verify that the API's response time is within the acceptable range, providing a smooth user experience and optimizing performance.\n    \n4. **Response body verification:** We'll validate the structure and content of the response body for accuracy, ensuring the integrity of the data and preventing potential issues downstream.\n    \n5. **Header verification:** We'll confirm the presence and correct values of specific headers in the response, enabling secure and well-structured communication between your app and its users.\n    \n\n## 🔖 **How to use this template**\n\n**Step 1:** Send the sample requests and view the response and test results.\n\n**Step 2:** Replace the sample request URLs with your desired API endpoints.\n\n**Step 3:** Customize the tests in the \"Scripts\" tab if needed. Don't forget to save your changes.\n\n**Step 4:** [Run the collection](https://learning.postman.com/docs/collections/running-collections/intro-to-collection-runs/) by selecting \"Run\".\n\n<img src=\"https://content.pstmn.io/666cfa65-6e00-4308-871b-f831128bc0ac/Y29sbGVjdGlvbi1ydW5uZXItYnV0dG9uLmpwZWc=\" width=\"246\" height=\"102\">\n\n## 💡Related templates\n\n[Integration testing](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=fe506090-ca91-4340-bea9-82d2c3d2bb9a&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)  \n[Performance testing](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=3302192d-87dd-4612-b381-61894de21203&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)  \n[Mock data generation](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=da8ceebc-d4da-478c-ab8a-37634faefc74&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)  \n[Common API vulnerabilities check](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e1edbae8-6429-453d-890e-00385eea1811&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36968695",
+		"_collection_link": "https://aws-educate-tw.postman.co/workspace/TPET-API-Development-Workspace~b6915213-64a3-408d-b297-45f472fa0a6b/collection/36968695-32b8be85-0997-42aa-8ce2-a210a777cb3a?action=share&source=collection_link&creator=36968695"
+	},
+	"item": [
+		{
+			"name": "Send email",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Define the URL for the list_files API",
+							"const fileServiceUrl = `https://${pm.environment.get(\"environment\")}-file-service-internal-api-tpet.aws-educate.tw/${pm.environment.get(\"environment\")}/files?file_extension=html&limit=1`;",
+							"",
+							"// Send a GET request to the list_files API",
+							"pm.sendRequest({",
+							"    url: fileServiceUrl,",
+							"    method: \"GET\",",
+							"    header: {",
+							"        \"Authorization\": `Bearer ${pm.environment.get(\"access_token\")}`",
+							"    }",
+							"}, function (err, response) {",
+							"    // Handle errors in the request",
+							"    if (err) {",
+							"        console.error(\"Error calling list_files API:\", err);",
+							"        throw new Error(\"Failed to fetch file list. Check your file service.\");",
+							"    }",
+							"",
+							"    // Parse the response and extract the file_id",
+							"    const responseData = response.json();",
+							"",
+							"    // Ensure data array exists and has at least one file",
+							"    if (responseData.data && responseData.data.length > 0) {",
+							"        const file = responseData.data[0];",
+							"        const fileId = file.file_id;",
+							"        const fileName = file.file_name;",
+							"        const fileUrl = file.file_url;",
+							"",
+							"        // Store file_id and other details in environment variables",
+							"        pm.environment.set(\"template_file_id\", fileId);",
+							"        pm.environment.set(\"template_file_name\", fileName);",
+							"        pm.environment.set(\"template_file_url\", fileUrl);",
+							"",
+							"        console.log(\"HTML file_id set:\", fileId);",
+							"        console.log(\"HTML file_name set:\", fileName);",
+							"        console.log(\"HTML file_url set:\", fileUrl);",
+							"    } else {",
+							"        pm.environment.unset(\"template_file_id\");",
+							"        pm.environment.unset(\"template_file_name\");",
+							"        pm.environment.unset(\"template_file_url\");",
+							"        throw new Error(\"No HTML file found in the file service.\");",
+							"    }",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Verify status code is 202",
+							"pm.test(\"Status code is 202\", function () {",
+							"    pm.response.to.have.status(202);",
+							"});",
+							"",
+							"// Parse the JSON response body",
+							"const responseData = pm.response.json();",
+							"",
+							"// Verify the response contains the required fields",
+							"pm.test(\"Response contains all required fields\", function () {",
+							"    pm.expect(responseData).to.have.property(\"status\");",
+							"    pm.expect(responseData).to.have.property(\"message\");",
+							"    pm.expect(responseData).to.have.property(\"recipient_source\");",
+							"    pm.expect(responseData).to.have.property(\"run_id\");",
+							"    pm.expect(responseData).to.have.property(\"template_file_id\");",
+							"    pm.expect(responseData).to.have.property(\"subject\");",
+							"    pm.expect(responseData).to.have.property(\"display_name\");",
+							"    pm.expect(responseData).to.have.property(\"attachment_file_ids\");",
+							"    pm.expect(responseData).to.have.property(\"is_generate_certificate\");",
+							"    pm.expect(responseData).to.have.property(\"sender_id\");",
+							"    pm.expect(responseData).to.have.property(\"reply_to\");",
+							"    pm.expect(responseData).to.have.property(\"sender_local_part\");",
+							"    pm.expect(responseData).to.have.property(\"cc\");",
+							"    pm.expect(responseData).to.have.property(\"bcc\");",
+							"    pm.expect(responseData).to.have.property(\"recipients\");",
+							"    pm.expect(responseData).to.have.property(\"success_email_count\");",
+							"    pm.expect(responseData).to.have.property(\"expected_email_send_count\");",
+							"});",
+							"",
+							"// Verify status is \"SUCCESS\"",
+							"pm.test(\"Status is SUCCESS\", function () {",
+							"    pm.expect(responseData.status).to.eql(\"SUCCESS\");",
+							"});",
+							"",
+							"// Verify run_id is not null",
+							"pm.test(\"Run ID is present\", function () {",
+							"    pm.expect(responseData.run_id).to.not.be.null;",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{access_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"recipient_source\": \"DIRECT\",\n    \"subject\": \"[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}\",\n    \"display_name\": \"GitHub Actions - PR{{pull_request_number}} - API Regression Test\",\n    \"template_file_id\": \"{{template_file_id}}\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"harry鍾\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"{{template_file_id}}\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email",
+					"protocol": "https",
+					"host": [
+						"{{environment}}-email-service-internal-api-tpet",
+						"aws-educate",
+						"tw"
+					],
+					"path": [
+						"{{environment}}",
+						"send-email"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "202 (Deprecated)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - 07:37 preview （參與證明請參見附件）\",\n    \"display_name\": \"AWS Educate 參與證明\",\n    \"template_file_id\": \"dd69a970a1f6432ca9a3391c7c2b74b5\",\n    \"spreadsheet_file_id\": \"39888eb447164b76bf0429d7d00f79ed\",\n    \"attachment_file_ids\": [\n        \"d1387ea8bb5543fa9f0cbd53cf0c428b\"\n    ],\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"rich.liu627@gmail.com\",\n    \"sender_local_part\": \"no-reply\",\n    \"bcc\": [\n        \"c6vl9.bcc2@inbox.testmail.app\"\n    ],\n    \"cc\": [\n        \"c6vl9.cc1@inbox.testmail.app\",\n        \"c6vl9.cc2@inbox.testmail.app\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-email-service-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"send-email"
+							]
+						}
+					},
+					"status": "Accepted",
+					"code": 202,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Tue, 30 Jul 2024 23:19:40 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "text/plain; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "846"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "bv85niBXPHcESTA="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"status\": \"SUCCESS\",\n    \"message\": \"Input message accepted for processing\",\n    \"run_id\": \"0b18c03146b441c0a79f0b8876e3499a\",\n    \"template_file_id\": \"dd69a970a1f6432ca9a3391c7c2b74b5\",\n    \"spreadsheet_file_id\": \"39888eb447164b76bf0429d7d00f79ed\",\n    \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - 07:37 preview （參與證明請參見附件）\",\n    \"display_name\": \"AWS Educate 參與證明\",\n    \"attachment_file_ids\": [\n        \"d1387ea8bb5543fa9f0cbd53cf0c428b\"\n    ],\n    \"is_generate_certificate\": false,\n    \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n    \"reply_to\": \"rich.liu627@gmail.com\",\n    \"sender_local_part\": \"no-reply\",\n    \"cc\": [\n        \"c6vl9.cc1@inbox.testmail.app\",\n        \"c6vl9.cc2@inbox.testmail.app\"\n    ],\n    \"bcc\": [\n        \"c6vl9.bcc2@inbox.testmail.app\"\n    ],\n    \"email_count\": 3\n}"
+				},
+				{
+					"name": "400 (missing required fields for certificate generation)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"recipient_source\": \"DIRECT\",\n    \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - local-dev 05:11 （參與證明請參見附件）\",\n    \"display_name\": \"AWS Educate 參與證明\",\n    \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n    \"spreadsheet_file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"harryup2000@gmail.com\",\n    \"sender_local_part\": \"event\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {}\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-email-service-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"send-email"
+							]
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 10 Nov 2024 21:14:21 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "117"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "BDJHHgVCPHcESoQ="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Email h830519h@yahoo.com.tw missing required fields for certificate generation: Name, Certificate Text\"\n}"
+				},
+				{
+					"name": "400 (DIRECT, missing recipients list)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"recipient_source\": \"DIRECT\",\n    \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - local-dev 05:11 （參與證明請參見附件）\",\n    \"display_name\": \"AWS Educate 參與證明\",\n    \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n    \"spreadsheet_file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"harryup2000@gmail.com\",\n    \"sender_local_part\": \"event\",\n    \"recip\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {}\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-email-service-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"send-email"
+							]
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 10 Nov 2024 21:15:06 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "38"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "BDJOKhb6PHcESjA="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Missing recipients list\"\n}"
+				},
+				{
+					"name": "400 (missing required template variables)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"recipient_source\": \"DIRECT\",\n    \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - local-dev 05:31 （參與證明請參見附件）\",\n    \"display_name\": \"AWS Educate 參與證明\",\n    \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n    \"spreadsheet_file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"harryup2000@gmail.com\",\n    \"sender_local_part\": \"event\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {}\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-email-service-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"send-email"
+							]
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 10 Nov 2024 21:31:37 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "84"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "BDLpEheSPHcEJfg="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Email h830519h@yahoo.com.tw missing required template variables: Name\"\n}"
+				},
+				{
+					"name": "202 (DIRECT)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"recipient_source\": \"DIRECT\",\n    \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - local-dev 05:31 （參與證明請參見附件）\",\n    \"display_name\": \"AWS Educate 參與證明\",\n    \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n    \"spreadsheet_file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"harryup2000@gmail.com\",\n    \"sender_local_part\": \"event\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"Shiun\"\n            }\n        },\n        {\n            \"email\": \"rich.liu627@gmail.com\",\n            \"template_variables\": {\n                \"Name\": \"Richie 劉\"\n            }\n        },\n        {\n            \"email\": \"poyang1024@gmail.com\",\n            \"template_variables\": {\n                \"Name\": \"Tony 王\"\n            }\n        },\n        {\n            \"email\": \"harryup2000@gmail.com\",\n            \"template_variables\": {\n                \"Name\": \"Harry 老闆\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-email-service-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"send-email"
+							]
+						}
+					},
+					"status": "Accepted",
+					"code": 202,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 10 Nov 2024 21:34:13 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "1281"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "BDMBVgmdvHcEPKA="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"status\": \"SUCCESS\",\n    \"message\": \"Your send email request has been successfully received and is being processed.\",\n    \"recipient_source\": \"DIRECT\",\n    \"run_id\": \"7604cc5be2e5430aa568e5fa4a82635c\",\n    \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n    \"spreadsheet_file_id\": null,\n    \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - local-dev 05:31 （參與證明請參見附件）\",\n    \"display_name\": \"AWS Educate 參與證明\",\n    \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n    ],\n    \"is_generate_certificate\": false,\n    \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n    \"reply_to\": \"harryup2000@gmail.com\",\n    \"sender_local_part\": \"event\",\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"Shiun\"\n            }\n        },\n        {\n            \"email\": \"rich.liu627@gmail.com\",\n            \"template_variables\": {\n                \"Name\": \"Richie 劉\"\n            }\n        },\n        {\n            \"email\": \"poyang1024@gmail.com\",\n            \"template_variables\": {\n                \"Name\": \"Tony 王\"\n            }\n        },\n        {\n            \"email\": \"harryup2000@gmail.com\",\n            \"template_variables\": {\n                \"Name\": \"Harry 老闆\"\n            }\n        }\n    ],\n    \"success_email_count\": 0,\n    \"expected_email_send_count\": 4\n}"
+				},
+				{
+					"name": "202 (SPREADSHEET)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - local-dev 05:31 （參與證明請參見附件）\",\n    \"display_name\": \"AWS Educate 參與證明\",\n    \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n    \"spreadsheet_file_id\": \"bfc952be207d42df91386a177440a6aa\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"harryup2000@gmail.com\",\n    \"sender_local_part\": \"event\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"Shiun\"\n            }\n        },\n        {\n            \"email\": \"rich.liu627@gmail.com\",\n            \"template_variables\": {\n                \"Name\": \"Richie 劉\"\n            }\n        },\n        {\n            \"email\": \"poyang1024@gmail.com\",\n            \"template_variables\": {\n                \"Name\": \"Tony 王\"\n            }\n        },\n        {\n            \"email\": \"harryup2000@gmail.com\",\n            \"template_variables\": {\n                \"Name\": \"Harry 老闆\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-email-service-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"send-email"
+							]
+						}
+					},
+					"status": "Accepted",
+					"code": 202,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 10 Nov 2024 21:40:24 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "984"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "BDM7GgvmPHcEP6Q="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"status\": \"SUCCESS\",\n    \"message\": \"Your send email request has been successfully received and is being processed.\",\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_id\": \"f723f582b2be4d4e870d521f0c7dc757\",\n    \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n    \"spreadsheet_file_id\": \"bfc952be207d42df91386a177440a6aa\",\n    \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - local-dev 05:31 （參與證明請參見附件）\",\n    \"display_name\": \"AWS Educate 參與證明\",\n    \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n    ],\n    \"is_generate_certificate\": false,\n    \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n    \"reply_to\": \"harryup2000@gmail.com\",\n    \"sender_local_part\": \"event\",\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"recipients\": [],\n    \"success_email_count\": 0,\n    \"expected_email_send_count\": 3\n}"
+				},
+				{
+					"name": "202 (DIRECT, Certificate)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"recipient_source\": \"DIRECT\",\n    \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - local-dev 05:31 （參與證明請參見附件）\",\n    \"display_name\": \"AWS Educate 參與證明\",\n    \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n    \"spreadsheet_file_id\": \"bfc952be207d42df91386a177440a6aa\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"harryup2000@gmail.com\",\n    \"sender_local_part\": \"event\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"Shiun 勳\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        },\n        {\n            \"email\": \"rich.liu627@gmail.com\",\n            \"template_variables\": {\n                \"Name\": \"Richie 劉\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-email-service-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"send-email"
+							]
+						}
+					},
+					"status": "Accepted",
+					"code": 202,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 10 Nov 2024 21:43:11 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "1419"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "BDNVch_1vHcEJsA="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"status\": \"SUCCESS\",\n    \"message\": \"Your send email request has been successfully received and is being processed.\",\n    \"recipient_source\": \"DIRECT\",\n    \"run_id\": \"bb6a469a832e480ab95e26988c6493b3\",\n    \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n    \"spreadsheet_file_id\": null,\n    \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - local-dev 05:31 （參與證明請參見附件）\",\n    \"display_name\": \"AWS Educate 參與證明\",\n    \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n    ],\n    \"is_generate_certificate\": true,\n    \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n    \"reply_to\": \"harryup2000@gmail.com\",\n    \"sender_local_part\": \"event\",\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"Shiun 勳\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        },\n        {\n            \"email\": \"rich.liu627@gmail.com\",\n            \"template_variables\": {\n                \"Name\": \"Richie 劉\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"success_email_count\": 0,\n    \"expected_email_send_count\": 2\n}"
+				},
+				{
+					"name": "400 (SPREADSHEET, Missing spreadsheet file ID)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - local-dev 05:31 （參與證明請參見附件）\",\n    \"display_name\": \"AWS Educate 參與證明\",\n    \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"harryup2000@gmail.com\",\n    \"sender_local_part\": \"event\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"Shiun 勳\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        },\n        {\n            \"email\": \"rich.liu627@gmail.com\",\n            \"template_variables\": {\n                \"Name\": \"Richie 劉\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-email-service-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"send-email"
+							]
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 10 Nov 2024 21:43:54 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "42"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "BDNcJjmtPHcEJgg="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Missing spreadsheet file ID\"\n}"
+				}
+			]
+		},
+		{
+			"name": "List runs",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Check if the status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Verify if the response is in JSON format",
+							"pm.test(\"Response is JSON\", function () {",
+							"    pm.response.to.be.json;",
+							"});",
+							"",
+							"// Check if 'data' array exists and contains only one item",
+							"pm.test(\"Data array contains exactly one item\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData.data).to.be.an('array');",
+							"    pm.expect(jsonData.data.length).to.equal(1); // Ensure there is exactly one item",
+							"});",
+							"",
+							"// Ensure 'previous_last_evaluated_key' and 'current_last_evaluated_key' are null",
+							"pm.test(\"previous_last_evaluated_key and current_last_evaluated_key are null\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData.previous_last_evaluated_key).to.be.null;",
+							"    pm.expect(jsonData.current_last_evaluated_key).to.be.null;",
+							"});",
+							"",
+							"// Ensure 'next_last_evaluated_key' exists and is not empty",
+							"pm.test(\"next_last_evaluated_key exists and is not empty\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData.next_last_evaluated_key).to.be.a(\"string\");",
+							"    pm.expect(jsonData.next_last_evaluated_key).to.not.be.empty;",
+							"});",
+							"",
+							"// Check if 'template_file' exists and validate its structure",
+							"pm.test(\"template_file exists and structure is correct\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    const exampleRun = jsonData.data[0]; // Test the first (and only) item in the data array",
+							"",
+							"    pm.expect(exampleRun).to.have.property(\"template_file\").that.is.an(\"object\");",
+							"    const templateFile = exampleRun.template_file;",
+							"",
+							"    pm.expect(templateFile).to.have.property(\"file_url\").that.is.a(\"string\");",
+							"    pm.expect(templateFile).to.have.property(\"file_name\").that.is.a(\"string\");",
+							"    pm.expect(templateFile).to.have.property(\"file_extension\").that.is.a(\"string\");",
+							"    pm.expect(templateFile).to.have.property(\"file_id\").that.is.a(\"string\");",
+							"    pm.expect(templateFile).to.have.property(\"created_at\").that.is.a(\"string\");",
+							"});",
+							"",
+							"// Validate the structure of the single item in the 'data' array",
+							"pm.test(\"Data structure is correct\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    const exampleRun = jsonData.data[0]; // Only one item due to limit=1",
+							"",
+							"    pm.expect(exampleRun).to.have.property(\"run_id\").that.is.a(\"string\");",
+							"    pm.expect(exampleRun).to.have.property(\"subject\").that.is.a(\"string\");",
+							"    pm.expect(exampleRun).to.have.property(\"created_at\").that.is.a(\"string\");",
+							"    pm.expect(exampleRun).to.have.property(\"success_email_count\").that.is.a(\"number\");",
+							"    pm.expect(exampleRun).to.have.property(\"sender\").that.is.an(\"object\");",
+							"    pm.expect(exampleRun.sender).to.have.property(\"email\").that.is.a(\"string\");",
+							"});",
+							"",
+							"// Check the structure of 'attachment_files' if they exist",
+							"pm.test(\"Attachment files structure is correct\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    const exampleRun = jsonData.data[0]; // Only one item due to limit=1",
+							"",
+							"    if (exampleRun.attachment_files.length > 0) {",
+							"        const attachment = exampleRun.attachment_files[0];",
+							"        pm.expect(attachment).to.have.property(\"file_url\").that.is.a(\"string\");",
+							"        pm.expect(attachment).to.have.property(\"file_name\").that.is.a(\"string\");",
+							"        pm.expect(attachment).to.have.property(\"file_extension\").that.is.a(\"string\");",
+							"    }",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{access_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs?limit=1",
+					"protocol": "https",
+					"host": [
+						"{{environment}}-email-service-internal-api-tpet",
+						"aws-educate",
+						"tw"
+					],
+					"path": [
+						"{{environment}}",
+						"runs"
+					],
+					"query": [
+						{
+							"key": "last_evaluated_key",
+							"value": "eyJydW5faWQiOiAiMWU5ZDlmNTBhNjNkNDEwM2I3ZjUyNmU2NDgwMTU1MGIiLCAiY3JlYXRlZF95ZWFyIjogIjIwMjQiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTEyLTA3VDA5OjEzOjUyWiJ9",
+							"disabled": true
+						},
+						{
+							"key": "sort_by",
+							"value": "created_at",
+							"description": "(Optional) 目前只能設定為 created_at",
+							"disabled": true
+						},
+						{
+							"key": "sort_order",
+							"value": "ASC",
+							"description": "(Optional) {ASC / DESC}, Default=DESC",
+							"disabled": true
+						},
+						{
+							"key": "created_year",
+							"value": null,
+							"description": "(Optional) 篩選某年份所創建的資料，Default=自動取當前時間的年份",
+							"disabled": true
+						},
+						{
+							"key": "limit",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "200",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs?limit=1&created_year",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-email-service-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"runs"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "1",
+									"description": "(Optional) 最多取回多少筆 data, Default=10"
+								},
+								{
+									"key": "last_evaluated_key",
+									"value": "eyJydW5faWQiOiAiNmJiMzMxMGIwOTEzNDhhOGI2MTU3NGJjNWRlZTVlODciLCAiY3JlYXRlZF95ZWFyIjogIjIwMjQiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTA4LTAyVDE0OjU2OjAyWiJ9",
+									"disabled": true
+								},
+								{
+									"key": "sort_by",
+									"value": "created_at",
+									"description": "(Optional) 目前只能設定為 created_at",
+									"disabled": true
+								},
+								{
+									"key": "sort_order",
+									"value": "ASC",
+									"description": "(Optional) {ASC / DESC}, Default=DESC",
+									"disabled": true
+								},
+								{
+									"key": "created_year",
+									"value": null,
+									"description": "(Optional) 篩選某年份所創建的資料，Default=自動取當前時間的年份"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Fri, 02 Aug 2024 15:18:17 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "3135"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "b4vMggCUvHcEJKA="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"data\": [\n        {\n            \"bcc\": [\n                \"rich.liu627@gmail.com\"\n            ],\n            \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - BCC CC test-local-dev 11:11 （參與證明請參見附件）\",\n            \"cc\": [\n                \"ptqwe20020413@gmail.com\",\n                \"h830519h@yahoo.com.tw\"\n            ],\n            \"run_id\": \"5b2003e667134c8fa9aabec1e7f75cba\",\n            \"attachment_files\": [\n                {\n                    \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d7dc554e23d64414b9fcb5b85ca65351_%28For%20Test%29Certificate-for-bcc-test.xlsx\",\n                    \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                    \"updated_at\": \"2024-08-02T13:59:25Z\",\n                    \"file_name\": \"(For Test)Certificate-for-bcc-test.xlsx\",\n                    \"file_id\": \"d7dc554e23d64414b9fcb5b85ca65351\",\n                    \"s3_object_key\": \"d7dc554e23d64414b9fcb5b85ca65351_(For Test)Certificate-for-bcc-test.xlsx\",\n                    \"created_at\": \"2024-08-02T13:59:25Z\",\n                    \"file_extension\": \"xlsx\",\n                    \"file_size\": 32117\n                }\n            ],\n            \"created_at\": \"2024-08-02T15:11:48Z\",\n            \"sender_local_part\": \"event\",\n            \"spreadsheet_file_id\": \"d7dc554e23d64414b9fcb5b85ca65351\",\n            \"created_year_month\": \"2024-08\",\n            \"attachment_file_ids\": [\n                \"d7dc554e23d64414b9fcb5b85ca65351\"\n            ],\n            \"is_generate_certificate\": false,\n            \"spreadsheet_file\": {\n                \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d7dc554e23d64414b9fcb5b85ca65351_%28For%20Test%29Certificate-for-bcc-test.xlsx\",\n                \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                \"updated_at\": \"2024-08-02T13:59:25Z\",\n                \"file_name\": \"(For Test)Certificate-for-bcc-test.xlsx\",\n                \"file_id\": \"d7dc554e23d64414b9fcb5b85ca65351\",\n                \"s3_object_key\": \"d7dc554e23d64414b9fcb5b85ca65351_(For Test)Certificate-for-bcc-test.xlsx\",\n                \"created_at\": \"2024-08-02T13:59:25Z\",\n                \"file_extension\": \"xlsx\",\n                \"file_size\": 32117\n            },\n            \"display_name\": \"AWS Educate 參與證明\",\n            \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n            \"sender\": {\n                \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                \"email\": \"ptqwe20020413@gmail.com\",\n                \"username\": \"ptshiun\"\n            },\n            \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n            \"success_email_count\": 3,\n            \"expected_email_send_count\": 3,\n            \"reply_to\": \"harryup2000@gmail.com\",\n            \"template_file\": {\n                \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n                \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                \"updated_at\": \"2024-08-02T03:24:16Z\",\n                \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n                \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n                \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n                \"created_at\": \"2024-08-02T03:24:16Z\",\n                \"file_extension\": \"html\",\n                \"file_size\": 3164\n            },\n            \"created_year_month_day\": \"2024-08-02\",\n            \"created_year\": \"2024\"\n        }\n    ],\n    \"previous_last_evaluated_key\": null,\n    \"current_last_evaluated_key\": null,\n    \"next_last_evaluated_key\": \"eyJydW5faWQiOiAiNWIyMDAzZTY2NzEzNGM4ZmE5YWFiZWMxZTdmNzVjYmEiLCAiY3JlYXRlZF95ZWFyIjogIjIwMjQiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTA4LTAyVDE1OjExOjQ4WiJ9\"\n}"
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "service_hyphen",
+			"value": "email-service",
+			"type": "default"
+		}
+	]
+}

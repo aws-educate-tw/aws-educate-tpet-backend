@@ -121,5 +121,3 @@ resource "aws_api_gateway_deployment" "files_api_deployment" {
     redeployment = timestamp()
   }
 }
-
-

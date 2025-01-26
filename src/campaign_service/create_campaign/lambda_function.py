@@ -58,7 +58,7 @@ def lambda_handler(event, context):
         logger.error("JSONDecodeError: %s", error_message)
         return {"statusCode": 400, "body": json.dumps({"message": error_message})}
     except KeyError as e:
-        error_message = "Missing required field: %s" % str(e)
+        error_message = f"Missing required field: {str(e)}"
         logger.error("KeyError: %s", error_message)
         return {"statusCode": 400, "body": json.dumps({"message": error_message})}
     except Exception as e:

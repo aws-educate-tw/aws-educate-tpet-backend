@@ -1,0 +1,84 @@
+{
+	"id": "a38ce9ff-75f1-4d4d-a1f4-7ac3e74c0ee6",
+	"name": "Shiun-preview",
+	"values": [
+		{
+			"key": "base_url",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "file_id",
+			"value": "test_file_id",
+			"enabled": true
+		},
+		{
+			"key": "environment",
+			"value": "preview",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "code",
+			"value": "1",
+			"enabled": true
+		},
+		{
+			"key": "boolean",
+			"value": "true",
+			"enabled": true
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "secret",
+			"enabled": true
+		},
+		{
+			"key": "[postman_email_address",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "domain",
+			"value": "aws-educate.tw",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "template_file_id",
+			"value": "c4941cc9ef8a49d7b7dabe84253c4e8d",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "template_file_name",
+			"value": "",
+			"type": "any",
+			"enabled": true
+		},
+		{
+			"key": "template_file_url",
+			"value": "",
+			"type": "any",
+			"enabled": true
+		},
+		{
+			"key": "pull_request_number",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "commit_sha",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2025-01-23T05:06:52.408Z",
+	"_postman_exported_using": "Postman/11.22.0"
+}

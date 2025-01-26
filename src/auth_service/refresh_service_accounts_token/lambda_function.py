@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-from typing import Dict
 
 import boto3
 from botocore.exceptions import ClientError
@@ -21,6 +20,7 @@ ENVIRONMENT = os.getenv("ENVIRONMENT")
 # List of service accounts that need token refresh
 SERVICE_ACCOUNTS = [
     "surveycake",
+    "postman",
 ]
 
 
@@ -29,7 +29,7 @@ def get_secret_path(service_account: str, secret_type: str) -> str:
     Generate secret path based on environment and service account.
 
     Args:
-        service_account (str): Name of the service account (e.g., 'surveycake', 'slack')
+        service_account (str): Name of the service account (e.g., 'surveycake', 'postman')
         secret_type (str): Type of secret ("password" or "access-token")
 
     Returns:
@@ -38,7 +38,7 @@ def get_secret_path(service_account: str, secret_type: str) -> str:
     return f"aws-educate-tpet/{ENVIRONMENT}/service-accounts/{service_account}/{secret_type}"
 
 
-def refresh_service_account_access_token(service_account: str) -> Dict:
+def refresh_service_account_access_token(service_account: str) -> dict:
     """
     Refresh access token for a specific service account.
 
@@ -105,7 +105,7 @@ def refresh_service_account_access_token(service_account: str) -> Dict:
                 raise ValueError(f"Unexpected response type: {type(login_result)}")
 
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse login response: {str(e)}")
+            raise ValueError(f"Failed to parse login response: {str(e)}") from e
 
         # Store the new access token in Secrets Manager
         secret_data = {"account": service_account, "access_token": access_token}

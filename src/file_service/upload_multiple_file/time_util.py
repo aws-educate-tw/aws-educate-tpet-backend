@@ -9,7 +9,7 @@ def get_current_utc_time() -> str:
 
     :return: Current UTC time in ISO 8601 format.
     """
-    return datetime.datetime.now(datetime.timezone.utc).strftime(TIME_FORMAT)
+    return datetime.datetime.now(datetime.UTC).strftime(TIME_FORMAT)
 
 
 def format_time_to_iso8601(dt: datetime.datetime) -> str:
@@ -20,7 +20,7 @@ def format_time_to_iso8601(dt: datetime.datetime) -> str:
     :return: Formatted time as ISO 8601 string.
     """
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=datetime.timezone.utc)
+        dt = dt.replace(tzinfo=datetime.UTC)
     return dt.strftime(TIME_FORMAT)
 
 
@@ -32,7 +32,7 @@ def parse_iso8601_to_datetime(iso8601_str: str) -> datetime.datetime:
     :return: Datetime object.
     """
     return datetime.datetime.strptime(iso8601_str, TIME_FORMAT).replace(
-        tzinfo=datetime.timezone.utc
+        tzinfo=datetime.UTC
     )
 
 
@@ -54,9 +54,7 @@ if __name__ == "__main__":
     current_time = get_current_utc_time()
     print("Current UTC Time:", current_time)
 
-    formatted_time = format_time_to_iso8601(
-        datetime.datetime.now(datetime.timezone.utc)
-    )
+    formatted_time = format_time_to_iso8601(datetime.datetime.now(datetime.UTC))
     print("Formatted Time:", formatted_time)
 
     parsed_time = parse_iso8601_to_datetime("2024-07-11T12:00:00Z")

@@ -269,6 +269,11 @@ def prepare_run_data(
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Main Lambda function handler."""
+    # Identify if the incoming event is a prewarm request
+    if event.get("action") == "PREWARM":
+        logger.info("Received a prewarm request. Skipping business logic.")
+        return {"statusCode": 200, "body": "Successfully warmed up"}
+
     try:
         # Validate authorization
         access_token = validate_auth_header(event["headers"])

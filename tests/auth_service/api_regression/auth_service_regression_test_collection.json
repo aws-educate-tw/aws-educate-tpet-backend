@@ -1,0 +1,163 @@
+{
+	"info": {
+		"_postman_id": "7bef295e-bb41-4fe4-987e-4cb9ac3674c2",
+		"name": "Auth Service Regression Test",
+		"description": "# 🧪 Get started here\n\nThis template helps ensure your API continues to work as expected after updates or changes. It contains sample requests and [scripts](https://learning.postman.com/docs/writing-scripts/intro-to-scripts/) for a series of tests that validate different aspects of an API, including:\n\n1. **Status code verification:** We'll check if the API returns the expected status codes for various requests, ensuring reliability and proper error handling.\n    \n2. **JSON schema verification:** We'll make sure the JSON response conforms to a specified JSON Schema, ensuring API contracts are honored.\n    \n3. **Response time verification:** We'll verify that the API's response time is within the acceptable range, providing a smooth user experience and optimizing performance.\n    \n4. **Response body verification:** We'll validate the structure and content of the response body for accuracy, ensuring the integrity of the data and preventing potential issues downstream.\n    \n5. **Header verification:** We'll confirm the presence and correct values of specific headers in the response, enabling secure and well-structured communication between your app and its users.\n    \n\n## 🔖 **How to use this template**\n\n**Step 1:** Send the sample requests and view the response and test results.\n\n**Step 2:** Replace the sample request URLs with your desired API endpoints.\n\n**Step 3:** Customize the tests in the \"Scripts\" tab if needed. Don't forget to save your changes.\n\n**Step 4:** [Run the collection](https://learning.postman.com/docs/collections/running-collections/intro-to-collection-runs/) by selecting \"Run\".\n\n<img src=\"https://content.pstmn.io/666cfa65-6e00-4308-871b-f831128bc0ac/Y29sbGVjdGlvbi1ydW5uZXItYnV0dG9uLmpwZWc=\" width=\"246\" height=\"102\">\n\n## 💡Related templates\n\n[Integration testing](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=fe506090-ca91-4340-bea9-82d2c3d2bb9a&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)  \n[Performance testing](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=3302192d-87dd-4612-b381-61894de21203&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)  \n[Mock data generation](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=da8ceebc-d4da-478c-ab8a-37634faefc74&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)  \n[Common API vulnerabilities check](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e1edbae8-6429-453d-890e-00385eea1811&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36968695",
+		"_collection_link": "https://aws-educate-tw.postman.co/workspace/TPET-API-Development-Workspace~b6915213-64a3-408d-b297-45f472fa0a6b/collection/36968695-7bef295e-bb41-4fe4-987e-4cb9ac3674c2?action=share&source=collection_link&creator=36968695"
+	},
+	"item": [
+		{
+			"name": "Get me",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate that the status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate that the response is in JSON format",
+							"pm.test(\"Response is JSON\", function () {",
+							"    pm.response.to.be.json;",
+							"});",
+							"",
+							"// Validate that the response body contains the required fields",
+							"pm.test(\"Response has required fields\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property(\"email\");",
+							"    pm.expect(jsonData).to.have.property(\"user_id\");",
+							"    pm.expect(jsonData).to.have.property(\"username\");",
+							"});",
+							"",
+							"// Validate that the email matches the expected value (optional, specific to certain test scenarios)",
+							"pm.test(\"Email matches expected value\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData.email).to.eql(\"postman@aws-educate.tw\");",
+							"});",
+							"",
+							"// Validate that the username matches the expected value (optional, specific to certain test scenarios)",
+							"pm.test(\"Username matches expected value\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData.username).to.eql(\"postman\");",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{access_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://{{environment}}-{{service_hyphen}}-internal-api-tpet.aws-educate.tw/{{environment}}/auth/users/me",
+					"protocol": "https",
+					"host": [
+						"{{environment}}-{{service_hyphen}}-internal-api-tpet",
+						"aws-educate",
+						"tw"
+					],
+					"path": [
+						"{{environment}}",
+						"auth",
+						"users",
+						"me"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "200",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://{{environment}}-{{service_hyphen}}-internal-api-tpet.aws-educate.tw/{{environment}}/auth/users/me",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-{{service_hyphen}}-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"auth",
+								"users",
+								"me"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Tue, 16 Jul 2024 21:46:06 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "110"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "bBmErjLSvHcEJFg="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"email\": \"ptqwe20020413@gmail.com\",\n    \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n    \"username\": \"ptshiun\"\n}"
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "service_hyphen",
+			"value": "auth-service",
+			"type": "default"
+		}
+	]
+}

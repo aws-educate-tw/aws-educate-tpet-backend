@@ -3,7 +3,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import quote
 
 import boto3
@@ -63,7 +63,7 @@ def lambda_handler(event, context):
         res_url = S3_BASE_URL + encoded_file_name
 
         # Generate file metadata and store it in DynamoDB
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         formatted_now = now.strftime(TIME_FORMAT) + "Z"
         file_id = uuid.uuid4().hex
         file_size = len(file_content)

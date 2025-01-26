@@ -1,0 +1,270 @@
+{
+	"info": {
+		"_postman_id": "16b04afa-71b8-4a1a-b814-0acd20080063",
+		"name": "File Service Regression Test",
+		"description": "# 🧪 Get started here\n\nThis template helps ensure your API continues to work as expected after updates or changes. It contains sample requests and [scripts](https://learning.postman.com/docs/writing-scripts/intro-to-scripts/) for a series of tests that validate different aspects of an API, including:\n\n1. **Status code verification:** We'll check if the API returns the expected status codes for various requests, ensuring reliability and proper error handling.\n    \n2. **JSON schema verification:** We'll make sure the JSON response conforms to a specified JSON Schema, ensuring API contracts are honored.\n    \n3. **Response time verification:** We'll verify that the API's response time is within the acceptable range, providing a smooth user experience and optimizing performance.\n    \n4. **Response body verification:** We'll validate the structure and content of the response body for accuracy, ensuring the integrity of the data and preventing potential issues downstream.\n    \n5. **Header verification:** We'll confirm the presence and correct values of specific headers in the response, enabling secure and well-structured communication between your app and its users.\n    \n\n## 🔖 **How to use this template**\n\n**Step 1:** Send the sample requests and view the response and test results.\n\n**Step 2:** Replace the sample request URLs with your desired API endpoints.\n\n**Step 3:** Customize the tests in the \"Scripts\" tab if needed. Don't forget to save your changes.\n\n**Step 4:** [Run the collection](https://learning.postman.com/docs/collections/running-collections/intro-to-collection-runs/) by selecting \"Run\".\n\n<img src=\"https://content.pstmn.io/666cfa65-6e00-4308-871b-f831128bc0ac/Y29sbGVjdGlvbi1ydW5uZXItYnV0dG9uLmpwZWc=\" width=\"246\" height=\"102\">\n\n## 💡Related templates\n\n[Integration testing](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=fe506090-ca91-4340-bea9-82d2c3d2bb9a&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)  \n[Performance testing](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=3302192d-87dd-4612-b381-61894de21203&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)  \n[Mock data generation](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=da8ceebc-d4da-478c-ab8a-37634faefc74&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)  \n[Common API vulnerabilities check](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e1edbae8-6429-453d-890e-00385eea1811&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36968695",
+		"_collection_link": "https://aws-educate-tw.postman.co/workspace/TPET-API-Development-Workspace~b6915213-64a3-408d-b297-45f472fa0a6b/collection/36968695-16b04afa-71b8-4a1a-b814-0acd20080063?action=share&source=collection_link&creator=36968695"
+	},
+	"item": [
+		{
+			"name": "Upload Multiple file",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Verify that the status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Verify that the response contains a 'files' array",
+							"pm.test(\"Response contains 'files' array\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property(\"files\").that.is.an(\"array\");",
+							"    pm.expect(jsonData.files.length).to.be.greaterThan(0);",
+							"});",
+							"",
+							"// Verify that each file object contains required fields",
+							"pm.test(\"Each file has required fields\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    jsonData.files.forEach(file => {",
+							"        pm.expect(file).to.have.property(\"file_id\");",
+							"        pm.expect(file).to.have.property(\"s3_object_key\");",
+							"        pm.expect(file).to.have.property(\"created_at\");",
+							"        pm.expect(file).to.have.property(\"file_url\");",
+							"        pm.expect(file).to.have.property(\"file_name\");",
+							"        pm.expect(file).to.have.property(\"file_extension\");",
+							"        pm.expect(file).to.have.property(\"file_size\");",
+							"        pm.expect(file).to.have.property(\"uploader_id\");",
+							"    });",
+							"});",
+							"",
+							"",
+							"// Verify that the file URL is reachable (HEAD request)",
+							"pm.test(\"File URL is reachable\", function (done) {",
+							"    const jsonData = pm.response.json();",
+							"    const firstFile = jsonData.files[0];",
+							"",
+							"    pm.sendRequest({",
+							"        url: firstFile.file_url,",
+							"        method: \"HEAD\"",
+							"    }, function (err, res) {",
+							"        pm.expect(err).to.be.null;",
+							"        pm.expect(res).to.have.status(200);",
+							"        done();",
+							"    });",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{access_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "./tests/file_service/api_regression/test_template_file.html"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://{{environment}}-file-service-internal-api-tpet.aws-educate.tw/{{environment}}/upload-multiple-file",
+					"protocol": "https",
+					"host": [
+						"{{environment}}-file-service-internal-api-tpet",
+						"aws-educate",
+						"tw"
+					],
+					"path": [
+						"{{environment}}",
+						"upload-multiple-file"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "200",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Cache-Control",
+								"value": "no-cache",
+								"type": "text"
+							},
+							{
+								"key": "Postman-Token",
+								"value": "<calculated when request is sent>",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "multipart/form-data; boundary=<calculated when request is sent>",
+								"type": "text"
+							},
+							{
+								"key": "Content-Length",
+								"value": "<calculated when request is sent>",
+								"type": "text"
+							},
+							{
+								"key": "Host",
+								"value": "<calculated when request is sent>",
+								"type": "text"
+							},
+							{
+								"key": "User-Agent",
+								"value": "PostmanRuntime/7.32.1",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "*/*",
+								"type": "text"
+							},
+							{
+								"key": "Accept-Encoding",
+								"value": "gzip, deflate, br",
+								"type": "text"
+							},
+							{
+								"key": "Connection",
+								"value": "keep-alive",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text",
+								"disabled": true
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/octet-stream",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": [
+										"/C:/GitHub/aws-educate-tpet-backend/upload_file.html",
+										"/C:/GitHub/aws-educate-tpet-backend/__init__.py"
+									]
+								}
+							],
+							"options": {
+								"formdata": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://sojek1stci.execute-api.ap-northeast-1.amazonaws.com/dev/upload-multiple-file",
+							"protocol": "https",
+							"host": [
+								"sojek1stci",
+								"execute-api",
+								"ap-northeast-1",
+								"amazonaws",
+								"com"
+							],
+							"path": [
+								"dev",
+								"upload-multiple-file"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Thu, 30 May 2024 15:57:36 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "700"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "Yl49igLAtjMEJvw="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"files\": [\n        {\n            \"file_id\": \"aec3c2ac1a7a4c9eb7e171b0284450a0\",\n            \"s3_object_key\": \"aec3c2ac1a7a4c9eb7e171b0284450a0_test-template.html\",\n            \"created_at\": \"2024-12-07T02:56:36Z\",\n            \"created_year\": \"2024\",\n            \"created_year_month\": \"2024-12\",\n            \"created_year_month_day\": \"2024-12-07\",\n            \"updated_at\": \"2024-12-07T02:56:36Z\",\n            \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/aec3c2ac1a7a4c9eb7e171b0284450a0_test-template.html\",\n            \"file_name\": \"test-template.html\",\n            \"file_extension\": \"html\",\n            \"file_size\": 3142,\n            \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\"\n        }\n    ]\n}"
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "service_hyphen",
+			"value": "file-service",
+			"type": "default"
+		}
+	]
+}

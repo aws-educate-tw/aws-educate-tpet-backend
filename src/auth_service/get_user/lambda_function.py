@@ -17,7 +17,6 @@ table = dynamodb.Table(DYNAMODB_TABLE)
 
 
 def lambda_handler(event, context):
-
     user_id = event["pathParameters"]["user_id"]
 
     try:

@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -25,7 +24,7 @@ class FileRepository:
         self,
         file_extension: str,
         limit: int,
-        last_evaluated_key: Optional[dict[str, str]],
+        last_evaluated_key: dict[str, str] | None,
         sort_order: str,
     ) -> dict[str, str]:
         """
@@ -54,7 +53,7 @@ class FileRepository:
             logger.error("Error querying files: %s", e)
             raise
 
-    def get_file_by_id(self, file_id: str) -> Optional[dict[str, str]]:
+    def get_file_by_id(self, file_id: str) -> dict[str, str] | None:
         """
         Retrieve a file by its ID from the DynamoDB table.
 
@@ -68,7 +67,7 @@ class FileRepository:
             logger.error("Error getting file by ID: %s", e)
             return None
 
-    def save_file(self, file: dict[str, str]) -> Optional[str]:
+    def save_file(self, file: dict[str, str]) -> str | None:
         """
         Save a file to the DynamoDB table.
 
@@ -93,7 +92,7 @@ class FileRepository:
         except ClientError as e:
             logger.error("Error deleting file: %s", e)
 
-    def scan_files_by_file_extension(self, file_extension: str) -> Optional[list]:
+    def scan_files_by_file_extension(self, file_extension: str) -> list | None:
         """
         Scan files from the DynamoDB table based on file extension.
 

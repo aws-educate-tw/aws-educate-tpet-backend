@@ -1,0 +1,159 @@
+{
+	"info": {
+		"_postman_id": "47ffee61-d7b7-4bbc-90ff-3aa0c788444a",
+		"name": "Webhook Service Regression Test",
+		"description": "# 🧪 Get started here\n\nThis template helps ensure your API continues to work as expected after updates or changes. It contains sample requests and [scripts](https://learning.postman.com/docs/writing-scripts/intro-to-scripts/) for a series of tests that validate different aspects of an API, including:\n\n1. **Status code verification:** We'll check if the API returns the expected status codes for various requests, ensuring reliability and proper error handling.\n    \n2. **JSON schema verification:** We'll make sure the JSON response conforms to a specified JSON Schema, ensuring API contracts are honored.\n    \n3. **Response time verification:** We'll verify that the API's response time is within the acceptable range, providing a smooth user experience and optimizing performance.\n    \n4. **Response body verification:** We'll validate the structure and content of the response body for accuracy, ensuring the integrity of the data and preventing potential issues downstream.\n    \n5. **Header verification:** We'll confirm the presence and correct values of specific headers in the response, enabling secure and well-structured communication between your app and its users.\n    \n\n## 🔖 **How to use this template**\n\n**Step 1:** Send the sample requests and view the response and test results.\n\n**Step 2:** Replace the sample request URLs with your desired API endpoints.\n\n**Step 3:** Customize the tests in the \"Scripts\" tab if needed. Don't forget to save your changes.\n\n**Step 4:** [Run the collection](https://learning.postman.com/docs/collections/running-collections/intro-to-collection-runs/) by selecting \"Run\".\n\n<img src=\"https://content.pstmn.io/666cfa65-6e00-4308-871b-f831128bc0ac/Y29sbGVjdGlvbi1ydW5uZXItYnV0dG9uLmpwZWc=\" width=\"246\" height=\"102\">\n\n## 💡Related templates\n\n[Integration testing](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=fe506090-ca91-4340-bea9-82d2c3d2bb9a&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)  \n[Performance testing](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=3302192d-87dd-4612-b381-61894de21203&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)  \n[Mock data generation](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=da8ceebc-d4da-478c-ab8a-37634faefc74&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)  \n[Common API vulnerabilities check](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e1edbae8-6429-453d-890e-00385eea1811&sourceTemplateId=7ab0f80e-a964-46ee-b948-4a4e3a85809c)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36968695",
+		"_collection_link": "https://aws-educate-tw.postman.co/workspace/TPET-API-Development-Workspace~b6915213-64a3-408d-b297-45f472fa0a6b/collection/36968695-47ffee61-d7b7-4bbc-90ff-3aa0c788444a?action=share&source=collection_link&creator=36968695"
+	},
+	"item": [
+		{
+			"name": "Create webhook",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Check if the status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Parse the JSON response body",
+							"const jsonData = pm.response.json();",
+							"",
+							"// Verify that the status is \"SUCCESS\"",
+							"pm.test(\"Status is SUCCESS\", function () {",
+							"    pm.expect(jsonData.status).to.eql(\"SUCCESS\");",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{access_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"subject\": \"[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}\",\n    \"display_name\": \"GitHub Actions{{pull_request_number}} - API Regression Test\",\n    \"template_file_id\": \"{{$randomUUID}}\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"{{$randomEmail}}\",\n    \"sender_local_part\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"attachment_file_ids\": [\n        \"{{$randomUUID}}\"\n    ],\n    \"bcc\": [\n        \"{{$randomEmail}}\",\n        \"{{$randomEmail}}\"\n    ],\n    \"cc\": [\n        \"{{$randomEmail}}\",\n        \"{{$randomEmail}}\"\n    ],\n    \"surveycake_link\": \"https://www.surveycake.com/s/Nq06L\",\n    \"hash_key\": \"{{$randomUUID}}\",\n    \"iv_key\": \"{{$randomUUID}}\",\n    \"webhook_name\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"webhook_type\": \"surveycake\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://{{environment}}-{{service_hyphen}}-internal-api-tpet.aws-educate.tw/{{environment}}/webhook",
+					"protocol": "https",
+					"host": [
+						"{{environment}}-{{service_hyphen}}-internal-api-tpet",
+						"aws-educate",
+						"tw"
+					],
+					"path": [
+						"{{environment}}",
+						"webhook"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "200",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - local-dev\",\n    \"display_name\": \"AWS Educate 參與證明\",\n    \"template_file_id\": \"aec3c2ac1a7a4c9eb7e171b0284450a0\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"harryup2000@gmail.com\",\n    \"sender_local_part\": \"event\",\n    \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ],\n    \"surveycake_link\": \"https://www.surveycake.com/s/Nq06L\",\n    \"hash_key\": \"e2d421a665cf0f9f\",\n    \"iv_key\": \"a0a7899a8890fcf1\",\n    \"webhook_name\": \"回饋表單test\",\n    \"webhook_type\": \"surveycake\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{environment}}-{{service_hyphen}}-internal-api-tpet.aws-educate.tw/{{environment}}/webhook",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-{{service_hyphen}}-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"webhook"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Thu, 02 Jan 2025 12:19:41 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "335"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "DwmemgqBvHcESHQ="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"status\": \"SUCCESS\",\n    \"message\": \"Webhook successfully created.\",\n    \"webhook_id\": \"c43f8f5b-a431-4927-8b6c-3c03ef29921b\",\n    \"webhook_url\": \"https://local-dev-webhook-service-internal-api-tpet.aws-educate.tw/local-dev/trigger-webhook/c43f8f5b-a431-4927-8b6c-3c03ef29921b\",\n    \"webhook_type\": \"surveycake\",\n    \"created_at\": \"2025-01-02T12:19:41Z\"\n}"
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "service_hyphen",
+			"value": "webhook-service",
+			"type": "default"
+		}
+	]
+}
