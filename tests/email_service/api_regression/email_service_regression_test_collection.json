@@ -597,6 +597,247 @@
 					"body": "{\n    \"message\": \"Missing spreadsheet file ID\"\n}"
 				}
 			]
+		},
+		{
+			"name": "List runs",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Check if the status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Verify if the response is in JSON format",
+							"pm.test(\"Response is JSON\", function () {",
+							"    pm.response.to.be.json;",
+							"});",
+							"",
+							"// Check if 'data' array exists and contains only one item",
+							"pm.test(\"Data array contains exactly one item\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData.data).to.be.an('array');",
+							"    pm.expect(jsonData.data.length).to.equal(1); // Ensure there is exactly one item",
+							"});",
+							"",
+							"// Ensure 'previous_last_evaluated_key' and 'current_last_evaluated_key' are null",
+							"pm.test(\"previous_last_evaluated_key and current_last_evaluated_key are null\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData.previous_last_evaluated_key).to.be.null;",
+							"    pm.expect(jsonData.current_last_evaluated_key).to.be.null;",
+							"});",
+							"",
+							"// Ensure 'next_last_evaluated_key' exists and is not empty",
+							"pm.test(\"next_last_evaluated_key exists and is not empty\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData.next_last_evaluated_key).to.be.a(\"string\");",
+							"    pm.expect(jsonData.next_last_evaluated_key).to.not.be.empty;",
+							"});",
+							"",
+							"// Check if 'template_file' exists and validate its structure",
+							"pm.test(\"template_file exists and structure is correct\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    const exampleRun = jsonData.data[0]; // Test the first (and only) item in the data array",
+							"",
+							"    pm.expect(exampleRun).to.have.property(\"template_file\").that.is.an(\"object\");",
+							"    const templateFile = exampleRun.template_file;",
+							"",
+							"    pm.expect(templateFile).to.have.property(\"file_url\").that.is.a(\"string\");",
+							"    pm.expect(templateFile).to.have.property(\"file_name\").that.is.a(\"string\");",
+							"    pm.expect(templateFile).to.have.property(\"file_extension\").that.is.a(\"string\");",
+							"    pm.expect(templateFile).to.have.property(\"file_id\").that.is.a(\"string\");",
+							"    pm.expect(templateFile).to.have.property(\"created_at\").that.is.a(\"string\");",
+							"});",
+							"",
+							"// Validate the structure of the single item in the 'data' array",
+							"pm.test(\"Data structure is correct\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    const exampleRun = jsonData.data[0]; // Only one item due to limit=1",
+							"",
+							"    pm.expect(exampleRun).to.have.property(\"run_id\").that.is.a(\"string\");",
+							"    pm.expect(exampleRun).to.have.property(\"subject\").that.is.a(\"string\");",
+							"    pm.expect(exampleRun).to.have.property(\"created_at\").that.is.a(\"string\");",
+							"    pm.expect(exampleRun).to.have.property(\"success_email_count\").that.is.a(\"number\");",
+							"    pm.expect(exampleRun).to.have.property(\"sender\").that.is.an(\"object\");",
+							"    pm.expect(exampleRun.sender).to.have.property(\"email\").that.is.a(\"string\");",
+							"});",
+							"",
+							"// Check the structure of 'attachment_files' if they exist",
+							"pm.test(\"Attachment files structure is correct\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    const exampleRun = jsonData.data[0]; // Only one item due to limit=1",
+							"",
+							"    if (exampleRun.attachment_files.length > 0) {",
+							"        const attachment = exampleRun.attachment_files[0];",
+							"        pm.expect(attachment).to.have.property(\"file_url\").that.is.a(\"string\");",
+							"        pm.expect(attachment).to.have.property(\"file_name\").that.is.a(\"string\");",
+							"        pm.expect(attachment).to.have.property(\"file_extension\").that.is.a(\"string\");",
+							"    }",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{access_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs?limit=1",
+					"protocol": "https",
+					"host": [
+						"{{environment}}-email-service-internal-api-tpet",
+						"aws-educate",
+						"tw"
+					],
+					"path": [
+						"{{environment}}",
+						"runs"
+					],
+					"query": [
+						{
+							"key": "last_evaluated_key",
+							"value": "eyJydW5faWQiOiAiMWU5ZDlmNTBhNjNkNDEwM2I3ZjUyNmU2NDgwMTU1MGIiLCAiY3JlYXRlZF95ZWFyIjogIjIwMjQiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTEyLTA3VDA5OjEzOjUyWiJ9",
+							"disabled": true
+						},
+						{
+							"key": "sort_by",
+							"value": "created_at",
+							"description": "(Optional) 目前只能設定為 created_at",
+							"disabled": true
+						},
+						{
+							"key": "sort_order",
+							"value": "ASC",
+							"description": "(Optional) {ASC / DESC}, Default=DESC",
+							"disabled": true
+						},
+						{
+							"key": "created_year",
+							"value": null,
+							"description": "(Optional) 篩選某年份所創建的資料，Default=自動取當前時間的年份",
+							"disabled": true
+						},
+						{
+							"key": "limit",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "200",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs?limit=1&created_year",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-email-service-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"runs"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "1",
+									"description": "(Optional) 最多取回多少筆 data, Default=10"
+								},
+								{
+									"key": "last_evaluated_key",
+									"value": "eyJydW5faWQiOiAiNmJiMzMxMGIwOTEzNDhhOGI2MTU3NGJjNWRlZTVlODciLCAiY3JlYXRlZF95ZWFyIjogIjIwMjQiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTA4LTAyVDE0OjU2OjAyWiJ9",
+									"disabled": true
+								},
+								{
+									"key": "sort_by",
+									"value": "created_at",
+									"description": "(Optional) 目前只能設定為 created_at",
+									"disabled": true
+								},
+								{
+									"key": "sort_order",
+									"value": "ASC",
+									"description": "(Optional) {ASC / DESC}, Default=DESC",
+									"disabled": true
+								},
+								{
+									"key": "created_year",
+									"value": null,
+									"description": "(Optional) 篩選某年份所創建的資料，Default=自動取當前時間的年份"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Fri, 02 Aug 2024 15:18:17 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "3135"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "b4vMggCUvHcEJKA="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"data\": [\n        {\n            \"bcc\": [\n                \"rich.liu627@gmail.com\"\n            ],\n            \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - BCC CC test-local-dev 11:11 （參與證明請參見附件）\",\n            \"cc\": [\n                \"ptqwe20020413@gmail.com\",\n                \"h830519h@yahoo.com.tw\"\n            ],\n            \"run_id\": \"5b2003e667134c8fa9aabec1e7f75cba\",\n            \"attachment_files\": [\n                {\n                    \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d7dc554e23d64414b9fcb5b85ca65351_%28For%20Test%29Certificate-for-bcc-test.xlsx\",\n                    \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                    \"updated_at\": \"2024-08-02T13:59:25Z\",\n                    \"file_name\": \"(For Test)Certificate-for-bcc-test.xlsx\",\n                    \"file_id\": \"d7dc554e23d64414b9fcb5b85ca65351\",\n                    \"s3_object_key\": \"d7dc554e23d64414b9fcb5b85ca65351_(For Test)Certificate-for-bcc-test.xlsx\",\n                    \"created_at\": \"2024-08-02T13:59:25Z\",\n                    \"file_extension\": \"xlsx\",\n                    \"file_size\": 32117\n                }\n            ],\n            \"created_at\": \"2024-08-02T15:11:48Z\",\n            \"sender_local_part\": \"event\",\n            \"spreadsheet_file_id\": \"d7dc554e23d64414b9fcb5b85ca65351\",\n            \"created_year_month\": \"2024-08\",\n            \"attachment_file_ids\": [\n                \"d7dc554e23d64414b9fcb5b85ca65351\"\n            ],\n            \"is_generate_certificate\": false,\n            \"spreadsheet_file\": {\n                \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d7dc554e23d64414b9fcb5b85ca65351_%28For%20Test%29Certificate-for-bcc-test.xlsx\",\n                \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                \"updated_at\": \"2024-08-02T13:59:25Z\",\n                \"file_name\": \"(For Test)Certificate-for-bcc-test.xlsx\",\n                \"file_id\": \"d7dc554e23d64414b9fcb5b85ca65351\",\n                \"s3_object_key\": \"d7dc554e23d64414b9fcb5b85ca65351_(For Test)Certificate-for-bcc-test.xlsx\",\n                \"created_at\": \"2024-08-02T13:59:25Z\",\n                \"file_extension\": \"xlsx\",\n                \"file_size\": 32117\n            },\n            \"display_name\": \"AWS Educate 參與證明\",\n            \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n            \"sender\": {\n                \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                \"email\": \"ptqwe20020413@gmail.com\",\n                \"username\": \"ptshiun\"\n            },\n            \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n            \"success_email_count\": 3,\n            \"expected_email_send_count\": 3,\n            \"reply_to\": \"harryup2000@gmail.com\",\n            \"template_file\": {\n                \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n                \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                \"updated_at\": \"2024-08-02T03:24:16Z\",\n                \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n                \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n                \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n                \"created_at\": \"2024-08-02T03:24:16Z\",\n                \"file_extension\": \"html\",\n                \"file_size\": 3164\n            },\n            \"created_year_month_day\": \"2024-08-02\",\n            \"created_year\": \"2024\"\n        }\n    ],\n    \"previous_last_evaluated_key\": null,\n    \"current_last_evaluated_key\": null,\n    \"next_last_evaluated_key\": \"eyJydW5faWQiOiAiNWIyMDAzZTY2NzEzNGM4ZmE5YWFiZWMxZTdmNzVjYmEiLCAiY3JlYXRlZF95ZWFyIjogIjIwMjQiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTA4LTAyVDE1OjExOjQ4WiJ9\"\n}"
+				}
+			]
 		}
 	],
 	"event": [

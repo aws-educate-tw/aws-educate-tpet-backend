@@ -82,6 +82,12 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     sort_order: str = extracted_params["sort_order"]
     created_year: str | None = extracted_params["created_year"]
 
+    # Check if the created_year is provided by the client
+    if created_year is not None:
+        is_created_year_provided_by_client = True
+    else:
+        is_created_year_provided_by_client = False
+
     index_name = "created_year-created_at-gsi"
 
     # Get access token from headers and retrieve user_id
@@ -104,6 +110,22 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             current_last_evaluated_key = last_evaluated_key
             last_evaluated_key = decode_key(last_evaluated_key)
             logger.info("Decoded last_evaluated_key: %s", last_evaluated_key)
+
+            # Client provide a created_year in the query params, validate it against the last_evaluated_key
+            if created_year:
+                # Check if the created_year in the last_evaluated_key matches the provided created_year
+                if last_evaluated_key.get("created_year") != created_year:
+                    return {
+                        "statusCode": 400,
+                        "body": json.dumps(
+                            {
+                                "message": f"The created_year from the last_evaluated_key ({last_evaluated_key.get('created_year')}) does not match the provided created_year ({created_year})."
+                            }
+                        ),
+                    }
+            # Client did not provide a created_year in the query params, extract it from the last_evaluated_key
+            created_year = last_evaluated_key.get("created_year")
+
         except ValueError as e:
             logger.error("Invalid last_evaluated_key format: %s", e)
             return {
@@ -128,13 +150,15 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             }
         )
 
-    # Default to current and previous year for querying if created_year is not provided
+    # Determine the years to query based on the provided created_year
+    years_to_query = []
     if created_year:
-        years_to_query = [created_year]
+        years_to_query.append(created_year)
+        if not is_created_year_provided_by_client:
+            years_to_query.append(get_previous_year(created_year))
     else:
         current_year = get_current_utc_time()[:4]
-        previous_year = get_previous_year(current_year)
-        years_to_query = [current_year, previous_year]
+        years_to_query.extend([current_year, get_previous_year(current_year)])
 
     runs = []
 
