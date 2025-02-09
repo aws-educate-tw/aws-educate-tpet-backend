@@ -195,7 +195,7 @@ module "validate_input_lambda" {
         "sqs:SendMessage"
       ],
       resources = [
-        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.send_email_sqs.queue_name}"
+        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.create_email_sqs.queue_name}"
       ]
     },
     dynamodb_crud = {
