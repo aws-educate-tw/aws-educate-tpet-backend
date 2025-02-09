@@ -1,5 +1,6 @@
 import json
 import logging
+from decimal import Decimal
 
 import boto3
 
@@ -8,6 +9,12 @@ logger.setLevel(logging.INFO)
 
 # Initialize SQS client
 sqs_client = boto3.client("sqs")
+
+
+def decimal_default(obj):
+    if isinstance(obj, Decimal):
+        return float(obj)
+    raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
 
 
 def send_message_to_queue(queue_url: str, message: dict) -> dict:
@@ -20,7 +27,7 @@ def send_message_to_queue(queue_url: str, message: dict) -> dict:
     """
     try:
         response = sqs_client.send_message(
-            QueueUrl=queue_url, MessageBody=json.dumps(message)
+            QueueUrl=queue_url, MessageBody=json.dumps(message, default=decimal_default)
         )
         logger.info(
             "Successfully sent message to queue: %s, MessageId: %s",
