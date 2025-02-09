@@ -25,7 +25,7 @@ ENVIRONMENT = os.getenv("ENVIRONMENT")
 FILE_SERVICE_API_BASE_URL = (
     f"https://{ENVIRONMENT}-file-service-internal-api-tpet.aws-educate.tw/{ENVIRONMENT}"
 )
-SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
+CREATE_EMAIL_SQS_QUEUE_URL = os.getenv("CREATE_EMAIL_SQS_QUEUE_URL")
 DEFAULT_DISPLAY_NAME = "AWS Educate 雲端大使"
 DEFAULT_REPLY_TO = "awseducate.cloudambassador@gmail.com"
 DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
@@ -385,7 +385,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Send message to SQS
         message_body = {**common_data, "access_token": access_token}
         sqs_client.send_message(
-            QueueUrl=SQS_QUEUE_URL, MessageBody=json.dumps(message_body)
+            QueueUrl=CREATE_EMAIL_SQS_QUEUE_URL, MessageBody=json.dumps(message_body)
         )
         logger.info("Message sent to SQS: %s", message_body)
 

@@ -17,11 +17,7 @@ def delete_sqs_message(sqs_client, queue_url, receipt_handle):
 def get_sqs_message(record):
     body = json.loads(record["body"])
     receipt_handle = record["receiptHandle"]
-    logger.info(
-        "Processing message with run_Id: %s and email_id: %s",
-        body.get("run_id"),
-        body.get("email_id"),
-    )
+    logger.info("Processing message with run_id: %s", body.get("run_id"))
 
     # Add receipt_handle to the body and return it
     body["receipt_handle"] = receipt_handle
