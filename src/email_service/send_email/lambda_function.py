@@ -2,7 +2,6 @@ import logging
 import os
 import re
 
-import boto3
 from current_user_util import current_user_util
 from email_repository import EmailRepository
 from run_repository import RunRepository
@@ -17,11 +16,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Get environment variables
-SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
+SEND_EMAIL_SQS_QUEUE_URL = os.getenv("SEND_EMAIL_SQS_QUEUE_URL")
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 
 # Initialize clients and services
-sqs_client = boto3.client("sqs")
 file_service = FileService()
 email_repository = EmailRepository()
 run_repository = RunRepository()
@@ -80,7 +78,7 @@ def process_email(email_data: dict) -> None:
             run_repository.increment_success_email_count(run_id)
 
     except Exception as e:
-        logger.error(f"Error processing email {email_id}: {str(e)}")
+        logger.error("Error processing email %s: %s", email_id, str(e))
         email_repository.update_email_status(
             run_id=run_id, email_id=email_id, status="FAILED"
         )
@@ -121,10 +119,11 @@ def lambda_handler(event, context):
             logger.error("Error processing message: %s", e)
             raise
         finally:
-            if SQS_QUEUE_URL:
+            if SEND_EMAIL_SQS_QUEUE_URL:
                 try:
                     delete_sqs_message(
-                        sqs_client, SQS_QUEUE_URL, sqs_message["receipt_handle"]
+                        SEND_EMAIL_SQS_QUEUE_URL,
+                        sqs_message["receipt_handle"],
                     )
                     logger.info(
                         "Deleted message from SQS: %s", sqs_message["receipt_handle"]
@@ -132,4 +131,6 @@ def lambda_handler(event, context):
                 except Exception as e:
                     logger.error("Error deleting SQS message: %s", e)
             else:
-                logger.error("SQS_QUEUE_URL is not available: %s", SQS_QUEUE_URL)
+                logger.error(
+                    "SQS_QUEUE_URL is not available: %s", SEND_EMAIL_SQS_QUEUE_URL
+                )

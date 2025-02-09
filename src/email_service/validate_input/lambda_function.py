@@ -9,10 +9,12 @@ from typing import Any
 import boto3
 import pandas as pd
 import requests
+from botocore.exceptions import ClientError
 from current_user_util import current_user_util
 from data_util import convert_float_to_decimal
 from requests.exceptions import RequestException
 from run_repository import RunRepository
+from sqs import send_message_to_queue
 from time_util import get_current_utc_time
 
 # Set up logging
@@ -32,8 +34,7 @@ DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
 DEFAULT_RECIPIENT_SOURCE = "SPREADSHEET"
 EMAIL_PATTERN = r"[^@]+@[^@]+\.[^@]+"
 
-# Initialize AWS clients and repositories
-sqs_client = boto3.client("sqs")
+# Initialize repositories
 run_repository = RunRepository()
 
 
@@ -160,7 +161,7 @@ def validate_template_variables(
 
 
 def validate_spreadsheet_mode(
-    spreadsheet_file_id: str, access_token: str, template_content: str
+    spreadsheet_file_id: str, access_token: str
 ) -> tuple[dict[str, Any], list[dict[str, Any]], list[str], int]:
     """Validate spreadsheet mode specific requirements."""
     if not spreadsheet_file_id:
@@ -314,9 +315,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             rows, columns = [], []
             if recipient_source == "SPREADSHEET":
                 spreadsheet_info, rows, columns, expected_email_send_count = (
-                    validate_spreadsheet_mode(
-                        spreadsheet_file_id, access_token, template_content
-                    )
+                    validate_spreadsheet_mode(spreadsheet_file_id, access_token)
                 )
                 validate_template_variables(
                     template_content, recipient_source, rows=rows
@@ -384,10 +383,12 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Send message to SQS
         message_body = {**common_data, "access_token": access_token}
-        sqs_client.send_message(
-            QueueUrl=CREATE_EMAIL_SQS_QUEUE_URL, MessageBody=json.dumps(message_body)
-        )
-        logger.info("Message sent to SQS: %s", message_body)
+        try:
+            send_message_to_queue(CREATE_EMAIL_SQS_QUEUE_URL, message_body)
+            logger.info("Message sent to SQS: %s", message_body)
+        except ClientError as e:
+            logger.error("Failed to send message to SQS: %s", e)
+            return create_error_response(500, "Failed to queue email request")
 
         # Prepare success response
         return {

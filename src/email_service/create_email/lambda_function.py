@@ -1,15 +1,13 @@
-import json
 import logging
 import os
 import uuid
 
-import boto3
 import time_util
 from current_user_util import current_user_util
 from data_util import convert_float_to_decimal
 from email_repository import EmailRepository
 from s3 import read_sheet_data_from_s3
-from sqs import delete_sqs_message, get_sqs_message
+from sqs import delete_sqs_message, get_sqs_message, send_message_to_queue
 
 from file_service import FileService
 
@@ -25,8 +23,7 @@ SEND_EMAIL_SQS_QUEUE_URL = os.getenv(
     "SEND_EMAIL_SQS_QUEUE_URL"
 )  # Queue for triggering email sending
 
-# Initialize clients and services
-sqs_client = boto3.client("sqs")
+# Initialize services
 file_service = FileService()
 email_repository = EmailRepository()
 
@@ -91,14 +88,7 @@ def send_to_email_queue(email_item: dict) -> None:
     }
 
     try:
-        response = sqs_client.send_message(
-            QueueUrl=SEND_EMAIL_SQS_QUEUE_URL, MessageBody=json.dumps(message)
-        )
-        logger.info(
-            "Successfully queued email %s for sending: %s",
-            email_item["email_id"],
-            response["MessageId"],
-        )
+        send_message_to_queue(SEND_EMAIL_SQS_QUEUE_URL, message)
     except Exception as e:
         logger.error(
             "Failed to queue email %s for sending: %s", email_item["email_id"], str(e)
@@ -203,7 +193,6 @@ def lambda_handler(event, context):
             if CREATE_EMAIL_SQS_QUEUE_URL:
                 try:
                     delete_sqs_message(
-                        sqs_client,
                         CREATE_EMAIL_SQS_QUEUE_URL,
                         sqs_message["receipt_handle"],
                     )

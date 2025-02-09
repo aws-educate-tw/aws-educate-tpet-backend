@@ -252,175 +252,6 @@ module "validate_input_docker_image" {
 
 }
 
-module "send_email_lambda" {
-  source  = "terraform-aws-modules/lambda/aws"
-  version = "7.7.0"
-
-  function_name = local.send_email_function_name_and_ecr_repo_name
-  description   = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /send-email"
-  event_source_mapping = {
-    sqs = {
-      event_source_arn        = module.send_email_sqs.queue_arn
-      function_response_types = ["ReportBatchItemFailures"] # Setting to ["ReportBatchItemFailures"] means that when the Lambda function processes a batch of SQS messages, it can report which messages failed to process.
-      scaling_config = {
-        # The `maximum_concurrency` parameter limits the number of concurrent Lambda instances that can process messages from the SQS queue.
-        # Setting `maximum_concurrency = 5` means that up to 5 Lambda instances can run simultaneously, each processing different messages from the SQS queue.
-        # It ensures that multiple messages can be processed in parallel, increasing throughput, but each message is still processed only once by a single Lambda instance.
-        maximum_concurrency = 20
-      }
-    }
-  }
-  create_package = false
-  timeout        = 600
-  memory_size    = 1024
-
-  ##################
-  # Container Image
-  ##################
-  package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
-  image_uri     = module.docker_image.image_uri
-
-  publish = true # Whether to publish creation/change as new Lambda Function Version.
-
-
-  environment_variables = {
-    "ENVIRONMENT"         = var.environment,
-    "SERVICE"             = var.service_underscore
-    "DYNAMODB_TABLE"      = var.dynamodb_table
-    "RUN_DYNAMODB_TABLE"  = var.run_dynamodb_table
-    "BUCKET_NAME"         = "${var.environment}-aws-educate-tpet-storage"
-    "PRIVATE_BUCKET_NAME" = "${var.environment}-aws-educate-tpet-private-storage"
-    "SQS_QUEUE_URL"       = module.send_email_sqs.queue_url
-  }
-
-  allowed_triggers = {
-    allow_execution_from_sqs = {
-      principal  = "sqs.amazonaws.com"
-      source_arn = module.send_email_sqs.queue_arn
-    }
-  }
-
-  tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
-  }
-  ######################
-  # Additional policies
-  ######################
-
-  attach_policy_statements = true
-  policy_statements = {
-    dynamodb_crud = {
-      effect = "Allow",
-      actions = [
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem"
-      ],
-      resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/*",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}/index/*",
-      ]
-    },
-    ses_send_email = {
-      effect = "Allow",
-      actions = [
-        "ses:SendEmail",
-        "ses:SendRawEmail"
-      ],
-      resources = [
-        "arn:aws:ses:ap-northeast-1:${data.aws_caller_identity.this.account_id}:identity/awseducate.cloudambassador@gmail.com",
-        "arn:aws:ses:ap-northeast-1:${data.aws_caller_identity.this.account_id}:identity/aws-educate.tw"
-      ]
-    },
-    sqs_receive_message = {
-      effect = "Allow",
-      actions = [
-        "sqs:ReceiveMessage",
-        "sqs:DeleteMessage",
-        "sqs:GetQueueAttributes"
-      ],
-      resources = [
-        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.send_email_sqs.queue_name}"
-      ]
-    },
-    s3_crud = {
-      effect = "Allow",
-      actions = [
-        "s3:ListBucket",
-        "s3:GetBucketLocation",
-        "s3:CreateBucket",
-        "s3:DeleteBucket",
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject",
-        "s3:ListBucketMultipartUploads",
-        "s3:ListMultipartUploadParts",
-        "s3:AbortMultipartUpload"
-      ],
-      resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-private-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-private-storage/*"
-      ]
-    }
-  }
-}
-
-module "docker_image" {
-  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
-  version = "7.7.0"
-
-  create_ecr_repo      = true
-  keep_remotely        = true
-  use_image_tag        = false
-  image_tag_mutability = "MUTABLE"
-  ecr_repo             = local.send_email_function_name_and_ecr_repo_name
-  ecr_repo_lifecycle_policy = jsonencode({
-    "rules" : [
-      {
-        "rulePriority" : 1,
-        "description" : "Keep only the last 10 images",
-        "selection" : {
-          "tagStatus" : "any",
-          "countType" : "imageCountMoreThan",
-          "countNumber" : 10
-        },
-        "action" : {
-          "type" : "expire"
-        }
-      }
-    ]
-  })
-
-
-
-  # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
-  source_path = "${local.source_path}/send_email/" # Remember to change
-  triggers = {
-    dir_sha = local.dir_sha
-  }
-
-}
-
-####################################
-####################################
-####################################
-# POST /send-email #################
-####################################
-####################################
-####################################
 
 module "create_email_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
@@ -606,19 +437,19 @@ module "send_email_lambda" {
   ##################
   package_type  = "Image"
   architectures = ["x86_64"] # or ["arm64"]
-  image_uri     = module.docker_image.image_uri
+  image_uri     = module.send_email_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
 
   environment_variables = {
-    "ENVIRONMENT"          = var.environment,
-    "SERVICE"              = var.service_underscore
-    "EMAIL_DYNAMODB_TABLE" = var.dynamodb_table
-    "RUN_DYNAMODB_TABLE"   = var.run_dynamodb_table
-    "BUCKET_NAME"          = "${var.environment}-aws-educate-tpet-storage"
-    "PRIVATE_BUCKET_NAME"  = "${var.environment}-aws-educate-tpet-private-storage"
-    "SQS_QUEUE_URL"        = module.send_email_sqs.queue_url
+    "ENVIRONMENT"              = var.environment,
+    "SERVICE"                  = var.service_underscore
+    "EMAIL_DYNAMODB_TABLE"     = var.dynamodb_table
+    "RUN_DYNAMODB_TABLE"       = var.run_dynamodb_table
+    "BUCKET_NAME"              = "${var.environment}-aws-educate-tpet-storage"
+    "PRIVATE_BUCKET_NAME"      = "${var.environment}-aws-educate-tpet-private-storage"
+    "SEND_EMAIL_SQS_QUEUE_URL" = module.send_email_sqs.queue_url
   }
 
   allowed_triggers = {
@@ -705,7 +536,7 @@ module "send_email_lambda" {
   }
 }
 
-module "docker_image" {
+module "send_email_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
