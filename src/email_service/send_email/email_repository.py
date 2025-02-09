@@ -199,11 +199,22 @@ class EmailRepository:
 
     def update_email_status(self, run_id: str, email_id: str, status: str) -> None:
         """
-        Update the status, sent_at, and updated_at fields of an email in the DynamoDB table.
+        Update the status of an email record in the DynamoDB table.
 
-        :param run_id: The run ID of the email to update
-        :param email_id: The email ID of the email to update
-        :param status: The new status of the email
+        Parameters:
+            run_id (str): The unique identifier representing the run.
+            email_id (str): The unique identifier for the email.
+            status (str): The new status to be set for the email record.
+
+        Raises:
+            KeyError: If the record with the specified run_id and email_id does not exist.
+            ClientError: For any other error encountered during the update operation.
+
+        This method updates the email record by setting:
+            - The "status" field to the provided status value.
+            - The "sent_at" field to the current UTC time.
+            - The "updated_at" field to the current UTC time.
+        It ensures that the item exists before the update operation via a condition expression.
         """
         try:
             self.table.update_item(
@@ -215,7 +226,14 @@ class EmailRepository:
                     ":sent_at": time_util.get_current_utc_time(),
                     ":updated_at": time_util.get_current_utc_time(),
                 },
+                ConditionExpression="attribute_exists(run_id) AND attribute_exists(email_id)",  # Ensure item exists
             )
         except ClientError as e:
-            logger.error("Error updating email status: %s", e)
-            raise
+            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+                logger.error("Item not found: run_id=%s, email_id=%s", run_id, email_id)
+                raise KeyError(
+                    f"Item with run_id={run_id} and email_id={email_id} not found"
+                ) from e
+            else:
+                logger.error("Error updating email status: %s", e)
+                raise
