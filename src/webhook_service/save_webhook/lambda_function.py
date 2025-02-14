@@ -19,9 +19,6 @@ from webhook_repository import WebhookRepository
 from webhook_total_count_repository import WebhookIncrementCountRepository
 from webhook_type_enum import WebhookType
 
-# dynamodb = boto3.resource("dynamodb")
-# main_table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
-
 trigger_webhook_api_endpoint = os.getenv("TRIGGER_WEBHOOK_API_ENDPOINT")
 
 webhook_repository = WebhookRepository()
@@ -30,6 +27,9 @@ webhook_increment_count_repository = WebhookIncrementCountRepository()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+DEFAULT_DISPLAY_NAME = "AWS Educate 校園雲端大使"
+DEFAULT_REPLY_TO = "awseducate.cloudambassador@gmail.com"
+DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
 
 class DecimalEncoder(json.JSONEncoder):
     """Custom JSON encoder to handle Decimal types"""
@@ -39,6 +39,22 @@ class DecimalEncoder(json.JSONEncoder):
             return float(o)
         return super().default(o)
 
+def check_missing_fields(data):
+    """Check if the required fields are present in the data"""
+    required_fields = [
+        "webhook_type",
+        "subject",
+        "template_file_id",
+        "surveycake_link", 
+        "hash_key",
+        "iv_key",
+        "webhook_name"
+    ]
+    missing_fields = [field for field in required_fields if not data.get(field)]
+
+    return missing_fields
+
+
 
 def lambda_handler(event, context):  # pylint: disable=unused-argument
     """Lambda function handler to create a new webhook"""
@@ -46,6 +62,24 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
         # Parse the event body
         data = json.loads(event["body"])
 
+        # Check for missing fields
+        missing_fields = check_missing_fields(data)
+        if missing_fields:
+            return {
+                "statusCode": 400,
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*",
+                },
+                "body": json.dumps(
+                    {
+                        "status": "FAILED",
+                        "message": f"Missing required fields: {missing_fields}",
+                    }
+                ),
+            }
+        
+        # Check if webhook_type is valid
         try:
             webhook_type_enum = WebhookType(data.get("webhook_type").lower())
         except ValueError:
@@ -79,22 +113,22 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
         # Prepare the DynamoDB item
         item = {
             "webhook_type": webhook_type,
-            "sequence_number": sequence_number,
+            "sequence_number": sequence_number, 
             "webhook_id": webhook_id,
             "webhook_url": webhook_url,
             "created_at": created_at,
             "subject": data.get("subject"),
-            "display_name": data.get("display_name"),
+            "display_name": data.get("display_name", DEFAULT_DISPLAY_NAME),
             "template_file_id": data.get("template_file_id"),
             "is_generate_certificate": data.get("is_generate_certificate", False),
-            "reply_to": data.get("reply_to"),
-            "sender_local_part": data.get("sender_local_part"),
+            "reply_to": data.get("reply_to", DEFAULT_REPLY_TO), 
+            "sender_local_part": data.get("sender_local_part", DEFAULT_SENDER_LOCAL_PART), # Optional, default is cloudambassador
             "attachment_file_ids": data.get("attachment_file_ids", []),
             "bcc": data.get("bcc", []),
             "cc": data.get("cc", []),
             "surveycake_link": data.get("surveycake_link"),
             "hash_key": data.get("hash_key"),
-            "iv_key": data.get("iv_key"),
+            "iv_key": data.get("iv_key"), 
             "webhook_name": data.get("webhook_name"),
         }
 
