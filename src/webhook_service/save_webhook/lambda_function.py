@@ -27,9 +27,11 @@ webhook_increment_count_repository = WebhookIncrementCountRepository()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+DEFAULT_SUBJECT = "AWS Educate 校園雲端大使活動通知"
 DEFAULT_DISPLAY_NAME = "AWS Educate 校園雲端大使"
 DEFAULT_REPLY_TO = "awseducate.cloudambassador@gmail.com"
 DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
+DEFAULT_WEBHOOK_NAME_PREFIX = "TPET webhook"
 
 class DecimalEncoder(json.JSONEncoder):
     """Custom JSON encoder to handle Decimal types"""
@@ -43,12 +45,10 @@ def check_missing_fields(data):
     """Check if the required fields are present in the data"""
     required_fields = [
         "webhook_type",
-        "subject",
         "template_file_id",
         "surveycake_link", 
         "hash_key",
         "iv_key",
-        "webhook_name"
     ]
     missing_fields = [field for field in required_fields if not data.get(field)]
 
@@ -117,7 +117,7 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
             "webhook_id": webhook_id,
             "webhook_url": webhook_url,
             "created_at": created_at,
-            "subject": data.get("subject"),
+            "subject": data.get("subject", DEFAULT_SUBJECT),
             "display_name": data.get("display_name", DEFAULT_DISPLAY_NAME),
             "template_file_id": data.get("template_file_id"),
             "is_generate_certificate": data.get("is_generate_certificate", False),
@@ -129,7 +129,7 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
             "surveycake_link": data.get("surveycake_link"),
             "hash_key": data.get("hash_key"),
             "iv_key": data.get("iv_key"), 
-            "webhook_name": data.get("webhook_name"),
+            "webhook_name": data.get("webhook_name", f"{DEFAULT_WEBHOOK_NAME_PREFIX}-{webhook_type}-{created_at}"),
         }
 
         # Save the item to the main table
