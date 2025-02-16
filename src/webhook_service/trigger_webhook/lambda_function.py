@@ -8,11 +8,14 @@ import logging
 from webhook_handler import WebhookHandler
 from webhook_repository import WebhookRepository
 
+from email_service import EmailService
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 webhook_handler = WebhookHandler()
 webhook_repository = WebhookRepository()
+email_service = EmailService()
 
 def lambda_handler(event, context): # pylint: disable=unused-argument
     """ Lambda function handler to trigger the webhook """
@@ -83,8 +86,8 @@ def lambda_handler(event, context): # pylint: disable=unused-argument
             }
 
         # Prepare the email body to send the email
-        email_body = webhook_handler.prepare_email_body(webhook_details, recipient_email)
-        email_status = webhook_handler.send_email(email_body)
+        email_body = email_service.prepare_email_body(webhook_details, recipient_email)
+        email_status = email_service.send_email(email_body)
         logger.info("Email status: %s", email_status)
 
         if email_status.get("statusCode") != 202:
