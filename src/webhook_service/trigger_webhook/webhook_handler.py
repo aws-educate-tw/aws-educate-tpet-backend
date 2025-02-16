@@ -1,5 +1,5 @@
 """
-This module contains the WebhookHandler class which is 
+This module contains the WebhookHandler class which is
 responsible for handling the webhook processing.
 """
 
@@ -18,8 +18,10 @@ logger.setLevel(logging.INFO)
 
 ALLOWED_USER_AGENTS = ["GuzzleHttp/7"]
 
+
 class WebhookHandler:
-    """ Class to handle the webhook processing """
+    """Class to handle the webhook processing"""
+
     def __init__(self):
         self.dynamodb = boto3.resource("dynamodb")
         self.table = self.dynamodb.Table(Config.DYNAMODB_TABLE)
@@ -28,7 +30,7 @@ class WebhookHandler:
     def process_request_body(
         self, body: str, is_base64_encoded: bool
     ) -> tuple[str, str]:
-        """ Process the request body and extract the svid and hash values """
+        """Process the request body and extract the svid and hash values"""
         if body is None:
             raise ValueError("No body in the request")
 
@@ -46,7 +48,7 @@ class WebhookHandler:
         return svid_value, hash_value
 
     def get_surveycake_data(self, svid_value: str, hash_value: str) -> bytes:
-        """ Get the surveycake data from the SurveyCake API """
+        """Get the surveycake data from the SurveyCake API"""
         api_url = f"https://www.surveycake.com/webhook/v0/{svid_value}/{hash_value}"
         response = requests.get(api_url)
 
@@ -58,7 +60,7 @@ class WebhookHandler:
     def extract_recipient_email(self, answer_data: dict[str, Any]) -> str | None:
         """
         Extract the email address from the surveycake.
-        CAUTION: There should be a question containing "信箱" or "email" 
+        CAUTION: There should be a question containing "信箱" or "email"
         in one of the surveycake questions.
         """
         for item in answer_data["result"]:
@@ -67,7 +69,7 @@ class WebhookHandler:
         return None
 
     def check_headers_agent(self, headers: dict[str, str]) -> bool:
-        """ Check if the User-Agent is allowed """
+        """Check if the User-Agent is allowed"""
         allowed_user_agents = ALLOWED_USER_AGENTS
         user_agent = headers.get("User-Agent")
 
@@ -75,4 +77,3 @@ class WebhookHandler:
             logger.warning("Unauthorized User-Agent: %s", user_agent)
             return False
         return True
-

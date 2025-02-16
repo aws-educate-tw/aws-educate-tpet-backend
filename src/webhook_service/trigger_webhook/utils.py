@@ -1,6 +1,7 @@
 """
 This module contains utility functions that are used by the trigger_webhook module.
 """
+
 import json
 from decimal import Decimal
 
@@ -11,13 +12,16 @@ from Crypto.Cipher import AES
 
 class DecimalEncoder(json.JSONEncoder):
     """Custom JSON encoder to handle Decimal types"""
+
     def default(self, o):
         if isinstance(o, Decimal):
             return float(o)
         return super().default(o)
 
+
 class SecretsManager:
     """Class to handle the Secrets Manager operations"""
+
     def __init__(self):
         self.client = boto3.client("secretsmanager")
 
@@ -36,8 +40,10 @@ class SecretsManager:
             print(f"Failed to retrieve access token: {str(e)}")
             raise
 
+
 class CryptoHandler:
     """Class to handle encryption and decryption operations"""
+
     @staticmethod
     def decrypt_data(encrypted_data: bytes, hash_key: str, iv_key: str) -> str:
         """Decrypt the data using AES encryption"""

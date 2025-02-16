@@ -1,7 +1,8 @@
 """
-This lambda function triggers a webhook by processing 
+This lambda function triggers a webhook by processing
 the incoming request from the surveycake webhook.
 """
+
 import json
 import logging
 
@@ -17,8 +18,9 @@ webhook_handler = WebhookHandler()
 webhook_repository = WebhookRepository()
 email_service = EmailService()
 
-def lambda_handler(event, context): # pylint: disable=unused-argument
-    """ Lambda function handler to trigger the webhook """
+
+def lambda_handler(event, context):  # pylint: disable=unused-argument
+    """Lambda function handler to trigger the webhook"""
 
     # Identify if the incoming event is a prewarm request
     if event.get("action") == "PREWARM":
@@ -35,7 +37,7 @@ def lambda_handler(event, context): # pylint: disable=unused-argument
                 "statusCode": 403,
                 "body": json.dumps({"message": "Forbidden: Unauthorized User-Agent"}),
             }
-        
+
         # Get the webhook details from the DynamoDB using the webhook_id
         webhook_id = event["pathParameters"]["webhook_id"]
         webhook_details = webhook_repository.get_webhook_details(webhook_id)

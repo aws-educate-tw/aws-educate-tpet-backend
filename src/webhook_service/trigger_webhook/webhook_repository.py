@@ -34,4 +34,3 @@ class WebhookRepository:
         except Exception as e:
             logger.error("Error getting webhook details: %s", str(e))
             raise
-            
