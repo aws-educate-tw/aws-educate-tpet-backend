@@ -56,6 +56,7 @@ class EmailService:
                     "Authorization": f"Bearer {access_token}",
                 },
                 json=email_body,
+                timeout=20,
             )
             logger.info("Send email response: %s", response.json())
 

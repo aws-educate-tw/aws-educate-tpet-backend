@@ -50,7 +50,7 @@ class WebhookHandler:
     def get_surveycake_data(self, svid_value: str, hash_value: str) -> bytes:
         """Get the surveycake data from the SurveyCake API"""
         api_url = f"https://www.surveycake.com/webhook/v0/{svid_value}/{hash_value}"
-        response = requests.get(api_url)
+        response = requests.get(api_url, timeout=20)
 
         if response.status_code != 200:
             raise ValueError("Failed to retrieve data from the API")

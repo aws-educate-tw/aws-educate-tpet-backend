@@ -156,7 +156,6 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
                     "webhook_id": webhook_id,
                     "webhook_url": webhook_url,
                     "webhook_type": webhook_type,
-                    # "sequence_number": sequence_number,
                     "created_at": created_at,
                 },
                 cls=DecimalEncoder,
