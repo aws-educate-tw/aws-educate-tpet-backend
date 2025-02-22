@@ -19,7 +19,7 @@ variable "aws_educate_domain_dot_prefix" {
 variable "bucket_name" {
   description = "The name of the S3 bucket"
   type        = string
-  default     = "prod-aws-educate-tpet-email-bucket" 
+  default     = "prod-aws-educate-tpet-email-bucket"
 }
 
 variable "dev_email" {
