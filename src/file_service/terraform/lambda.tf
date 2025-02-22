@@ -134,7 +134,7 @@ module "upload_multiple_file_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri     = module.upload_multiple_file_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -260,7 +260,7 @@ module "list_files_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"]                               # or ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri     = module.list_files_docker_image.image_uri # Remember to change
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -388,7 +388,7 @@ module "get_file_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"]                             # or ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri     = module.get_file_docker_image.image_uri # Remember to change
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.

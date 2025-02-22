@@ -7,3 +7,4 @@ dynamodb_table_total_count                    = "webhook_total_count"
 enable_pitr                                   = false
 enable_deletion_protection_for_dynamodb_table = false
 docker_host                                   = "unix:///Users/chungchihhan/.docker/run/docker.sock"
+lambda_architecture = "arm_64"

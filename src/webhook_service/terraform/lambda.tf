@@ -139,7 +139,7 @@ module "get_webhook_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = [var.lambda_architecture]
   # architectures = ["arm64"]
   image_uri = module.get_webhook_docker_image.image_uri
 
@@ -244,7 +244,7 @@ module "update_webhook_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = [var.lambda_architecture]
   # architectures = ["arm64"]
   image_uri = module.update_webhook_docker_image.image_uri
 
@@ -566,8 +566,7 @@ module "trigger_webhook_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
-  # architectures = ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri = module.trigger_webhook_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.

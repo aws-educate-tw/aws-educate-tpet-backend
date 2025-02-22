@@ -17,3 +17,9 @@ variable "domain_name" {
   description = "Domain name, for example: example.com"
   default     = "aws-educate.tw"
 }
+
+variable "lambda_architecture" {
+  description = "CPU architecture for container image"
+  type    = string
+  default = "x86_64"
+}
