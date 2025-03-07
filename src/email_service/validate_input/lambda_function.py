@@ -14,6 +14,7 @@ from current_user_util import current_user_util
 from data_util import convert_float_to_decimal
 from requests.exceptions import RequestException
 from run_repository import RunRepository
+from s3_util import S3Util
 from sqs import send_message_to_queue
 from time_util import get_current_utc_time
 
@@ -36,6 +37,7 @@ EMAIL_PATTERN = r"[^@]+@[^@]+\.[^@]+"
 
 # Initialize repositories
 run_repository = RunRepository()
+s3_util = S3Util(BUCKET_NAME)
 
 
 def create_error_response(status_code: int, message: str) -> dict[str, Any]:
@@ -250,8 +252,27 @@ def prepare_run_data(
     attachment_files: list[dict[str, Any]],
     current_user_info: dict[str, Any],
 ) -> dict[str, Any]:
-    """Prepare run item data."""
+    """Prepare run item data and backup files."""
     created_at = get_current_utc_time()
+    run_id = common_data["run_id"]
+
+    template_backup_key = s3_util.copy_file_to_run_folder(
+        template_info["s3_object_key"], run_id, "template"
+    )
+    template_info["backup_s3_key"] = template_backup_key
+
+    if spreadsheet_info and recipient_source == "SPREADSHEET":
+        spreadsheet_backup_key = s3_util.copy_file_to_run_folder(
+            spreadsheet_info["s3_object_key"], run_id, "spreadsheet"
+        )
+        spreadsheet_info["backup_s3_key"] = spreadsheet_backup_key
+
+    for attachment in attachment_files:
+        attachment_backup_key = s3_util.copy_file_to_run_folder(
+            attachment["s3_object_key"], run_id, "attachments"
+        )
+        attachment["backup_s3_key"] = attachment_backup_key
+
     run_item = {
         **common_data,
         "created_at": created_at,
