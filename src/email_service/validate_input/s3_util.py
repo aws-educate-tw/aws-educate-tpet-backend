@@ -32,8 +32,8 @@ class S3Util:
                 CopySource={"Bucket": self.bucket_name, "Key": source_key},
                 Key=new_key,
             )
-            logger.info(f"Copied files from {source_key} to {new_key}")
+            logger.info("Copied files from %s to %s", source_key, new_key)
             return new_key
         except Exception as e:
-            logger.error(f"Error copying files to run folder: {e}")
+            logger.error("Error copying files to run folder: %s", e)
             raise
