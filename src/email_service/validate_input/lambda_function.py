@@ -259,19 +259,19 @@ def prepare_run_data(
     template_backup_key = s3_util.copy_file_to_run_folder(
         template_info["s3_object_key"], run_id, "template"
     )
-    template_info["backup_s3_key"] = template_backup_key
+    template_info["backup_s3_object_key"] = template_backup_key
 
     if spreadsheet_info and recipient_source == "SPREADSHEET":
         spreadsheet_backup_key = s3_util.copy_file_to_run_folder(
             spreadsheet_info["s3_object_key"], run_id, "spreadsheet"
         )
-        spreadsheet_info["backup_s3_key"] = spreadsheet_backup_key
+        spreadsheet_info["backup_s3_object_key"] = spreadsheet_backup_key
 
     for attachment in attachment_files:
         attachment_backup_key = s3_util.copy_file_to_run_folder(
             attachment["s3_object_key"], run_id, "attachments"
         )
-        attachment["backup_s3_key"] = attachment_backup_key
+        attachment["backup_s3_object_key"] = attachment_backup_key
 
     run_item = {
         **common_data,
