@@ -1,4 +1,6 @@
 import logging
+import random
+import time
 from email.mime.application import MIMEApplication
 from pathlib import Path
 
@@ -13,6 +15,14 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 ses_client = boto3.client("ses", region_name="ap-northeast-1")
+
+
+def send_email_with_backoff_delay(delay_factor=1):
+    """Simple delay logic for controlled sending."""
+    base_delay = random.uniform(0.5, 1.5)
+    delay = delay_factor * base_delay
+    logger.info("Delaying for %.2f seconds to avoid throttling.", delay)
+    time.sleep(delay)
 
 
 def send_email(
@@ -72,6 +82,9 @@ def send_email(
                 )
                 msg.attach(attachment)
                 logger.info("Attached certificate for: %s", participant_name)
+
+        # Implement a simple backoff delay logic to avoid throttling
+        send_email_with_backoff_delay()
 
         try:
             # Send the email using the AWS SES client
