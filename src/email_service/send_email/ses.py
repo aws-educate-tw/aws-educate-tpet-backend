@@ -16,12 +16,14 @@ logger.setLevel(logging.INFO)
 
 ses_client = boto3.client("ses", region_name="ap-northeast-1")
 
+
 def send_email_with_backoff_delay(delay_factor=1):
     """Simple delay logic for controlled sending."""
-    base_delay = random.uniform(0.5, 1.5) 
+    base_delay = random.uniform(0.5, 1.5)
     delay = delay_factor * base_delay
     logger.info("Delaying for %.2f seconds to avoid throttling.", delay)
     time.sleep(delay)
+
 
 def send_email(
     subject: str,
