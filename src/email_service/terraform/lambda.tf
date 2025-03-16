@@ -424,7 +424,7 @@ module "send_email_lambda" {
         # The `maximum_concurrency` parameter limits the number of concurrent Lambda instances that can process messages from the SQS queue.
         # Setting `maximum_concurrency = 5` means that up to 5 Lambda instances can run simultaneously, each processing different messages from the SQS queue.
         # It ensures that multiple messages can be processed in parallel, increasing throughput, but each message is still processed only once by a single Lambda instance.
-        maximum_concurrency = 20
+        maximum_concurrency = 10
       }
     }
   }
