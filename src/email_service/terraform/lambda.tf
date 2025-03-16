@@ -55,7 +55,7 @@ module "health_check_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri     = module.health_check_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -137,7 +137,7 @@ module "validate_input_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"]                                   # or ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri     = module.validate_input_docker_image.image_uri # Remember to change
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -279,7 +279,7 @@ module "create_email_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"]                                 # or ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri     = module.create_email_docker_image.image_uri # Remember to change
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -424,7 +424,7 @@ module "send_email_lambda" {
         # The `maximum_concurrency` parameter limits the number of concurrent Lambda instances that can process messages from the SQS queue.
         # Setting `maximum_concurrency = 5` means that up to 5 Lambda instances can run simultaneously, each processing different messages from the SQS queue.
         # It ensures that multiple messages can be processed in parallel, increasing throughput, but each message is still processed only once by a single Lambda instance.
-        maximum_concurrency = 20
+        maximum_concurrency = 10
       }
     }
   }
@@ -436,7 +436,7 @@ module "send_email_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri     = module.send_email_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -594,7 +594,7 @@ module "list_runs_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"]                              # or ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri     = module.list_runs_docker_image.image_uri # Remember to change
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -726,7 +726,7 @@ module "list_emails_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"]                                # or ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri     = module.list_emails_docker_image.image_uri # Remember to change
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.

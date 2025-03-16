@@ -7,3 +7,4 @@ run_dynamodb_table                            = "run"
 pagination_state_dynamodb_table               = "email_service_pagination_state"
 enable_pitr                                   = false
 enable_deletion_protection_for_dynamodb_table = false
+lambda_architecture = "arm64"

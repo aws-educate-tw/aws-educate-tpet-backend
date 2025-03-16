@@ -51,7 +51,7 @@ module "create_campaign_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri     = module.create_campaign_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.

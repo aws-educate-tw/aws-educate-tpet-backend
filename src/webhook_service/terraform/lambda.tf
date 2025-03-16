@@ -57,7 +57,7 @@ module "health_check_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri     = module.health_check_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -139,8 +139,7 @@ module "get_webhook_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
-  # architectures = ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri = module.get_webhook_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -244,8 +243,7 @@ module "update_webhook_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
-  # architectures = ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri = module.update_webhook_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -349,8 +347,7 @@ module "list_webhooks_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
-  # architectures = ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri = module.list_webhooks_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -458,8 +455,7 @@ module "save_webhook_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
-  # architectures = ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri = module.save_webhook_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
@@ -566,8 +562,7 @@ module "trigger_webhook_lambda" {
   # Container Image
   ##################
   package_type  = "Image"
-  architectures = ["x86_64"] # or ["arm64"]
-  # architectures = ["arm64"]
+  architectures = [var.lambda_architecture]
   image_uri = module.trigger_webhook_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
