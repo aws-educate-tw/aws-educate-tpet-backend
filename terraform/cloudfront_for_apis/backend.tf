@@ -1,8 +1,8 @@
 terraform {
   backend "s3" {
-    bucket         = "terraform-state-20240618152116874600000001"
+    bucket         = "tpet-terraform-state-20250401155336893000000001"
     region         = "us-west-2"
     key            = "cloudfront_for_apis/global/terraform.tfstate"
-    dynamodb_table = "terraform-locks"
+    dynamodb_table = "tpet-terraform-locks"
   }
 }
