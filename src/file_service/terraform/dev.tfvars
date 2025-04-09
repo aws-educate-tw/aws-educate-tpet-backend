@@ -5,4 +5,5 @@ service_hyphen                                = "file-service"
 dynamodb_table                                = "file"
 enable_pitr                                   = true
 enable_deletion_protection_for_dynamodb_table = true
-lambda_architecture = "arm64"
+lambda_architecture                           = "arm64"
+domain_name                                   = "awseducate.systems"

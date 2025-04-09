@@ -15,7 +15,6 @@ variable "service_hyphen" {
 }
 variable "domain_name" {
   description = "Domain name, for example: example.com"
-  default     = "aws-educate.tw"
 }
 
 variable "dynamodb_table" {
@@ -34,6 +33,6 @@ variable "enable_deletion_protection_for_dynamodb_table" {
 
 variable "lambda_architecture" {
   description = "CPU architecture for container image"
-  type    = string
-  default = "x86_64"
+  type        = string
+  default     = "arm64"
 }
