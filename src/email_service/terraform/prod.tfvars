@@ -7,4 +7,5 @@ run_dynamodb_table                            = "run"
 pagination_state_dynamodb_table               = "email_service_pagination_state"
 enable_pitr                                   = true
 enable_deletion_protection_for_dynamodb_table = true
-lambda_architecture = "x86_64"
+lambda_architecture                           = "arm64"
+domain_name                                   = "awseducate.systems"
