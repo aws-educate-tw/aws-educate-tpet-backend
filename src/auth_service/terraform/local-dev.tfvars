@@ -5,4 +5,5 @@ service_hyphen                                = "auth-service"
 dynamodb_table                                = "user"
 enable_pitr                                   = false
 enable_deletion_protection_for_dynamodb_table = false
-lambda_architecture = "arm_64"
+lambda_architecture                           = "arm_64"
+domain_name                                   = "awseducate.systems"

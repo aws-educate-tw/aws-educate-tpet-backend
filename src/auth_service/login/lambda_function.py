@@ -13,6 +13,7 @@ client = boto3.client("cognito-idp")
 
 COGNITO_CLIENT_ID = os.getenv("COGNITO_CLIENT_ID")
 ENVIRONMENT = os.getenv("ENVIRONMENT")
+DOMAIN_NAME = os.getenv("DOMAIN_NAME")
 
 # Define allowed origins
 ALLOWED_ORIGINS = [
@@ -20,6 +21,7 @@ ALLOWED_ORIGINS = [
     "http://localhost:5500",
     "https://aws-educate.tw",
     "https://vercel.app",
+    f"https://{DOMAIN_NAME}" if DOMAIN_NAME else None,
 ]
 
 
@@ -98,9 +100,13 @@ def lambda_handler(event, context):
         # Define the domains and secure attribute based on environment
         if ENVIRONMENT in ["dev", "local-dev", "preview"]:
             domains = ["localhost", ".aws-educate.tw", ".vercel.app"]
+            if DOMAIN_NAME:
+                domains.append(f".{DOMAIN_NAME}")
             secure_attribute = ""
         else:
             domains = [".aws-educate.tw"]
+            if DOMAIN_NAME:
+                domains.append(f".{DOMAIN_NAME}")
             secure_attribute = "Secure; "
 
         # Calculate the expiry time (7 days in seconds)

@@ -1,6 +1,6 @@
 locals {
   region             = var.aws_region
-  custom_domain_name = "${var.environment}-${var.service_hyphen}-internal-api-tpet.aws-educate.tw"
+  custom_domain_name = "${var.environment}-${var.service_hyphen}-internal-api-tpet.${var.domain_name}"
   sub_domain_name    = "${var.environment}-${var.service_hyphen}-internal-api-tpet"
 
   tags = {
