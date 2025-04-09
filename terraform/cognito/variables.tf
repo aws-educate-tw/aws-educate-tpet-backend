@@ -16,5 +16,5 @@ variable "service_hyphen" {
 
 variable "domain_name" {
   description = "Domain name, for example: example.com"
-  default     = "aws-educate.tw"
+  default     = "awseducate.systems"
 }
