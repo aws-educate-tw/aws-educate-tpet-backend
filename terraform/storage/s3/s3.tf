@@ -7,10 +7,10 @@
 ####################################
 
 resource "aws_s3_bucket" "aws_educate_tpet_storage" {
-  bucket = "${var.environment}-aws-educate-tpet-storage"
+  bucket = "${var.environment}-aws-educate-tpet-storage${var.migration_bucket}"
 
   tags = {
-    Name        = "${var.environment}-aws-educate-tpet-storage"
+    Name        = "${var.environment}-aws-educate-tpet-storage${var.migration_bucket}"
     Environment = var.environment
   }
 }
@@ -59,10 +59,10 @@ resource "aws_s3_bucket_cors_configuration" "aws_educate_tpet_storage_cors" {
 ####################################
 
 resource "aws_s3_bucket" "aws_educate_tpet_private_storage" {
-  bucket = "${var.environment}-aws-educate-tpet-private-storage"
+  bucket = "${var.environment}-aws-educate-tpet-private-storage${var.migration_bucket}"
 
   tags = {
-    Name        = "${var.environment}-aws-educate-tpet-private-storage"
+    Name        = "${var.environment}-aws-educate-tpet-private-storage${var.migration_bucket}"
     Environment = var.environment
   }
 }

@@ -18,3 +18,9 @@ variable "cors_allowed_origins" {
   description = "Allowed origins for CORS"
   type        = list(string)
 }
+
+variable "migration_bucket" {
+  description = "The name of the bucket for migration"
+  type        = string
+  default     = "-tpet-migration"
+}
