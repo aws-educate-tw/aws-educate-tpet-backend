@@ -22,6 +22,9 @@ locals {
   files_exclude                                        = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
   files                                                = sort(setsubtract(local.files_include, local.files_exclude))
   dir_sha                                              = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
+  bucket_name                                          = "aws-educate-tpet-storage${var.migration_bucket}"
+  private_bucket_name                                  = "aws-educate-tpet-private-storage${var.migration_bucket}"
+  domain_name                                          = var.domain_name
 }
 
 provider "docker" {
@@ -144,7 +147,8 @@ module "upload_multiple_file_lambda" {
     "ENVIRONMENT"    = var.environment,
     "SERVICE"        = var.service_underscore
     "DYNAMODB_TABLE" = var.dynamodb_table
-    "BUCKET_NAME"    = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"    = "${var.environment}-${local.bucket_name}"
+    "DOMAIN_NAME"    = var.domain_name
   }
 
   allowed_triggers = {
@@ -197,8 +201,8 @@ module "upload_multiple_file_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage${var.migration_bucket}",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage${var.migration_bucket}/*"
       ]
     }
   }
@@ -270,7 +274,8 @@ module "list_files_lambda" {
     "ENVIRONMENT"    = var.environment,
     "SERVICE"        = var.service_underscore
     "DYNAMODB_TABLE" = var.dynamodb_table
-    "BUCKET_NAME"    = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"    = "${var.environment}-${local.bucket_name}"
+    "DOMAIN_NAME"    = var.domain_name
   }
 
   allowed_triggers = {
@@ -325,8 +330,8 @@ module "list_files_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}",
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}/*"
       ]
     }
   }
@@ -398,7 +403,7 @@ module "get_file_lambda" {
     "ENVIRONMENT"    = var.environment,
     "SERVICE"        = var.service_underscore
     "DYNAMODB_TABLE" = var.dynamodb_table
-    "BUCKET_NAME"    = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"    = "${var.environment}-${local.bucket_name}"
   }
 
   allowed_triggers = {
@@ -451,8 +456,8 @@ module "get_file_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}",
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}/*"
       ]
     }
   }

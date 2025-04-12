@@ -7,11 +7,12 @@ import requests
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+DOMAIN_NAME = os.environ.get("DOMAIN_NAME")
 
 class AuthService:
     def __init__(self):
         environment = os.environ.get("ENVIRONMENT")
-        self.base_url = f"https://{environment}-auth-service-internal-api-tpet.aws-educate.tw/{environment}"
+        self.base_url = f"https://{environment}-auth-service-internal-api-tpet.{DOMAIN_NAME}/{environment}"
 
     def get_me(self, access_token):
         """

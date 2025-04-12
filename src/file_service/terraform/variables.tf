@@ -15,6 +15,7 @@ variable "service_hyphen" {
 }
 variable "domain_name" {
   description = "Domain name, for example: example.com"
+  default     = "awseducate.systems"
 }
 
 variable "dynamodb_table" {
@@ -35,4 +36,10 @@ variable "lambda_architecture" {
   description = "CPU architecture for container image"
   type        = string
   default     = "arm64"
+}
+
+variable "migration_bucket" {
+  description = "The name of the bucket for migration"
+  type        = string
+  default     = "-tpet-migration"
 }
