@@ -17,7 +17,7 @@ logger.setLevel(logging.INFO)
 file_service = FileService()
 
 # Constants
-SENDER_EMAIL_DOMAIN = "aws-educate.tw"
+SENDER_EMAIL_DOMAIN = "awseducate.systems"
 CHARSET = "utf-8"
 
 

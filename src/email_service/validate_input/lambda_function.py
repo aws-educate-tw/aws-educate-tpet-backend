@@ -21,11 +21,13 @@ from time_util import get_current_utc_time
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+DOMAIN_NAME = os.getenv("DOMAIN_NAME")
+
 # Constants
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 ENVIRONMENT = os.getenv("ENVIRONMENT")
 FILE_SERVICE_API_BASE_URL = (
-    f"https://{ENVIRONMENT}-file-service-internal-api-tpet.aws-educate.tw/{ENVIRONMENT}"
+    f"https://{ENVIRONMENT}-file-service-internal-api-tpet.{DOMAIN_NAME}/{ENVIRONMENT}"
 )
 CREATE_EMAIL_SQS_QUEUE_URL = os.getenv("CREATE_EMAIL_SQS_QUEUE_URL")
 DEFAULT_DISPLAY_NAME = "AWS Educate 雲端大使"

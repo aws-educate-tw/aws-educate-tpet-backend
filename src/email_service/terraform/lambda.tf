@@ -24,6 +24,8 @@ locals {
   files_exclude                                  = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
   files                                          = sort(setsubtract(local.files_include, local.files_exclude))
   dir_sha                                        = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
+  bucket_name                                    = "aws-educate-tpet-storage${var.migration_bucket}"
+  private_bucket_name                            = "aws-educate-tpet-private-storage${var.migration_bucket}"
 }
 
 provider "docker" {
@@ -146,9 +148,10 @@ module "validate_input_lambda" {
   environment_variables = {
     "ENVIRONMENT"                = var.environment,
     "SERVICE"                    = var.service_underscore
-    "BUCKET_NAME"                = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"                = "${var.environment}-${local.bucket_name}"
     "CREATE_EMAIL_SQS_QUEUE_URL" = module.create_email_sqs.queue_url
     "RUN_DYNAMODB_TABLE"         = var.run_dynamodb_table
+    "DOMAIN_NAME"                = var.domain_name
   }
 
   allowed_triggers = {
@@ -185,8 +188,8 @@ module "validate_input_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}",
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}/*"
       ]
     },
     sqs_send_message = {
@@ -288,11 +291,12 @@ module "create_email_lambda" {
   environment_variables = {
     "ENVIRONMENT"                = var.environment,
     "SERVICE"                    = var.service_underscore
-    "BUCKET_NAME"                = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"                = "${var.environment}-${local.bucket_name}"
     "CREATE_EMAIL_SQS_QUEUE_URL" = module.create_email_sqs.queue_url
     "SEND_EMAIL_SQS_QUEUE_URL"   = module.send_email_sqs.queue_url
     "RUN_DYNAMODB_TABLE"         = var.run_dynamodb_table
     "EMAIL_DYNAMODB_TABLE"       = var.dynamodb_table
+    "DOMAIN_NAME"                = var.domain_name
   }
 
   allowed_triggers = {
@@ -341,8 +345,8 @@ module "create_email_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}",
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}/*"
       ]
     },
     dynamodb_crud = {
@@ -447,9 +451,10 @@ module "send_email_lambda" {
     "SERVICE"                  = var.service_underscore
     "EMAIL_DYNAMODB_TABLE"     = var.dynamodb_table
     "RUN_DYNAMODB_TABLE"       = var.run_dynamodb_table
-    "BUCKET_NAME"              = "${var.environment}-aws-educate-tpet-storage"
-    "PRIVATE_BUCKET_NAME"      = "${var.environment}-aws-educate-tpet-private-storage"
+    "BUCKET_NAME"              = "${var.environment}-${local.bucket_name}"
+    "PRIVATE_BUCKET_NAME"      = "${var.environment}-${local.private_bucket_name}"
     "SEND_EMAIL_SQS_QUEUE_URL" = module.send_email_sqs.queue_url
+    "DOMAIN_NAME"              = var.domain_name
   }
 
   allowed_triggers = {
@@ -498,7 +503,7 @@ module "send_email_lambda" {
       ],
       resources = [
         "arn:aws:ses:ap-northeast-1:${data.aws_caller_identity.this.account_id}:identity/awseducate.cloudambassador@gmail.com",
-        "arn:aws:ses:ap-northeast-1:${data.aws_caller_identity.this.account_id}:identity/aws-educate.tw"
+        "arn:aws:ses:ap-northeast-1:${data.aws_caller_identity.this.account_id}:identity/${var.domain_name}"
       ]
     },
     sqs_receive_message = {
@@ -527,10 +532,10 @@ module "send_email_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-private-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-private-storage/*"
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}",
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}/*",
+        "arn:aws:s3:::${var.environment}-${local.private_bucket_name}",
+        "arn:aws:s3:::${var.environment}-${local.private_bucket_name}/*"
       ]
     }
   }
@@ -606,7 +611,8 @@ module "list_runs_lambda" {
     "DYNAMODB_TABLE"                  = var.dynamodb_table
     "RUN_DYNAMODB_TABLE"              = var.run_dynamodb_table
     "PAGINATION_STATE_DYNAMODB_TABLE" = var.pagination_state_dynamodb_table
-    "BUCKET_NAME"                     = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"                     = "${var.environment}-${local.bucket_name}"
+    "DOMAIN_NAME"                     = var.domain_name
   }
 
   allowed_triggers = {
@@ -663,8 +669,8 @@ module "list_runs_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}",
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}/*"
       ]
     }
   }
@@ -737,7 +743,8 @@ module "list_emails_lambda" {
     "SERVICE"                         = var.service_underscore
     "DYNAMODB_TABLE"                  = var.dynamodb_table
     "PAGINATION_STATE_DYNAMODB_TABLE" = var.pagination_state_dynamodb_table
-    "BUCKET_NAME"                     = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"                     = "${var.environment}-${local.bucket_name}"
+    "DOMAIN_NAME"                     = var.domain_name
   }
 
   allowed_triggers = {
@@ -792,8 +799,8 @@ module "list_emails_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}",
+        "arn:aws:s3:::${var.environment}-${local.bucket_name}/*"
       ]
     }
   }

@@ -7,11 +7,12 @@ import requests
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+DOMAIN_NAME = os.getenv("DOMAIN_NAME")
 
 class FileService:
     def __init__(self):
         environment = os.getenv("ENVIRONMENT")
-        self.base_url = f"https://{environment}-file-service-internal-api-tpet.aws-educate.tw/{environment}"
+        self.base_url = f"https://{environment}-file-service-internal-api-tpet.{DOMAIN_NAME}/{environment}"
 
     def get_file_info(self, file_id, access_token):
         """
