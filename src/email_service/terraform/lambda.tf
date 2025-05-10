@@ -223,23 +223,6 @@ module "validate_input_lambda" {
         "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.create_email_sqs.queue_name}"
       ]
     },
-    dynamodb_crud = {
-      effect = "Allow",
-      actions = [
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem"
-      ],
-      resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}/index/*"
-      ]
-    }
   }
 }
 
@@ -339,6 +322,28 @@ module "create_email_lambda" {
 
   attach_policy_statements = true
   policy_statements = {
+    rds_data_access = {
+      effect = "Allow",
+      actions = [
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_arn
+      ]
+    },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    },
 
     sqs_receive_message = {
       effect = "Allow",
@@ -368,25 +373,6 @@ module "create_email_lambda" {
       resources = [
         "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
         "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
-      ]
-    },
-    dynamodb_crud = {
-      effect = "Allow",
-      actions = [
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem"
-      ],
-      resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/*",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}/index/*",
       ]
     },
     sqs_send_message = {
@@ -497,25 +483,29 @@ module "send_email_lambda" {
 
   attach_policy_statements = true
   policy_statements = {
-    dynamodb_crud = {
+    rds_data_access = {
       effect = "Allow",
       actions = [
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem"
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/*",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}/index/*",
+        module.aurora_postgresql_v2.cluster_arn
       ]
     },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    },
+
     ses_send_email = {
       effect = "Allow",
       actions = [
@@ -654,26 +644,29 @@ module "list_runs_lambda" {
 
   attach_policy_statements = true
   policy_statements = {
-    dynamodb_crud = {
+    rds_data_access = {
       effect = "Allow",
       actions = [
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem"
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/*",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.pagination_state_dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}/index/*",
+        module.aurora_postgresql_v2.cluster_arn
       ]
     },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    },
+
     s3_crud = {
       effect = "Allow",
       actions = [
@@ -785,22 +778,26 @@ module "list_emails_lambda" {
 
   attach_policy_statements = true
   policy_statements = {
-    dynamodb_crud = {
+    rds_data_access = {
       effect = "Allow",
       actions = [
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem"
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/*",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.pagination_state_dynamodb_table}",
+        module.aurora_postgresql_v2.cluster_arn
+      ]
+    },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
       ]
     },
     s3_crud = {
