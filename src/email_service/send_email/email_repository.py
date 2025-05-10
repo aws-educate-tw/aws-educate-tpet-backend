@@ -1,239 +1,282 @@
+import json
 import logging
 import os
 
 import boto3
 import time_util
-from boto3.dynamodb.conditions import Key
-from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-TABLE_NAME = os.getenv("EMAIL_DYNAMODB_TABLE")
+JSONB_COLUMNS = {"bcc", "cc", "attachment_file_ids", "row_data"}
+
+
+def parse_field(col_name, field):
+    """
+    解析 RDS Data API 返回的字段值
+
+    :param col_name: 字段名稱
+    :param field: RDS Data API 返回的字段值
+    :return: 轉換後的 Python 類型值
+    """
+    # 處理 NULL 值
+    if "isNull" in field and field["isNull"]:
+        return None
+
+    # 處理基本類型
+    if "stringValue" in field:
+        value = field["stringValue"]
+        # 處理 JSONB 類型
+        if col_name in JSONB_COLUMNS:
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                # 如果無法解析為 JSON，返回原始字串
+                return value
+        return value
+    if "longValue" in field:
+        return field["longValue"]
+    elif "doubleValue" in field:
+        return field["doubleValue"]
+    elif "booleanValue" in field:
+        return field["booleanValue"]
+    elif "blobValue" in field:
+        return field["blobValue"]
+
+    # 處理數組類型
+    elif "arrayValue" in field:
+        array = field["arrayValue"]
+
+        # 處理各種數組類型
+        if "stringValues" in array:
+            return array["stringValues"]
+        elif "longValues" in array:
+            return array["longValues"]
+        elif "doubleValues" in array:
+            return array["doubleValues"]
+        elif "booleanValues" in array:
+            return array["booleanValues"]
+        elif "arrayValues" in array:
+            # 遞歸處理嵌套數組
+            return [parse_field(col_name, v) for v in array["arrayValues"]]
+        # 空數組
+        return []
+
+    # 如果無法識別類型，返回原始字段
+    return field
+
+
+class EmailRepositoryError(Exception):
+    """郵件儲存庫錯誤"""
+
+    def __init__(self, message, sql=None, params=None, original_exception=None):
+        super().__init__(message)
+        self.sql = sql
+        self.params = params
+        self.original_exception = original_exception
 
 
 class EmailRepository:
-    """Repository class for managing emails in DynamoDB"""
+    """郵件數據訪問層"""
 
     def __init__(self):
-        """
-        Initialize the repository with a DynamoDB table name.
-        """
-        self.dynamodb = boto3.resource("dynamodb")
-        self.table = self.dynamodb.Table(TABLE_NAME)
+        """初始化郵件儲存庫"""
+        self._rds_data = boto3.client("rds-data")
+        self._database_name = os.environ["DATABASE_NAME"]
+        self._resource_arn = os.environ["CLUSTER_ARN"]
+        self._secret_arn = os.environ["SECRET_ARN"]
 
-    def query_emails(
-        self,
-        run_id: str,
-        limit: int,
-        last_evaluated_key: dict[str, str] | None,
-        sort_order: str,
-    ) -> dict[str, str]:
-        """
-        Query emails from the DynamoDB table based on run_id and pagination parameters.
+    def list_emails(self, params):
+        """獲取郵件列表"""
+        # 構建基礎 SQL
+        sql = "SELECT * FROM emails WHERE 1=1 "
+        query_params = []
 
-        :param run_id: The run ID to filter by
-        :param limit: The maximum number of items to return
-        :param last_evaluated_key: The key to start with for pagination
-        :param sort_order: The sort order, either 'ASC' or 'DESC'
-        :return: The query response from DynamoDB
-        """
+        # 添加過濾條件
+        sql, query_params = self._add_filtering_sql(
+            sql=sql, query_params=query_params, params=params
+        )
+
+        # 添加排序
+        sort_by = params.get("sort_by", "created_at")
+        sort_order = params.get("sort_order", "DESC").upper()
+        sql += f" ORDER BY {sort_by} {sort_order}"
+
+        # 添加分頁
+        sql, query_params = self._add_pagination_sql(
+            sql=sql, query_params=query_params, params=params
+        )
+
+        # 執行查詢
+        emails = self._execute(sql, query_params, fetch=True)
+
+        return emails
+
+    def count_emails(self, params):
+        """計算符合條件的郵件數量"""
+        sql = "SELECT COUNT(*) as count FROM emails WHERE 1=1 "
+        query_params = []
+
+        # 添加過濾條件
+        sql, query_params = self._add_filtering_sql(
+            sql=sql, query_params=query_params, params=params
+        )
+
+        # 執行查詢
+        result = self._execute(sql, query_params, fetch=True)
+        return result[0]["count"] if result else 0
+
+    def get_email_by_id(self, run_id, email_id):
+        """通過ID獲取單個郵件"""
+        sql = "SELECT * FROM emails WHERE run_id = :run_id AND email_id = :email_id"
+        params = [
+            {"name": "run_id", "value": {"stringValue": run_id}},
+            {"name": "email_id", "value": {"stringValue": email_id}},
+        ]
+        results = self._execute(sql, params, fetch=True)
+        return results[0] if results else None
+
+    def upsert_email(self, email):
+        """插入或更新郵件"""
         try:
-            query_kwargs = {
-                "Limit": limit,
-                "ScanIndexForward": False if sort_order.upper() == "DESC" else True,
-                "KeyConditionExpression": Key("run_id").eq(run_id),
-            }
+            if "created_at" not in email:
+                email["created_at"] = time_util.get_current_utc_time()
 
-            if last_evaluated_key:
-                query_kwargs["ExclusiveStartKey"] = last_evaluated_key
+            columns = list(email.keys())
+            columns_str = ", ".join(columns)
+            placeholders = ", ".join(f":{k}" for k in columns)
+            update_cols = [
+                k for k in columns if k not in ("run_id", "email_id", "created_at")
+            ]
+            update_str = ", ".join(f"{k} = EXCLUDED.{k}" for k in update_cols)
 
-            response = self.table.query(**query_kwargs)
-            return response
-        except ClientError as e:
-            logger.error("Error querying emails: %s", e)
-            raise
+            sql = f"""
+                INSERT INTO emails ({columns_str})
+                VALUES ({placeholders})
+                ON CONFLICT (run_id, email_id)
+                DO UPDATE SET {update_str}
+            """
 
-    def query_emails_by_run_id_and_status_gsi(
-        self,
-        run_id: str,
-        status: str,
-        limit: int,
-        last_evaluated_key: dict[str, str] | None,
-        sort_order: str,
-    ) -> dict[str, str]:
-        """
-        Query emails from the DynamoDB table based on run_id, status, and pagination parameters.
+            params = []
+            for k, v in email.items():
+                if isinstance(v, dict | list):
+                    params.append({"name": k, "value": {"stringValue": json.dumps(v)}})
+                elif isinstance(v, str):
+                    params.append({"name": k, "value": {"stringValue": v}})
+                elif isinstance(v, bool):
+                    params.append({"name": k, "value": {"booleanValue": v}})
+                elif isinstance(v, int):
+                    params.append({"name": k, "value": {"longValue": v}})
+                elif v is None:
+                    params.append({"name": k, "value": {"isNull": True}})
+                else:
+                    params.append({"name": k, "value": {"stringValue": str(v)}})
 
-        :param run_id: The run ID to filter by
-        :param status: The status to filter by
-        :param limit: The maximum number of items to return
-        :param last_evaluated_key: The key to start with for pagination
-        :param sort_order: The sort order, either 'ASC' or 'DESC'
-        :return: The query response from DynamoDB
-        """
-        try:
-            query_kwargs = {
-                "Limit": limit,
-                "ScanIndexForward": False if sort_order.upper() == "DESC" else True,
-                "IndexName": "email-run_id-status-gsi",
-                "KeyConditionExpression": Key("run_id").eq(run_id)
-                & Key("status").eq(status),
-            }
-
-            if last_evaluated_key:
-                query_kwargs["ExclusiveStartKey"] = last_evaluated_key
-
-            response = self.table.query(**query_kwargs)
-            return response
-        except ClientError as e:
-            logger.error("Error querying emails by status: %s", e)
-            raise
-
-    def query_emails_by_run_id_and_created_at_gsi(
-        self,
-        run_id: str,
-        limit: int,
-        last_evaluated_key: dict[str, str] | None,
-        sort_order: str,
-    ) -> dict[str, str]:
-        """
-        Query emails from the DynamoDB table based on run_id, created_at, and pagination parameters.
-
-        :param run_id: The run ID to filter by
-        :param limit: The maximum number of items to return
-        :param last_evaluated_key: The key to start with for pagination
-        :param sort_order: The sort order, either 'ASC' or 'DESC'
-        :return: The query response from DynamoDB
-        """
-        try:
-            query_kwargs = {
-                "Limit": limit,
-                "ScanIndexForward": False if sort_order.upper() == "DESC" else True,
-                "IndexName": "email-run_id-created_at-gsi",
-                "KeyConditionExpression": Key("run_id").eq(run_id),
-            }
-
-            if last_evaluated_key:
-                query_kwargs["ExclusiveStartKey"] = last_evaluated_key
-
-            response = self.table.query(**query_kwargs)
-            return response
-        except ClientError as e:
-            logger.error("Error querying emails by created_at: %s", e)
-            raise
-
-    def query_all_emails_by_run_id_and_status_gsi(
-        self,
-        run_id: str,
-        status: str,
-        sort_order: str = "ASC",
-    ) -> list[dict]:
-        """
-        Query all emails from the DynamoDB table based on run_id and status, using the run_id-status-gsi index, without pagination.
-
-        :param run_id: The run ID to filter by
-        :param status: The status to filter by
-        :param sort_order: The sort order, either 'ASC' or 'DESC'
-        :return: A list of all matching email items
-        """
-        all_emails = []
-        last_evaluated_key = None
-
-        while True:
-            response = self.query_emails_by_run_id_and_status_gsi(
-                run_id=run_id,
-                status=status,
-                limit=100,  # This limit is for each query call
-                last_evaluated_key=last_evaluated_key,
-                sort_order=sort_order,
-            )
-            all_emails.extend(response.get("Items", []))
-            last_evaluated_key = response.get("LastEvaluatedKey")
-            if not last_evaluated_key:
-                break
-
-        return all_emails
-
-    def get_email_by_id(self, run_id: str, email_id: str) -> dict[str, str] | None:
-        """
-        Retrieve an email by its run ID and email ID from the DynamoDB table.
-
-        :param run_id: The run ID of the email to retrieve
-        :param email_id: The email ID of the email to retrieve
-        :return: The email item, or None if not found
-        """
-        try:
-            response = self.table.get_item(Key={"run_id": run_id, "email_id": email_id})
-            return response.get("Item")
-        except ClientError as e:
-            logger.error("Error getting email by ID: %s", e)
-            return None
-
-    def save_email(self, email: dict[str, str]) -> str | None:
-        """
-        Save an email to the DynamoDB table.
-
-        :param email: The email item to save
-        :return: The ID of the saved email, or None if an error occurred
-        """
-        try:
-            email["created_at"] = time_util.get_current_utc_time()
-            self.table.put_item(Item=email)
-            return email["email_id"]
-        except ClientError as e:
+            self._execute(sql, params)
+            return email.get("email_id")
+        except Exception as e:
             logger.error("Error saving email: %s", e)
             return None
 
-    def delete_email(self, run_id: str, email_id: str) -> None:
-        """
-        Delete an email by its run ID and email ID from the DynamoDB table.
+    def delete_email(self, run_id, email_id):
+        """刪除郵件"""
+        sql = "DELETE FROM emails WHERE run_id = :run_id AND email_id = :email_id"
+        params = [
+            {"name": "run_id", "value": {"stringValue": run_id}},
+            {"name": "email_id", "value": {"stringValue": email_id}},
+        ]
+        self._execute(sql, params)
 
-        :param run_id: The run ID of the email to delete
-        :param email_id: The email ID of the email to delete
+    def update_email_status(self, run_id, email_id, status):
+        """更新郵件狀態"""
+        now = time_util.get_current_utc_time()
+        sql = """
+            UPDATE emails
+            SET status = :status, sent_at = :sent_at, updated_at = :updated_at
+            WHERE run_id = :run_id AND email_id = :email_id
         """
+        params = [
+            {"name": "status", "value": {"stringValue": status}},
+            {"name": "sent_at", "value": {"stringValue": now}},
+            {"name": "updated_at", "value": {"stringValue": now}},
+            {"name": "run_id", "value": {"stringValue": run_id}},
+            {"name": "email_id", "value": {"stringValue": email_id}},
+        ]
+        self._execute(sql, params)
+
+    def _add_filtering_sql(self, sql, params, query_params):
+        """添加過濾條件到SQL語句"""
+        # 從 query_params 中提取過濾條件
+        filters = query_params.get("filters", {})
+
+        # 將 query_params 中的其他參數也作為過濾條件
+        for key, value in query_params.items():
+            if (
+                key not in ("filters", "page", "limit", "sort_by", "sort_order")
+                and value is not None
+            ):
+                filters[key] = value
+
+        # 構建 WHERE 子句
+        for key, value in filters.items():
+            if value is not None:
+                sql += f" AND {key} = :{key}"
+                params.append(self._create_param(key, value))
+
+        return sql, params
+
+    def _add_pagination_sql(self, sql, params, query_params):
+        """添加分頁到SQL語句"""
+        limit = int(query_params.get("limit", 10))
+        page = int(query_params.get("page", 1))
+        offset = (page - 1) * limit
+
+        sql += " LIMIT :limit OFFSET :offset"
+        params.append({"name": "limit", "value": {"longValue": limit}})
+        params.append({"name": "offset", "value": {"longValue": offset}})
+
+        return sql, params
+
+    def _create_param(self, key, value):
+        """創建SQL參數"""
+        if isinstance(value, int):
+            return {"name": key, "value": {"longValue": value}}
+        elif isinstance(value, bool):
+            return {"name": key, "value": {"booleanValue": value}}
+        elif value is None:
+            return {"name": key, "value": {"isNull": True}}
+        else:
+            return {"name": key, "value": {"stringValue": str(value)}}
+
+    def _execute(self, sql, parameters, fetch=False):
+        """執行SQL查詢"""
         try:
-            self.table.delete_item(Key={"run_id": run_id, "email_id": email_id})
-        except ClientError as e:
-            logger.error("Error deleting email: %s", e)
+            if os.getenv("DEBUG_SQL", "false").lower() == "true":
+                logger.debug("Executing SQL:\n%s\nParams:\n%s", sql, parameters)
 
-    def update_email_status(self, run_id: str, email_id: str, status: str) -> None:
-        """
-        Update the status of an email record in the DynamoDB table.
-
-        Parameters:
-            run_id (str): The unique identifier representing the run.
-            email_id (str): The unique identifier for the email.
-            status (str): The new status to be set for the email record.
-
-        Raises:
-            KeyError: If the record with the specified run_id and email_id does not exist.
-            ClientError: For any other error encountered during the update operation.
-
-        This method updates the email record by setting:
-            - The "status" field to the provided status value.
-            - The "sent_at" field to the current UTC time.
-            - The "updated_at" field to the current UTC time.
-        It ensures that the item exists before the update operation via a condition expression.
-        """
-        try:
-            self.table.update_item(
-                Key={"run_id": run_id, "email_id": email_id},
-                UpdateExpression="SET #status = :status, sent_at = :sent_at, updated_at = :updated_at",
-                ExpressionAttributeNames={"#status": "status"},
-                ExpressionAttributeValues={
-                    ":status": status,
-                    ":sent_at": time_util.get_current_utc_time(),
-                    ":updated_at": time_util.get_current_utc_time(),
-                },
-                ConditionExpression="attribute_exists(run_id) AND attribute_exists(email_id)",  # Ensure item exists
+            response = self._rds_data.execute_statement(
+                resourceArn=self._resource_arn,
+                secretArn=self._secret_arn,
+                database=self._database_name,
+                sql=sql,
+                parameters=parameters,
             )
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-                logger.error("Item not found: run_id=%s, email_id=%s", run_id, email_id)
-                raise KeyError(
-                    f"Item with run_id={run_id} and email_id={email_id} not found"
-                ) from e
-            else:
-                logger.error("Error updating email status: %s", e)
-                raise
+
+            if not fetch:
+                return None
+
+            columns = [col["name"] for col in response["columnMetadata"]]
+            return [
+                {
+                    col: parse_field(col, val)
+                    for col, val in zip(columns, row, strict=False)
+                }
+                for row in response["records"]
+            ]
+        except Exception as e:
+            logger.error(
+                "SQL execution failed: %s\nSQL: %s\nParams: %s", e, sql, parameters
+            )
+            raise EmailRepositoryError(
+                "SQL execution failed", sql, parameters, e
+            ) from e
