@@ -270,6 +270,9 @@ def prepare_run_data(
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Main Lambda function handler."""
+    # Initialize aws_request_id early
+    aws_request_id = context.aws_request_id if context else "unknown"
+
     # Identify if the incoming event is a prewarm request
     if event.get("action") == "PREWARM":
         logger.info("Received a prewarm request. Skipping business logic.")
@@ -286,6 +289,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Parse input
         body = json.loads(event.get("body", "{}"))
         recipient_source = body.get("recipient_source", DEFAULT_RECIPIENT_SOURCE)
+        run_type = body.get(
+            "run_type", recipient_source
+        )  # Default to recipient_source if not provided
         template_file_id = body.get("template_file_id")
         spreadsheet_file_id = body.get("spreadsheet_file_id")
         recipients = body.get("recipients", [])
@@ -349,6 +355,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Prepare common data
         common_data = {
             "recipient_source": recipient_source,
+            "run_type": run_type,
             "run_id": run_id,
             "template_file_id": template_file_id,
             "spreadsheet_file_id": (
@@ -378,8 +385,11 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             current_user_info,
         )
 
-        if not run_repository.save_run(run_item):
-            return create_error_response(500, "Failed to save run")
+        if not run_repository.upsert_run(run_item):
+            return create_error_response(
+                500,
+                f"Failed to save run: {run_item['run_id']}, Request ID: {aws_request_id}",
+            )
 
         # Send message to SQS
         message_body = {**common_data, "access_token": access_token}
@@ -404,5 +414,8 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error("Internal server error: %s", e)
-        return create_error_response(500, "Internal server error")
+        logger.error("Request ID: %s, Internal server error: %s", aws_request_id, e)
+        return create_error_response(
+            500,
+            f"Please try again later or contact support, Request ID: {aws_request_id}",
+        )

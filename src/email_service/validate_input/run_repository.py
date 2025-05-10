@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from decimal import Decimal  # Added import
 
 import boto3
 import time_util
@@ -79,6 +80,14 @@ def parse_field(col_name, field):
     return field
 
 
+# Custom JSON encoder to handle Decimal types
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return str(obj)
+        return super().default(obj)
+
+
 class RunRepositoryError(Exception):
     """Run task repository error"""
 
@@ -146,7 +155,9 @@ class RunRepository:
             # Handle JSONB fields
             for column in JSONB_COLUMNS:
                 if column in run and not isinstance(run[column], str):
-                    run[column] = json.dumps(run[column])
+                    run[column] = json.dumps(
+                        run[column], cls=DecimalEncoder
+                    )  # Use DecimalEncoder
 
             # Create SQL
             columns = list(run.keys())
@@ -227,7 +238,9 @@ class RunRepository:
             # Handle JSONB fields
             for column in JSONB_COLUMNS:
                 if column in update_data and not isinstance(update_data[column], str):
-                    update_data[column] = json.dumps(update_data[column])
+                    update_data[column] = json.dumps(
+                        update_data[column], cls=DecimalEncoder
+                    )  # Use DecimalEncoder
 
             # Build SET clause
             set_clauses = []
@@ -333,12 +346,34 @@ class RunRepository:
 
     def _create_param(self, key, value):
         """Create SQL parameter"""
-        if isinstance(value, int):
-            return {"name": key, "value": {"longValue": value}}
-        elif isinstance(value, bool):
-            return {"name": key, "value": {"booleanValue": value}}
-        elif value is None:
+        if value is None:
             return {"name": key, "value": {"isNull": True}}
+
+        if isinstance(value, bool):
+            return {"name": key, "value": {"booleanValue": value}}
+        elif isinstance(value, int):
+            return {"name": key, "value": {"longValue": value}}
+        # For JSONB columns, 'value' should be a JSON string after json.dumps
+        elif key in JSONB_COLUMNS and isinstance(
+            value, str
+        ):  # Check if key is in JSONB_COLUMNS
+            return {
+                "name": key,
+                "value": {"stringValue": value},
+                "typeHint": "JSON",
+            }
+        # Add specific handling for timestamp columns
+        elif key == "created_at" and isinstance(
+            value, str
+        ):  # Assuming 'created_at' is the target timestamp column
+            dt_obj = time_util.parse_iso8601_to_datetime(value)
+            formatted_ts = time_util.format_datetime_for_rds(dt_obj)
+            return {
+                "name": key,
+                "value": {"stringValue": formatted_ts},
+                "typeHint": "TIMESTAMP",
+            }
+        # Default to stringValue for other types or non-JSONB strings
         else:
             return {"name": key, "value": {"stringValue": str(value)}}
 
