@@ -11,19 +11,18 @@ resource "random_string" "this" {
 }
 
 locals {
-  source_path                                    = "${path.module}/.."
-  list_runs_poc_function_name_and_ecr_repo_name      = "${var.environment}-${var.service_underscore}-list_runs_poc-${random_string.this.result}"
-  
-  path_include                                   = ["**"]
-  path_exclude                                   = ["**/__pycache__/**"]
-  files_include                                  = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
-  files_exclude                                  = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
-  files                                          = sort(setsubtract(local.files_include, local.files_exclude))
-  dir_sha                                        = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
+  source_path                                   = "${path.module}/.."
+  list_runs_poc_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-list_runs_poc-${random_string.this.result}"
+
+  path_include  = ["**"]
+  path_exclude  = ["**/__pycache__/**"]
+  files_include = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
+  files_exclude = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
+  files         = sort(setsubtract(local.files_include, local.files_exclude))
+  dir_sha       = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
 }
 
 provider "docker" {
-  host = var.docker_host
 
   registry_auth {
     address  = format("%v.dkr.ecr.%v.amazonaws.com", data.aws_caller_identity.this.account_id, var.aws_region)
@@ -62,11 +61,11 @@ module "list_runs_poc_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"                = var.environment,
-    "SERVICE"                    = var.service_underscore
-    "DATABASE_NAME"              = var.database_name,
-    "CLUSTER_ARN"                = var.cluster_arn,
-    "SECRET_ARN"                 = var.secret_arn,
+    "ENVIRONMENT"   = var.environment,
+    "SERVICE"       = var.service_underscore
+    "DATABASE_NAME" = var.database_name,
+    "CLUSTER_ARN"   = var.cluster_arn,
+    "SECRET_ARN"    = var.secret_arn,
   }
 
   allowed_triggers = {

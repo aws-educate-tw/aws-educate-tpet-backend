@@ -144,11 +144,14 @@ module "validate_input_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"                = var.environment,
-    "SERVICE"                    = var.service_underscore
-    "BUCKET_NAME"                = "${var.environment}-aws-educate-tpet-storage"
-    "CREATE_EMAIL_SQS_QUEUE_URL" = module.create_email_sqs.queue_url
-    "RUN_DYNAMODB_TABLE"         = var.run_dynamodb_table
+    "ENVIRONMENT"                        = var.environment
+    "SERVICE"                            = var.service_underscore
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
+    "RUN_DYNAMODB_TABLE"                 = var.run_dynamodb_table
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
   }
 
   allowed_triggers = {
@@ -170,6 +173,28 @@ module "validate_input_lambda" {
 
   attach_policy_statements = true
   policy_statements = {
+    rds_data_access = {
+      effect = "Allow",
+      actions = [
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_arn
+      ]
+    },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    }
     s3_crud = {
       effect = "Allow",
       actions = [
@@ -286,7 +311,7 @@ module "create_email_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"                = var.environment,
+    "ENVIRONMENT"                = var.environment
     "SERVICE"                    = var.service_underscore
     "BUCKET_NAME"                = "${var.environment}-aws-educate-tpet-storage"
     "CREATE_EMAIL_SQS_QUEUE_URL" = module.create_email_sqs.queue_url
@@ -447,6 +472,7 @@ module "send_email_lambda" {
     "SERVICE"                  = var.service_underscore
     "EMAIL_DYNAMODB_TABLE"     = var.dynamodb_table
     "RUN_DYNAMODB_TABLE"       = var.run_dynamodb_table
+    "DOMAIN_NAME"              = var.domain_name
     "BUCKET_NAME"              = "${var.environment}-aws-educate-tpet-storage"
     "PRIVATE_BUCKET_NAME"      = "${var.environment}-aws-educate-tpet-private-storage"
     "SEND_EMAIL_SQS_QUEUE_URL" = module.send_email_sqs.queue_url
