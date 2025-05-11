@@ -311,10 +311,19 @@ class RunRepository:
 
         # Whitelist of allowed column names for sorting to prevent SQL injection.
         allowed_sort_by_columns = [
-            "run_id", "created_at",
-            "created_year", "created_year_month", "created_year_month_day",
-            "run_type", "expected_email_send_count", "success_email_count", "failed_email_count",
-            "sender_id", "display_name", "subject", "template_file_id"
+            "run_id",
+            "created_at",
+            "created_year",
+            "created_year_month",
+            "created_year_month_day",
+            "run_type",
+            "expected_email_send_count",
+            "success_email_count",
+            "failed_email_count",
+            "sender_id",
+            "display_name",
+            "subject",
+            "template_file_id",
         ]
 
         if sort_by_input in allowed_sort_by_columns:
@@ -368,7 +377,7 @@ class RunRepository:
             # This should never happen due to the whitelist check above,
             # but adding as an extra safety measure
             sql += " ORDER BY created_at"
-            
+
         # Add sort order (ASC/DESC) after validating
         if sort_order == "ASC":
             sql += " ASC"

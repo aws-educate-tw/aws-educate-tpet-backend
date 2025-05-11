@@ -280,7 +280,11 @@ class RunRepository:
         )
 
         # Add sorting
-        allowed_sort_columns = ["created_at", "run_id", "status"]  # Add more allowed columns as needed
+        allowed_sort_columns = [
+            "created_at",
+            "run_id",
+            "status",
+        ]  # Add more allowed columns as needed
         sort_by = params.get("sort_by", "created_at")
         sort_order = params.get("sort_order", "DESC").upper()
 

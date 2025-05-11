@@ -302,7 +302,10 @@ class RunRepository:
         # Add sorting
         # Define a whitelist of column names that are safe to use for sorting.
         # Ensure these columns actually exist in the 'runs' table and are suitable for sorting.
-        ALLOWED_SORT_COLUMNS = {"run_id", "created_at"}  # You can extend this set with other valid column names
+        ALLOWED_SORT_COLUMNS = {
+            "run_id",
+            "created_at",
+        }  # You can extend this set with other valid column names
 
         sort_by_input = params.get("sort_by", "created_at")
         sort_order_input = params.get("sort_order", "DESC").upper()
@@ -313,7 +316,7 @@ class RunRepository:
         else:
             logger.warning(
                 "Invalid sort_by column '%s' provided. Defaulting to 'created_at'.",
-                sort_by_input
+                sort_by_input,
             )
             sort_by = "created_at"  # Default to a known safe column
 
@@ -323,7 +326,7 @@ class RunRepository:
         else:
             logger.warning(
                 "Invalid sort_order value '%s' provided. Defaulting to 'DESC'.",
-                sort_order_input
+                sort_order_input,
             )
             sort_order = "DESC"  # Default to a known safe order
 
