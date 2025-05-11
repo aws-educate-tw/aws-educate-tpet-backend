@@ -100,9 +100,6 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     if status:
         filter_criteria["status"] = status
 
-    # If you need to filter by sender_id based on the authenticated user:
-    # filter_criteria["sender_id"] = user_id # Assuming user_id from token is the sender_id
-
     try:
         logger.info("Fetching emails with criteria: %s", filter_criteria)
         emails = email_repo.list_emails(filter_criteria)
