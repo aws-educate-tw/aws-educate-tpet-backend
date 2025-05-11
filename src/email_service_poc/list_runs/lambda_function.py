@@ -19,8 +19,9 @@ jsonb_columns = {
     "recipients",
     "sender",
     "spreadsheet_file",
-    "template_file"
+    "template_file",
 }
+
 
 def parse_field(col_name, field):
     if "isNull" in field and field["isNull"]:
@@ -45,6 +46,7 @@ def parse_field(col_name, field):
     if "blobValue" in field:
         return field["blobValue"]
     return field  # fallback for unknown types
+
 
 def lambda_handler(event, context):
     sql_statement = """
@@ -82,13 +84,10 @@ def lambda_handler(event, context):
             resourceArn=CLUSTER_ARN,
             secretArn=SECRET_ARN,
             database=DATABASE_NAME,
-            sql=sql_statement
+            sql=sql_statement,
         )
     except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": str(e)})
-        }
+        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
 
     columns = [
         "run_id",
@@ -121,11 +120,15 @@ def lambda_handler(event, context):
     for record in response["records"]:
         row = {
             col_name: parse_field(col_name, field)
-            for col_name, field in zip(columns, record)
+            for col_name, field in zip(columns, record, strict=False)
         }
         runs.append(row)
 
     return {
         "statusCode": 200,
-        "body": json.dumps({"runs": runs, "message": "The runs have been fetched successfully."}, indent=2, default=str)
+        "body": json.dumps(
+            {"runs": runs, "message": "The runs have been fetched successfully."},
+            indent=2,
+            default=str,
+        ),
     }

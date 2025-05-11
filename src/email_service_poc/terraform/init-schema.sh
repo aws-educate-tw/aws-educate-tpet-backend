@@ -10,7 +10,7 @@ fi
 RESOURCE_ARN="$1"
 SECRET_ARN="$2"
 DATABASE="$3"
-AWS_REGION="$4" 
+AWS_REGION="$4"
 SQL_FILE="init-schema.sql"
 
 # 1) Convert Windows CRLF (if any) to LF.
