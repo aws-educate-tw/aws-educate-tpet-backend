@@ -148,7 +148,6 @@ module "validate_input_lambda" {
     "SERVICE"                            = var.service_underscore
     "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
     "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
-    "RUN_DYNAMODB_TABLE"                 = var.run_dynamodb_table
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
@@ -294,13 +293,14 @@ module "create_email_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"                = var.environment
-    "SERVICE"                    = var.service_underscore
-    "BUCKET_NAME"                = "${var.environment}-aws-educate-tpet-storage"
-    "CREATE_EMAIL_SQS_QUEUE_URL" = module.create_email_sqs.queue_url
-    "SEND_EMAIL_SQS_QUEUE_URL"   = module.send_email_sqs.queue_url
-    "RUN_DYNAMODB_TABLE"         = var.run_dynamodb_table
-    "EMAIL_DYNAMODB_TABLE"       = var.dynamodb_table
+    "ENVIRONMENT"                        = var.environment
+    "SERVICE"                            = var.service_underscore
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
+    "SEND_EMAIL_SQS_QUEUE_URL"           = module.send_email_sqs.queue_url
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
   }
 
   allowed_triggers = {
@@ -454,14 +454,15 @@ module "send_email_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"              = var.environment,
-    "SERVICE"                  = var.service_underscore
-    "EMAIL_DYNAMODB_TABLE"     = var.dynamodb_table
-    "RUN_DYNAMODB_TABLE"       = var.run_dynamodb_table
-    "DOMAIN_NAME"              = var.domain_name
-    "BUCKET_NAME"              = "${var.environment}-aws-educate-tpet-storage"
-    "PRIVATE_BUCKET_NAME"      = "${var.environment}-aws-educate-tpet-private-storage"
-    "SEND_EMAIL_SQS_QUEUE_URL" = module.send_email_sqs.queue_url
+    "ENVIRONMENT"                        = var.environment,
+    "SERVICE"                            = var.service_underscore,
+    "DOMAIN_NAME"                        = var.domain_name,
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage",
+    "PRIVATE_BUCKET_NAME"                = "${var.environment}-aws-educate-tpet-private-storage",
+    "SEND_EMAIL_SQS_QUEUE_URL"           = module.send_email_sqs.queue_url
+    "DATABASE_NAME"                      = var.database_name,
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn,
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
   }
 
   allowed_triggers = {
@@ -617,12 +618,12 @@ module "list_runs_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"                     = var.environment,
-    "SERVICE"                         = var.service_underscore
-    "DYNAMODB_TABLE"                  = var.dynamodb_table
-    "RUN_DYNAMODB_TABLE"              = var.run_dynamodb_table
-    "PAGINATION_STATE_DYNAMODB_TABLE" = var.pagination_state_dynamodb_table
-    "BUCKET_NAME"                     = "${var.environment}-aws-educate-tpet-storage"
+    "ENVIRONMENT"                        = var.environment
+    "SERVICE"                            = var.service_underscore
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
   }
 
   allowed_triggers = {
@@ -752,11 +753,12 @@ module "list_emails_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"                     = var.environment,
-    "SERVICE"                         = var.service_underscore
-    "DYNAMODB_TABLE"                  = var.dynamodb_table
-    "PAGINATION_STATE_DYNAMODB_TABLE" = var.pagination_state_dynamodb_table
-    "BUCKET_NAME"                     = "${var.environment}-aws-educate-tpet-storage"
+    "ENVIRONMENT"                        = var.environment
+    "SERVICE"                            = var.service_underscore
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
   }
 
   allowed_triggers = {
