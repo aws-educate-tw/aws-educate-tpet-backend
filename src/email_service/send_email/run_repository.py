@@ -229,6 +229,29 @@ class RunRepository:
                 "Error incrementing success email count", sql, params, e
             ) from e
 
+    def increment_failed_email_count(self, run_id: str) -> None:
+        """
+        Increment the failed_email_count for a run in the PostgreSQL database.
+
+        :param run_id: The run ID to update
+        """
+        try:
+            sql = """
+                UPDATE runs
+                SET failed_email_count = failed_email_count + 1
+                WHERE run_id = :run_id
+            """
+            params = [
+                {"name": "run_id", "value": {"stringValue": run_id}},
+            ]
+
+            self._execute(sql, params)
+        except Exception as e:
+            logger.error("Error updating failed_email_count: %s", e)
+            raise RunRepositoryError(
+                "Error incrementing failed email count", sql, params, e
+            ) from e
+
     def update_run(self, run_id: str, update_data: dict) -> bool:
         """
         Update specific fields of a run in the PostgreSQL database.

@@ -35,11 +35,17 @@ def _parse_json_field(json_string, default_value=None, field_name="field"):
             return json.loads(json_string)
         except json.JSONDecodeError:
             logger.warning(
-                f"Could not parse JSON string for {field_name}: {json_string}. Using default: {default_value}"
+                "Could not parse JSON string for %s: %s. Using default: %s",
+                field_name,
+                json_string,
+                default_value,
             )
             return default_value
     logger.warning(
-        f"Unexpected type for {field_name}: {type(json_string)}. Using default: {default_value}"
+        "Unexpected type for %s: %s. Using default: %s",
+        field_name,
+        type(json_string),
+        default_value,
     )
     return default_value
 
@@ -111,12 +117,16 @@ def process_email(email_data: dict) -> None:
         # Increment success count if email was sent successfully
         if status == "SUCCESS":
             run_repository.increment_success_email_count(run_id)
+        elif status == "FAILED":
+            run_repository.increment_failed_email_count(run_id)
 
     except Exception as e:
         logger.error("Error processing email %s: %s", email_id, str(e))
+        # Ensure status is FAILED and increment failed count before re-raising
         email_repository.update_email_status(
             run_id=run_id, email_id=email_id, status="FAILED"
         )
+        run_repository.increment_failed_email_count(run_id)  # Add this line
         raise
 
 

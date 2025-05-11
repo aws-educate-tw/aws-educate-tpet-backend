@@ -76,6 +76,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
     try:
         run_item = run_repo.get_run_by_id(run_id)
+        run_item = dict(run_item)  # Create a mutable copy of run_item
 
         if not run_item:
             logger.warning(
@@ -86,14 +87,16 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                 "body": json.dumps({"message": f"Run with ID '{run_id}' not found"}),
             }
 
-        # Calculate failed_email_count
-        expected_count = run_item.get("expected_email_send_count", 0)
-        success_count = run_item.get("success_email_count", 0)
-        # Ensure counts are integers
-        expected_count = int(expected_count) if expected_count is not None else 0
-        success_count = int(success_count) if success_count is not None else 0
-
-        run_item = {**run_item, "failed_email_count": expected_count - success_count}
+        # Ensure failed_email_count is present and is an integer, defaulting to 0 if not.
+        # The runs table should ideally store this value directly.
+        run_item["failed_email_count"] = int(run_item.get("failed_email_count", 0) or 0)
+        # Ensure other counts are also integers if they are used or returned.
+        run_item["expected_email_send_count"] = int(
+            run_item.get("expected_email_send_count", 0) or 0
+        )
+        run_item["success_email_count"] = int(
+            run_item.get("success_email_count", 0) or 0
+        )
 
         # Ensure all timestamps within nested objects are also ISO8601.
         # The `parse_field` in RunRepository should handle top-level `created_at`.
