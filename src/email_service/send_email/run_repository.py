@@ -83,10 +83,12 @@ def parse_field(col_name, field):
 
 # Custom JSON encoder to handle Decimal types
 class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return str(obj)
-        return super().default(obj)
+    """Custom JSON encoder for Decimal objects."""
+
+    def default(self, o: object) -> object:
+        if isinstance(o, Decimal):
+            return float(o)
+        return super().default(o)
 
 
 class RunRepositoryError(Exception):
@@ -375,7 +377,9 @@ class RunRepository:
                 }
             except ValueError:  # Should not happen if time_util is used consistently
                 logger.warning(
-                    f"Could not parse timestamp string '{value}' for key '{key}'. Sending as string."
+                    "Could not parse timestamp string '%s' for key '%s'. Sending as string.",
+                    value,
+                    key,
                 )
                 return {"name": key, "value": {"stringValue": str(value)}}
         # Default to stringValue for other types

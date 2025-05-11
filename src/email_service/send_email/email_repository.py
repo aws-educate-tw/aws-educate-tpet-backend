@@ -21,10 +21,10 @@ RDS_CLUSTER_MASTER_USER_SECRET_ARN = os.environ["RDS_CLUSTER_MASTER_USER_SECRET_
 class DecimalEncoder(json.JSONEncoder):
     """Custom JSON encoder for Decimal objects."""
 
-    def default(self, obj: object) -> object:
-        if isinstance(obj, Decimal):
-            return str(obj)  # Changed to str(obj) for precision
-        return super().default(obj)
+    def default(self, o: object) -> object:
+        if isinstance(o, Decimal):
+            return float(o)
+        return super().default(o)
 
 
 def parse_field(col_name, field):
@@ -329,7 +329,9 @@ class EmailRepository:
                 }
             except ValueError:  # Should not happen if time_util is used consistently
                 logger.warning(
-                    f"Could not parse timestamp string '{value}' for key '{key}'. Sending as string."
+                    "Could not parse timestamp string '%s' for key '%s'. Sending as string.",
+                    value,
+                    key,
                 )
                 return {"name": key, "value": {"stringValue": str(value)}}
         else:
