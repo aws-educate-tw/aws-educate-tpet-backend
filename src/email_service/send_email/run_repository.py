@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from decimal import Decimal  # Added import
 
 import boto3
 import time_util
@@ -18,29 +19,34 @@ JSONB_COLUMNS = {
     "spreadsheet_file",
     "template_file",
 }
+TIMESTAMP_COLUMNS = {"created_at"}  # Added for consistency
+
+DATABASE_NAME = os.environ["DATABASE_NAME"]
+RDS_CLUSTER_ARN = os.environ["RDS_CLUSTER_ARN"]
+RDS_CLUSTER_MASTER_USER_SECRET_ARN = os.environ["RDS_CLUSTER_MASTER_USER_SECRET_ARN"]
 
 
 def parse_field(col_name, field):
     """
-    解析 RDS Data API 返回的字段值
+    Parse field values returned by RDS Data API
 
-    :param col_name: 字段名稱
-    :param field: RDS Data API 返回的字段值
-    :return: 轉換後的 Python 類型值
+    :param col_name: Field name
+    :param field: Field value returned by RDS Data API
+    :return: Converted Python type value
     """
-    # 處理 NULL 值
+    # Handle NULL values
     if "isNull" in field and field["isNull"]:
         return None
 
-    # 處理基本類型
+    # Handle basic types
     if "stringValue" in field:
         value = field["stringValue"]
-        # 處理 JSONB 類型
+        # Handle JSONB type
         if col_name in JSONB_COLUMNS:
             try:
                 return json.loads(value)
-            except Exception:
-                # 如果無法解析為 JSON，返回原始字串
+            except json.JSONDecodeError:  # Changed to specific exception
+                # If unable to parse as JSON, return the original string
                 return value
         return value
     elif "longValue" in field:
@@ -52,11 +58,11 @@ def parse_field(col_name, field):
     elif "blobValue" in field:
         return field["blobValue"]
 
-    # 處理數組類型
+    # Handle array types
     elif "arrayValue" in field:
         array = field["arrayValue"]
 
-        # 處理各種數組類型
+        # Handle various array types
         if "stringValues" in array:
             return array["stringValues"]
         elif "longValues" in array:
@@ -66,17 +72,25 @@ def parse_field(col_name, field):
         elif "booleanValues" in array:
             return array["booleanValues"]
         elif "arrayValues" in array:
-            # 遞歸處理嵌套數組
+            # Recursively process nested arrays
             return [parse_field(col_name, v) for v in array["arrayValues"]]
-        # 空數組
+        # Empty array
         return []
 
-    # 如果無法識別類型，返回原始字段
+    # If type cannot be identified, return the original field
     return field
 
 
+# Custom JSON encoder to handle Decimal types
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return str(obj)
+        return super().default(obj)
+
+
 class RunRepositoryError(Exception):
-    """運行任務儲存庫錯誤"""
+    """Run task repository error"""
 
     def __init__(self, message, sql=None, params=None, original_exception=None):
         super().__init__(message)
@@ -93,50 +107,9 @@ class RunRepository:
         Initialize the repository with RDS Data API client.
         """
         self._rds_data = boto3.client("rds-data")
-        self._database_name = os.environ["DATABASE_NAME"]
-        self._resource_arn = os.environ["CLUSTER_ARN"]
-        self._secret_arn = os.environ["SECRET_ARN"]
-
-    def query_runs_by_created_year(
-        self,
-        created_year: str,
-        limit: int = 10,
-        offset: int = 0,
-        sort_order: str = "DESC",
-    ) -> list[dict]:
-        """
-        Query runs from the PostgreSQL database based on created year and pagination parameters.
-
-        :param created_year: The created year to filter by
-        :param limit: The maximum number of items to return
-        :param offset: The offset for pagination
-        :param sort_order: The sort order, either 'ASC' or 'DESC'
-        :return: List of run items
-        """
-        try:
-            # 構建基本 SQL
-            sql = "SELECT * FROM runs WHERE created_year = :created_year"
-            params = [
-                {"name": "created_year", "value": {"stringValue": created_year}},
-            ]
-
-            # 添加排序
-            sql += f" ORDER BY created_at {sort_order}"
-
-            # 添加分頁
-            sql += " LIMIT :limit OFFSET :offset"
-            params.extend(
-                [
-                    {"name": "limit", "value": {"longValue": limit}},
-                    {"name": "offset", "value": {"longValue": offset}},
-                ]
-            )
-
-            # 執行查詢
-            return self._execute(sql, params, fetch=True)
-        except Exception as e:
-            logger.error("Error querying runs by created year: %s", e)
-            raise RunRepositoryError("Error querying runs", sql, params, e) from e
+        self._database_name = DATABASE_NAME
+        self._resource_arn = RDS_CLUSTER_ARN
+        self._secret_arn = RDS_CLUSTER_MASTER_USER_SECRET_ARN
 
     def get_run_by_id(self, run_id: str) -> dict | None:
         """
@@ -165,11 +138,11 @@ class RunRepository:
         :return: The ID of the saved run, or None if an error occurred
         """
         try:
-            # 確保有創建時間
+            # Ensure creation time exists
             if "created_at" not in run:
                 run["created_at"] = time_util.get_current_utc_time()
 
-            # 從創建時間生成年、月、日字段
+            # Generate year, month, day fields from creation time
             if "created_at" in run and (
                 "created_year" not in run
                 or "created_year_month" not in run
@@ -180,17 +153,19 @@ class RunRepository:
                 run["created_year_month"] = created_date.strftime("%Y-%m")
                 run["created_year_month_day"] = created_date.strftime("%Y-%m-%d")
 
-            # 處理 JSONB 字段
+            # Handle JSONB fields
             for column in JSONB_COLUMNS:
                 if column in run and not isinstance(run[column], str):
-                    run[column] = json.dumps(run[column])
+                    run[column] = json.dumps(
+                        run[column], cls=DecimalEncoder
+                    )  # Use DecimalEncoder
 
-            # 建立 SQL
+            # Create SQL
             columns = list(run.keys())
             columns_str = ", ".join(columns)
             placeholders = ", ".join(f":{k}" for k in columns)
 
-            # 對於 UPDATE 部分，排除 run_id 作為主鍵
+            # For UPDATE part, exclude run_id as primary key
             update_cols = [k for k in columns if k != "run_id"]
             update_str = ", ".join(f"{k} = EXCLUDED.{k}" for k in update_cols)
 
@@ -201,12 +176,12 @@ class RunRepository:
                 DO UPDATE SET {update_str}
             """
 
-            # 建立參數
+            # Create parameters
             params = []
             for k, v in run.items():
                 params.append(self._create_param(k, v))
 
-            # 執行查詢
+            # Execute query
             self._execute(sql, params)
             return run["run_id"]
         except Exception as e:
@@ -261,12 +236,14 @@ class RunRepository:
         :return: True if successful, False otherwise
         """
         try:
-            # 處理 JSONB 字段
+            # Handle JSONB fields
             for column in JSONB_COLUMNS:
                 if column in update_data and not isinstance(update_data[column], str):
-                    update_data[column] = json.dumps(update_data[column])
+                    update_data[column] = json.dumps(
+                        update_data[column], cls=DecimalEncoder
+                    )  # Use DecimalEncoder
 
-            # 構建 SET 子句
+            # Build SET clause
             set_clauses = []
             params = []
 
@@ -274,13 +251,13 @@ class RunRepository:
                 set_clauses.append(f"{key} = :{key}")
                 params.append(self._create_param(key, value))
 
-            # 添加 run_id 參數
+            # Add run_id parameter
             params.append({"name": "run_id", "value": {"stringValue": run_id}})
 
-            # 構建 SQL
+            # Build SQL
             sql = f"UPDATE runs SET {', '.join(set_clauses)} WHERE run_id = :run_id"
 
-            # 執行更新
+            # Execute update
             self._execute(sql, params)
             return True
         except Exception as e:
@@ -289,58 +266,58 @@ class RunRepository:
 
     def list_runs(self, params):
         """
-        通用查詢方法，根據過濾條件列出郵件任務
+        Generic query method to list email tasks based on filter conditions
 
-        :param params: 查詢參數，可包含過濾條件、排序和分頁
-        :return: 郵件任務列表
+        :param params: Query parameters, may include filters, sorting and pagination
+        :return: List of email tasks
         """
-        # 構建基礎 SQL
+        # Build base SQL
         sql = "SELECT * FROM runs WHERE 1=1 "
         query_params = []
 
-        # 添加過濾條件
+        # Add filter conditions
         sql, query_params = self._add_filtering_sql(
             sql=sql, params=query_params, query_params=params
         )
 
-        # 添加排序
+        # Add sorting
         sort_by = params.get("sort_by", "created_at")
         sort_order = params.get("sort_order", "DESC").upper()
         sql += f" ORDER BY {sort_by} {sort_order}"
 
-        # 添加分頁
+        # Add pagination
         sql, query_params = self._add_pagination_sql(
             sql=sql, params=query_params, query_params=params
         )
 
-        # 執行查詢
+        # Execute query
         return self._execute(sql, query_params, fetch=True)
 
     def count_runs(self, params):
         """
-        計算符合條件的郵件任務數量
+        Count the number of email tasks that match the conditions
 
-        :param params: 查詢參數，可包含過濾條件
-        :return: 郵件任務數量
+        :param params: Query parameters, may include filter conditions
+        :return: Number of email tasks
         """
         sql = "SELECT COUNT(*) as count FROM runs WHERE 1=1 "
         query_params = []
 
-        # 添加過濾條件
+        # Add filter conditions
         sql, query_params = self._add_filtering_sql(
             sql=sql, params=query_params, query_params=params
         )
 
-        # 執行查詢
+        # Execute query
         result = self._execute(sql, query_params, fetch=True)
         return result[0]["count"] if result else 0
 
     def _add_filtering_sql(self, sql, params, query_params):
-        """添加過濾條件到SQL語句"""
-        # 從 query_params 中提取過濾條件
+        """Add filter conditions to SQL statement"""
+        # Extract filter conditions from query_params
         filters = query_params.get("filters", {})
 
-        # 將 query_params 中的其他參數也作為過濾條件
+        # Also use other parameters from query_params as filter conditions
         for key, value in query_params.items():
             if (
                 key not in ("filters", "page", "limit", "sort_by", "sort_order")
@@ -348,7 +325,7 @@ class RunRepository:
             ):
                 filters[key] = value
 
-        # 構建 WHERE 子句
+        # Build WHERE clause
         for key, value in filters.items():
             if value is not None:
                 sql += f" AND {key} = :{key}"
@@ -357,7 +334,7 @@ class RunRepository:
         return sql, params
 
     def _add_pagination_sql(self, sql, params, query_params):
-        """添加分頁到SQL語句"""
+        """Add pagination to SQL statement"""
         limit = int(query_params.get("limit", 10))
         page = int(query_params.get("page", 1))
         offset = (page - 1) * limit
@@ -369,18 +346,44 @@ class RunRepository:
         return sql, params
 
     def _create_param(self, key, value):
-        """創建SQL參數"""
-        if isinstance(value, int):
-            return {"name": key, "value": {"longValue": value}}
-        elif isinstance(value, bool):
-            return {"name": key, "value": {"booleanValue": value}}
-        elif value is None:
+        """Create SQL parameter"""
+        if value is None:
             return {"name": key, "value": {"isNull": True}}
+
+        if isinstance(value, bool):
+            return {"name": key, "value": {"booleanValue": value}}
+        elif isinstance(value, int):
+            return {"name": key, "value": {"longValue": value}}
+        # For JSONB columns, 'value' should be a JSON string after json.dumps
+        elif key in JSONB_COLUMNS and isinstance(
+            value, str
+        ):  # Check if key is in JSONB_COLUMNS
+            return {
+                "name": key,
+                "value": {"stringValue": value},
+                "typeHint": "JSON",
+            }
+        elif key in TIMESTAMP_COLUMNS and isinstance(value, str):
+            # Assume value is an ISO 8601 string from time_util
+            try:
+                dt_obj = time_util.parse_iso8601_to_datetime(value)
+                formatted_ts = time_util.format_datetime_for_rds(dt_obj)
+                return {
+                    "name": key,
+                    "value": {"stringValue": formatted_ts},
+                    "typeHint": "TIMESTAMP",
+                }
+            except ValueError:  # Should not happen if time_util is used consistently
+                logger.warning(
+                    f"Could not parse timestamp string '{value}' for key '{key}'. Sending as string."
+                )
+                return {"name": key, "value": {"stringValue": str(value)}}
+        # Default to stringValue for other types
         else:
             return {"name": key, "value": {"stringValue": str(value)}}
 
     def _execute(self, sql, parameters, fetch=False):
-        """執行SQL查詢"""
+        """Execute SQL query"""
         try:
             if os.getenv("DEBUG_SQL", "false").lower() == "true":
                 logger.debug("Executing SQL:\n%s\nParams:\n%s", sql, parameters)
@@ -391,6 +394,9 @@ class RunRepository:
                 database=self._database_name,
                 sql=sql,
                 parameters=parameters,
+                includeResultMetadata=(
+                    True if fetch else False
+                ),  # Added includeResultMetadata
             )
 
             if not fetch:
