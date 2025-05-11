@@ -1,22 +1,26 @@
 resource "null_resource" "init_database" {
-  depends_on = [
-    module.aurora_postgresql_v2,
-    module.aurora_postgresql_v2.aws_rds_cluster_instance,
-    module.health_check_lambda,
-    module.validate_input_lambda,
-    module.create_email_lambda,
-    module.send_email_lambda,
-    module.list_runs_lambda,
-    module.list_emails_lambda
-  ]
   provisioner "local-exec" {
     command = <<EOT
-      aws rds-data execute-statement \
+      # Check if database exists
+      DB_EXISTS=$(aws rds-data execute-statement \
         --region ${var.aws_region} \
         --resource-arn "${module.aurora_postgresql_v2.cluster_arn}" \
         --secret-arn "${module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]}" \
         --database "postgres" \
-        --sql "CREATE DATABASE ${var.database_name};" \
+        --sql "SELECT COUNT() FROM pg_database WHERE datname='${var.database_name}'" | grep -c "longValue.1")
+
+      # Create database only if it doesn't exist
+      if [ "$DB_EXISTS" -eq "0" ]; then
+        aws rds-data execute-statement \
+          --region ${var.aws_region} \
+          --resource-arn "${module.aurora_postgresql_v2.cluster_arn}" \
+          --secret-arn "${module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]}" \
+          --database "postgres" \
+          --sql "CREATE DATABASE ${var.database_name};"
+        echo "Database '${var.database_name}' created successfully."
+      else
+        echo "Database '${var.database_name}' already exists, skipping creation."
+      fi
     EOT
   }
 

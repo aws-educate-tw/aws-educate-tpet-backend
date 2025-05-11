@@ -1,7 +1,7 @@
 -- Create RUNS table
 CREATE TABLE IF NOT EXISTS RUNS (
     run_id VARCHAR(255) PRIMARY KEY,
-    run_type VARCHAR(50) NOT NULL DEFAULT 'DIRECT',
+    run_type VARCHAR(50) NOT NULL DEFAULT 'DIRECT', -- DIRECT or SPREADSHEET or WEBHOOK
     attachment_file_ids JSONB NOT NULL DEFAULT '[]',
     attachment_files JSONB NOT NULL DEFAULT '[]',
     bcc JSONB NOT NULL DEFAULT '[]',
@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS RUNS (
     expected_email_send_count INTEGER NOT NULL DEFAULT 0,
     is_generate_certificate BOOLEAN NOT NULL DEFAULT FALSE,
     recipients JSONB NOT NULL DEFAULT '[]',
+    recipient_source VARCHAR(255), -- Source of the recipient list DIRECT, SPREADSHEET
     reply_to VARCHAR(255),
     sender JSONB,
     sender_id VARCHAR(255),
