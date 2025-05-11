@@ -300,8 +300,33 @@ class RunRepository:
         )
 
         # Add sorting
-        sort_by = params.get("sort_by", "created_at")
-        sort_order = params.get("sort_order", "DESC").upper()
+        # Define a whitelist of column names that are safe to use for sorting.
+        # Ensure these columns actually exist in the 'runs' table and are suitable for sorting.
+        ALLOWED_SORT_COLUMNS = {"run_id", "created_at"}  # You can extend this set with other valid column names
+
+        sort_by_input = params.get("sort_by", "created_at")
+        sort_order_input = params.get("sort_order", "DESC").upper()
+
+        # Validate the sort_by parameter
+        if sort_by_input in ALLOWED_SORT_COLUMNS:
+            sort_by = sort_by_input
+        else:
+            logger.warning(
+                "Invalid sort_by column '%s' provided. Defaulting to 'created_at'.",
+                sort_by_input
+            )
+            sort_by = "created_at"  # Default to a known safe column
+
+        # Validate the sort_order parameter
+        if sort_order_input in ["ASC", "DESC"]:
+            sort_order = sort_order_input
+        else:
+            logger.warning(
+                "Invalid sort_order value '%s' provided. Defaulting to 'DESC'.",
+                sort_order_input
+            )
+            sort_order = "DESC"  # Default to a known safe order
+
         sql += f" ORDER BY {sort_by} {sort_order}"
 
         # Add pagination

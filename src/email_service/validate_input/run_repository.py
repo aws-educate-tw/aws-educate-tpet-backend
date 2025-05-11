@@ -280,9 +280,17 @@ class RunRepository:
         )
 
         # Add sorting
+        allowed_sort_columns = ["created_at", "run_id", "status"]  # Add more allowed columns as needed
         sort_by = params.get("sort_by", "created_at")
         sort_order = params.get("sort_order", "DESC").upper()
-        sql += f" ORDER BY {sort_by} {sort_order}"
+
+        if sort_by not in allowed_sort_columns:
+            sort_by = "created_at"  # Default to a safe column if invalid
+        if sort_order not in ["ASC", "DESC"]:
+            sort_order = "DESC"  # Default to DESC if invalid
+
+        sql += " ORDER BY :sort_by " + sort_order
+        query_params.append({"name": "sort_by", "value": {"stringValue": sort_by}})
 
         # Add pagination
         sql, query_params = self._add_pagination_sql(

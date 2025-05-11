@@ -306,9 +306,74 @@ class RunRepository:
         )
 
         # Add sorting
-        sort_by = params.get("sort_by", "created_at")
-        sort_order = params.get("sort_order", "DESC").upper()
-        sql += f" ORDER BY {sort_by} {sort_order}"
+        sort_by_input = params.get("sort_by", "created_at")
+        sort_order_input = params.get("sort_order", "DESC").upper()
+
+        # Whitelist of allowed column names for sorting to prevent SQL injection.
+        allowed_sort_by_columns = [
+            "run_id", "created_at",
+            "created_year", "created_year_month", "created_year_month_day",
+            "run_type", "expected_email_send_count", "success_email_count", "failed_email_count",
+            "sender_id", "display_name", "subject", "template_file_id"
+        ]
+
+        if sort_by_input in allowed_sort_by_columns:
+            sort_by = sort_by_input
+        else:
+            # Log a warning and default to a safe column if an invalid/unknown column is provided
+            logger.warning(
+                f"Invalid sort_by column: '{sort_by_input}'. Defaulting to 'created_at'."
+            )
+            sort_by = "created_at"
+
+        if sort_order_input in ["ASC", "DESC"]:
+            sort_order = sort_order_input
+        else:
+            # Log a warning and default to a safe sort order if an invalid value is provided
+            logger.warning(
+                f"Invalid sort_order value: '{sort_order_input}'. Defaulting to 'DESC'."
+            )
+            sort_order = "DESC"
+
+        # Use validated sort options to build ORDER BY clause
+        # We need to construct the SQL based on validated inputs rather than using parameters
+        # because SQL parameters can't be used for identifiers like column names
+        if sort_by == "run_id":
+            sql += " ORDER BY run_id"
+        elif sort_by == "created_at":
+            sql += " ORDER BY created_at"
+        elif sort_by == "created_year":
+            sql += " ORDER BY created_year"
+        elif sort_by == "created_year_month":
+            sql += " ORDER BY created_year_month"
+        elif sort_by == "created_year_month_day":
+            sql += " ORDER BY created_year_month_day"
+        elif sort_by == "run_type":
+            sql += " ORDER BY run_type"
+        elif sort_by == "expected_email_send_count":
+            sql += " ORDER BY expected_email_send_count"
+        elif sort_by == "success_email_count":
+            sql += " ORDER BY success_email_count"
+        elif sort_by == "failed_email_count":
+            sql += " ORDER BY failed_email_count"
+        elif sort_by == "sender_id":
+            sql += " ORDER BY sender_id"
+        elif sort_by == "display_name":
+            sql += " ORDER BY display_name"
+        elif sort_by == "subject":
+            sql += " ORDER BY subject"
+        elif sort_by == "template_file_id":
+            sql += " ORDER BY template_file_id"
+        else:
+            # This should never happen due to the whitelist check above,
+            # but adding as an extra safety measure
+            sql += " ORDER BY created_at"
+            
+        # Add sort order (ASC/DESC) after validating
+        if sort_order == "ASC":
+            sql += " ASC"
+        else:
+            sql += " DESC"
 
         # Add pagination
         sql, query_params = self._add_pagination_sql(
