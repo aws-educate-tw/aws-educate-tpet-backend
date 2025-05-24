@@ -1,15 +1,12 @@
 import json
 import logging
+import math  # Added
 from decimal import Decimal
 
 from botocore.exceptions import ClientError
-from current_user_util import CurrentUserUtil
 from email_repository import EmailRepository
-from email_service_pagination_state_repository import (
-    EmailServicePaginationStateRepository,
-)
-from last_evaluated_key_util import decode_key, encode_key
-from time_util import get_current_utc_time
+
+# Removed EmailServicePaginationStateRepository, decode_key, encode_key, get_current_utc_time
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -27,48 +24,46 @@ class DecimalEncoder(json.JSONEncoder):
 
 def extract_query_params(event: dict[str, any]) -> dict[str, any]:
     """Extract query parameters from the API Gateway event."""
-    limit: int = 10
-    last_evaluated_key: str | None = None
-    status: str | None = None
-    sort_order: str = "DESC"
+    query_params = event.get("queryStringParameters") or {}
+    try:
+        limit = int(query_params.get("limit", 10))
+        page = int(query_params.get("page", 1))
+        status = query_params.get("status", None)
+        sort_by = query_params.get("sort_by", "created_at")
+        sort_order = query_params.get("sort_order", "DESC").upper()
+        if sort_order not in ["ASC", "DESC"]:
+            sort_order = "DESC"
 
-    # Extract query parameters if they exist
-    if event.get("queryStringParameters"):
-        try:
-            limit = int(event["queryStringParameters"].get("limit", 10))
-            last_evaluated_key = event["queryStringParameters"].get(
-                "last_evaluated_key", None
-            )
-            status = event["queryStringParameters"].get("status", None)
-            sort_order = event["queryStringParameters"].get("sort_order", "DESC")
-        except ValueError as e:
-            logger.error("Invalid query parameter: %s", e)
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"message": "Invalid query parameter: " + str(e)}),
-            }
+    except ValueError as e:
+        logger.error("Invalid query parameter: %s", e)
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"message": "Invalid query parameter: " + str(e)}),
+        }
 
     # Log the extracted parameters
     logger.info(
-        "Extracted parameters - limit: %d, last_evaluated_key: %s, status: %s, sort_order: %s",
+        "Extracted parameters - limit: %d, page: %d, status: %s, sort_by: %s, sort_order: %s",
         limit,
-        last_evaluated_key,
+        page,
         status,
+        sort_by,
         sort_order,
     )
 
     return {
         "limit": limit,
-        "last_evaluated_key": last_evaluated_key,
+        "page": page,
         "status": status,
+        "sort_by": sort_by,
         "sort_order": sort_order,
     }
 
 
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for listing emails."""
+    aws_request_id = context.aws_request_id
 
-    # Identify if the incoming event is a prewarm request
     if event.get("action") == "PREWARM":
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
@@ -78,144 +73,114 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         return extracted_params
 
     limit: int = extracted_params["limit"]
-    last_evaluated_key: str | None = extracted_params["last_evaluated_key"]
+    page: int = extracted_params["page"]
     status: str | None = extracted_params["status"]
+    sort_by: str = extracted_params["sort_by"]
     sort_order: str = extracted_params["sort_order"]
-    run_id: str = event["pathParameters"]["run_id"]
 
-    # Get access token from headers and retrieve user_id
-    authorization_header = event["headers"].get("authorization")
-    if not authorization_header or not authorization_header.startswith("Bearer "):
+    path_parameters = event.get("pathParameters", {})
+    run_id: str | None = path_parameters.get("run_id")
+
+    if not run_id:
+        logger.error("Missing run_id in path parameters")
         return {
-            "statusCode": 401,
-            "body": json.dumps({"message": "Missing or invalid Authorization header"}),
+            "statusCode": 400,
+            "body": json.dumps({"message": "Missing run_id in path parameters"}),
         }
-    access_token = authorization_header.split(" ")[1]
-    user_id = CurrentUserUtil().get_user_id_from_access_token(access_token)
 
-    # Init dynamoDB entities
     email_repo = EmailRepository()
-    pagination_state_repo = EmailServicePaginationStateRepository()
 
-    if last_evaluated_key:
-        try:
-            # Decode the base64 last_evaluated_key
-            current_last_evaluated_key = last_evaluated_key
-            last_evaluated_key = decode_key(last_evaluated_key)
-            logger.info("Decoded last_evaluated_key: %s", last_evaluated_key)
-        except ValueError as e:
-            logger.error("Invalid last_evaluated_key format: %s", e)
-            return {
-                "statusCode": 400,
-                "body": json.dumps(
-                    {
-                        "message": "Invalid last_evaluated_key format. It must be a valid base64 encoded JSON string."
-                    }
-                ),
-            }
-    else:
-        current_last_evaluated_key = None
-        # Clear old pagination state if no last_evaluated_key is provided
-        pagination_state_repo.save_pagination_state(
-            {
-                "user_id": user_id,
-                "index_name": (
-                    "email-run_id-status-gsi"
-                    if status
-                    else "email-run_id-created_at-gsi"
-                ),
-                "last_evaluated_keys": [],
-                "created_at": get_current_utc_time(),
-                "updated_at": get_current_utc_time(),
-                "limit": limit,
-            }
+    filter_criteria = {
+        "run_id": run_id,  # run_id is now mandatory
+        "page": page,
+        "limit": limit,
+        "sort_by": sort_by,
+        "sort_order": sort_order,
+    }
+    if status:
+        filter_criteria["status"] = status
+
+    try:
+        logger.info("Fetching emails with criteria: %s", filter_criteria)
+        emails = email_repo.list_emails(filter_criteria)
+        # Create a copy of filter_criteria for count_emails, removing pagination params
+        count_filter_criteria = filter_criteria.copy()
+        count_filter_criteria.pop("page", None)
+        count_filter_criteria.pop("limit", None)
+        count_filter_criteria.pop("sort_by", None)
+        count_filter_criteria.pop("sort_order", None)
+        total_items = email_repo.count_emails(count_filter_criteria)
+
+        logger.info(
+            "Query successful, %d emails fetched, %d total items.",
+            len(emails),
+            total_items,
         )
 
-    emails = []
-
-    # Query the table using the provided parameters
-    try:
-        while True:
-            if status:
-                response = email_repo.query_emails_by_run_id_and_status_gsi(
-                    run_id, status, limit - len(emails), last_evaluated_key, sort_order
-                )
-            else:
-                response = email_repo.query_emails_by_run_id_and_created_at_gsi(
-                    run_id, limit - len(emails), last_evaluated_key, sort_order
-                )
-
-            emails.extend(response.get("Items", []))
-            last_evaluated_key = response.get("LastEvaluatedKey")
-
-            if last_evaluated_key is None or len(emails) >= limit:
-                break
-
-        next_last_evaluated_key = response.get("LastEvaluatedKey")
-
-        logger.info("Query successful")
     except ClientError as e:
         logger.error("Query failed: %s", e)
-        return {"statusCode": 400, "body": json.dumps({"message": str(e)})}
-
-    # Encode last_evaluated_key to base64 if it's not null
-    if next_last_evaluated_key:
-        next_last_evaluated_key = encode_key(next_last_evaluated_key)
-
-    # Store the pagination state for the next request
-    pagination_state = (
-        pagination_state_repo.get_pagination_state_by_user_id_and_index_name(
-            user_id,
-            "email-run_id-status-gsi" if status else "email-run_id-created_at-gsi",
-        )
-    )
-    last_evaluated_keys = pagination_state.get("last_evaluated_keys", [])
-
-    # Append the next_last_evaluated_key only if it is not already in the list
-    if next_last_evaluated_key and next_last_evaluated_key not in last_evaluated_keys:
-        last_evaluated_keys.append(next_last_evaluated_key)
-
-    pagination_state_repo.save_pagination_state(
-        {
-            "user_id": user_id,
-            "index_name": (
-                "email-run_id-status-gsi" if status else "email-run_id-created_at-gsi"
+        return {
+            "statusCode": 500,  # Changed to 500 for server-side errors
+            "body": json.dumps(
+                {
+                    "message": f"Error querying emails: {e} Request Id: {aws_request_id}",
+                }
             ),
-            "last_evaluated_keys": last_evaluated_keys,
-            "created_at": pagination_state.get("created_at", get_current_utc_time()),
-            "updated_at": get_current_utc_time(),
-            "limit": limit,
         }
-    )
+    except Exception as e:
+        logger.error("An unexpected error occurred: %s", e)
+        return {
+            "statusCode": 500,  # Changed to 500
+            "body": json.dumps(
+                {
+                    "message": f"An unexpected error occurred: {e} Request Id: {aws_request_id}",
+                }
+            ),
+        }
 
-    # Sort the results by created_at
-    emails.sort(
-        key=lambda x: x.get("created_at", ""), reverse=(sort_order.upper() == "DESC")
-    )
-
-    # Encode last_evaluated_key to base64 if it's not null
+    # Process emails for Decimal conversion
+    processed_emails = []
     for email in emails:
+        processed_email = {}
         for key, value in email.items():
             if isinstance(value, Decimal):
-                email[key] = float(value)
+                processed_email[key] = float(value)
+            else:
+                processed_email[key] = value
+        processed_emails.append(processed_email)
 
-    # Find the index of the current_last_evaluated_key in last_evaluated_keys
-    if current_last_evaluated_key in last_evaluated_keys:
-        current_index = last_evaluated_keys.index(current_last_evaluated_key)
-        previous_last_evaluated_key = (
-            last_evaluated_keys[current_index - 1] if current_index > 0 else None
-        )
-    else:
-        previous_last_evaluated_key = None
+    total_pages = math.ceil(total_items / limit) if limit > 0 and total_items > 0 else 0
+    if total_items == 0:  # if no items, then 0 pages.
+        total_pages = 0
+    if (
+        total_pages == 0 and total_items > 0 and limit > 0
+    ):  # if items exist but limit makes total_pages 0, set to 1
+        total_pages = 1
+
+    has_next_page = page < total_pages
+    has_previous_page = (
+        page > 1 and page <= total_pages
+    )  # page > total_pages should not happen with correct total_pages
 
     result = {
-        "data": emails[:limit],
-        "previous_last_evaluated_key": previous_last_evaluated_key,
-        "current_last_evaluated_key": current_last_evaluated_key,
-        "next_last_evaluated_key": next_last_evaluated_key,
+        "data": processed_emails,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total_items": total_items,
+            "total_pages": total_pages,
+            "has_next_page": has_next_page,
+            "has_previous_page": has_previous_page,
+        },
     }
 
-    logger.info("Returning response with %d emails", len(emails))
+    logger.info(
+        "Returning response with %d emails, page %d of %d. Total items: %d",
+        len(processed_emails),
+        page,
+        total_pages,
+        total_items,
+    )
     return {
         "statusCode": 200,
         "headers": {

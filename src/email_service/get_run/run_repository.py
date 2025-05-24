@@ -1,7 +1,8 @@
+import datetime  # Added for parsing timestamp strings
 import json
 import logging
 import os
-from decimal import Decimal  # Added import
+from decimal import Decimal
 
 import boto3
 import time_util
@@ -19,6 +20,7 @@ JSONB_COLUMNS = {
     "spreadsheet_file",
     "template_file",
 }
+TIMESTAMP_COLUMNS = {"created_at"}  # Added for consistency
 
 DATABASE_NAME = os.environ["DATABASE_NAME"]
 RDS_CLUSTER_ARN = os.environ["RDS_CLUSTER_ARN"]
@@ -40,12 +42,28 @@ def parse_field(col_name, field):
     # Handle basic types
     if "stringValue" in field:
         value = field["stringValue"]
-        # Handle JSONB type
-        if col_name in JSONB_COLUMNS:
+        if col_name in TIMESTAMP_COLUMNS:
+            try:
+                # RDS Data API typically returns timestamps like 'YYYY-MM-DD HH:MM:SS.microseconds' or 'YYYY-MM-DD HH:MM:SS'
+                # Try parsing with microseconds first
+                dt_obj = datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+            except ValueError:
+                # If parsing with microseconds fails, try without
+                try:
+                    dt_obj = datetime.datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+                except ValueError as e:
+                    logger.error(
+                        "Could not parse timestamp string '%s' for column '%s': %s",
+                        value,
+                        col_name,
+                        e,
+                    )
+                    return value  # Return original string if parsing fails
+            return time_util.format_time_to_iso8601(dt_obj)
+        elif col_name in JSONB_COLUMNS:
             try:
                 return json.loads(value)
-            except Exception:
-                # If unable to parse as JSON, return the original string
+            except json.JSONDecodeError:
                 return value
         return value
     elif "longValue" in field:
@@ -82,10 +100,12 @@ def parse_field(col_name, field):
 
 # Custom JSON encoder to handle Decimal types
 class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return str(obj)
-        return super().default(obj)
+    """Custom JSON encoder for Decimal objects."""
+
+    def default(self, o: object) -> object:
+        if isinstance(o, Decimal):
+            return float(o)
+        return super().default(o)
 
 
 class RunRepositoryError(Exception):
@@ -280,21 +300,37 @@ class RunRepository:
         )
 
         # Add sorting
-        allowed_sort_columns = [
-            "created_at",
+        # Define a whitelist of column names that are safe to use for sorting.
+        # Ensure these columns actually exist in the 'runs' table and are suitable for sorting.
+        ALLOWED_SORT_COLUMNS = {
             "run_id",
-            "status",
-        ]  # Add more allowed columns as needed
-        sort_by = params.get("sort_by", "created_at")
-        sort_order = params.get("sort_order", "DESC").upper()
+            "created_at",
+        }  # You can extend this set with other valid column names
 
-        if sort_by not in allowed_sort_columns:
-            sort_by = "created_at"  # Default to a safe column if invalid
-        if sort_order not in ["ASC", "DESC"]:
-            sort_order = "DESC"  # Default to DESC if invalid
+        sort_by_input = params.get("sort_by", "created_at")
+        sort_order_input = params.get("sort_order", "DESC").upper()
 
-        sql += " ORDER BY :sort_by " + sort_order
-        query_params.append({"name": "sort_by", "value": {"stringValue": sort_by}})
+        # Validate the sort_by parameter
+        if sort_by_input in ALLOWED_SORT_COLUMNS:
+            sort_by = sort_by_input
+        else:
+            logger.warning(
+                "Invalid sort_by column '%s' provided. Defaulting to 'created_at'.",
+                sort_by_input,
+            )
+            sort_by = "created_at"  # Default to a known safe column
+
+        # Validate the sort_order parameter
+        if sort_order_input in ["ASC", "DESC"]:
+            sort_order = sort_order_input
+        else:
+            logger.warning(
+                "Invalid sort_order value '%s' provided. Defaulting to 'DESC'.",
+                sort_order_input,
+            )
+            sort_order = "DESC"  # Default to a known safe order
+
+        sql += f" ORDER BY {sort_by} {sort_order}"
 
         # Add pagination
         sql, query_params = self._add_pagination_sql(
@@ -374,18 +410,24 @@ class RunRepository:
                 "value": {"stringValue": value},
                 "typeHint": "JSON",
             }
-        # Add specific handling for timestamp columns
-        elif key == "created_at" and isinstance(
-            value, str
-        ):  # Assuming 'created_at' is the target timestamp column
-            dt_obj = time_util.parse_iso8601_to_datetime(value)
-            formatted_ts = time_util.format_datetime_for_rds(dt_obj)
-            return {
-                "name": key,
-                "value": {"stringValue": formatted_ts},
-                "typeHint": "TIMESTAMP",
-            }
-        # Default to stringValue for other types or non-JSONB strings
+        elif key in TIMESTAMP_COLUMNS and isinstance(value, str):
+            # Assume value is an ISO 8601 string from time_util
+            try:
+                dt_obj = time_util.parse_iso8601_to_datetime(value)
+                formatted_ts = time_util.format_datetime_for_rds(dt_obj)
+                return {
+                    "name": key,
+                    "value": {"stringValue": formatted_ts},
+                    "typeHint": "TIMESTAMP",
+                }
+            except ValueError:  # Should not happen if time_util is used consistently
+                logger.warning(
+                    "Could not parse timestamp string '%s' for key '%s'. Sending as string.",
+                    value,
+                    key,
+                )
+                return {"name": key, "value": {"stringValue": str(value)}}
+        # Default to stringValue for other types
         else:
             return {"name": key, "value": {"stringValue": str(value)}}
 
@@ -401,6 +443,9 @@ class RunRepository:
                 database=self._database_name,
                 sql=sql,
                 parameters=parameters,
+                includeResultMetadata=(
+                    True if fetch else False
+                ),  # Added includeResultMetadata
             )
 
             if not fetch:

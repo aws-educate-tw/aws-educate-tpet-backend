@@ -42,6 +42,11 @@ variable "enable_deletion_protection_for_dynamodb_table" {
 
 variable "lambda_architecture" {
   description = "CPU architecture for container image"
-  type    = string
-  default = "x86_64"
+  type        = string
+  default     = "x86_64"
+}
+
+variable "database_name" {
+  description = "RDS Aurora PostgreSQL Database name"
+  type        = string
 }

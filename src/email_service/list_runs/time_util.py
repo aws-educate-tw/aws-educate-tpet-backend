@@ -74,3 +74,18 @@ def get_previous_year(current_year: str) -> str:
     """
     year = int(current_year)
     return f"{year - 1:04d}"
+
+
+def format_datetime_for_rds(dt: datetime.datetime) -> str:
+    """
+    Format a datetime object for RDS Data API TIMESTAMP typeHint.
+    Ensures the datetime is UTC and formats as YYYY-MM-DD HH:MM:SS.ffffff.
+
+    :param dt: Datetime object.
+    :return: Formatted time as string for RDS.
+    """
+    if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
+        dt = dt.replace(tzinfo=datetime.UTC)
+    else:
+        dt = dt.astimezone(datetime.UTC)
+    return dt.strftime("%Y-%m-%d %H:%M:%S.%f")

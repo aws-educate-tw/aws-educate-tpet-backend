@@ -154,15 +154,17 @@ def lambda_handler(event, context):
             current_user_util.set_current_user_by_access_token(access_token)
 
             # Check if emails already exist for this run_id
-            response = email_repository.query_emails(
-                run_id=sqs_message["run_id"],
-                limit=1,
-                last_evaluated_key=None,
-                sort_order="ASC",
+            existing_emails = email_repository.list_emails(
+                {
+                    "run_id": sqs_message["run_id"],
+                    "limit": 1,
+                    # "sort_by": "created_at", # Optional: if specific order is needed for the check
+                    # "sort_order": "ASC"      # Optional: if specific order is needed for the check
+                }
             )
 
             # If no emails exist, process recipients and create email items
-            if response["Count"] == 0:
+            if not existing_emails:
                 # Process recipients and create email items
                 recipients_data = process_recipients(sqs_message)
 
@@ -171,7 +173,7 @@ def lambda_handler(event, context):
                     email_item = create_email_item(
                         sqs_message["run_id"], sqs_message, row_data
                     )
-                    email_repository.save_email(email_item)
+                    email_repository.upsert_email(email_item)
 
                     # Queue the email for sending
                     send_to_email_queue(email_item)

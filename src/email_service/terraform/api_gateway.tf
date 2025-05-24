@@ -1,6 +1,6 @@
 locals {
   region             = var.aws_region
-  custom_domain_name = "${var.environment}-${var.service_hyphen}-internal-api-tpet.aws-educate.tw"
+  custom_domain_name = "${var.environment}-${var.service_hyphen}-internal-api-tpet.${var.domain_name}"
   sub_domain_name    = "${var.environment}-${var.service_hyphen}-internal-api-tpet"
 
   tags = {
@@ -107,6 +107,22 @@ module "api_gateway" {
 
       integration = {
         uri                    = module.list_runs_lambda.lambda_function_arn # Remember to change
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
+
+    "GET /runs/{run_id}" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+
+      authorization_type = "CUSTOM"
+      authorizer_key     = "lambda_authorizer"
+
+      integration = {
+        uri                    = module.get_run_lambda.lambda_function_arn # Remember to change
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000

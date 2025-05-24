@@ -1,6 +1,7 @@
 import datetime
 
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+RDS_DATA_API_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 def get_current_utc_time() -> str:
@@ -34,6 +35,18 @@ def parse_iso8601_to_datetime(iso8601_str: str) -> datetime.datetime:
     return datetime.datetime.strptime(iso8601_str, TIME_FORMAT).replace(
         tzinfo=datetime.UTC
     )
+
+
+def format_datetime_for_rds(dt: datetime.datetime) -> str:
+    """
+    Format a datetime object for RDS Data API (YYYY-MM-DD HH:MM:SS).
+
+    :param dt: Datetime object.
+    :return: Formatted time as string.
+    """
+    # RDS Data API expects timestamp without timezone information in the string,
+    # but it should represent UTC.
+    return dt.strftime(RDS_DATA_API_TIMESTAMP_FORMAT)
 
 
 def add_hours_to_time(iso8601_str: str, hours: int) -> str:

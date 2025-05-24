@@ -1,3 +1,4 @@
+import json  # Added for parsing JSON strings
 import logging
 import os
 import re
@@ -23,6 +24,30 @@ BUCKET_NAME = os.getenv("BUCKET_NAME")
 file_service = FileService()
 email_repository = EmailRepository()
 run_repository = RunRepository()
+
+
+def _parse_json_field(json_string, default_value=None, field_name="field"):
+    """Helper to parse JSON string fields from SQS message."""
+    if isinstance(json_string, list | dict):  # Already parsed
+        return json_string
+    if isinstance(json_string, str):
+        try:
+            return json.loads(json_string)
+        except json.JSONDecodeError:
+            logger.warning(
+                "Could not parse JSON string for %s: %s. Using default: %s",
+                field_name,
+                json_string,
+                default_value,
+            )
+            return default_value
+    logger.warning(
+        "Unexpected type for %s: %s. Using default: %s",
+        field_name,
+        type(json_string),
+        default_value,
+    )
+    return default_value
 
 
 def process_email(email_data: dict) -> None:
@@ -53,22 +78,38 @@ def process_email(email_data: dict) -> None:
             bucket=BUCKET_NAME, template_file_s3_key=template_file_s3_object_key
         )
 
-        # Send email
-        _, status = send_email(
-            email_data.get("subject"),
-            template_content,
-            email_data.get("row_data"),
-            email_data.get("display_name"),
-            email_data.get("reply_to"),
-            email_data.get("sender_local_part"),
+        # Parse JSON string fields from SQS message
+        row_data = _parse_json_field(
+            email_data.get("row_data"), default_value={}, field_name="row_data"
+        )
+        attachment_file_ids = _parse_json_field(
             email_data.get("attachment_file_ids"),
-            email_data.get("is_generate_certificate"),
-            run_id,
-            email_data.get("cc"),
-            email_data.get("bcc"),
+            default_value=[],
+            field_name="attachment_file_ids",
+        )
+        cc_list = _parse_json_field(
+            email_data.get("cc"), default_value=[], field_name="cc"
+        )
+        bcc_list = _parse_json_field(
+            email_data.get("bcc"), default_value=[], field_name="bcc"
         )
 
-        # Update the item in DynamoDB
+        # Send email
+        _, status = send_email(
+            subject=email_data.get("subject"),
+            template_content=template_content,
+            row=row_data,  # Use parsed row_data
+            display_name=email_data.get("display_name"),
+            reply_to=email_data.get("reply_to"),
+            sender_local_part=email_data.get("sender_local_part"),
+            attachment_file_ids=attachment_file_ids,  # Use parsed attachment_file_ids
+            is_generate_certificate=email_data.get("is_generate_certificate"),
+            run_id=run_id,
+            cc=cc_list,  # Use parsed cc_list
+            bcc=bcc_list,  # Use parsed bcc_list
+        )
+
+        # Update the item in PostgreSQL (formerly DynamoDB)
         email_repository.update_email_status(
             run_id=run_id, email_id=email_id, status=status
         )
@@ -76,12 +117,16 @@ def process_email(email_data: dict) -> None:
         # Increment success count if email was sent successfully
         if status == "SUCCESS":
             run_repository.increment_success_email_count(run_id)
+        elif status == "FAILED":
+            run_repository.increment_failed_email_count(run_id)
 
     except Exception as e:
         logger.error("Error processing email %s: %s", email_id, str(e))
+        # Ensure status is FAILED and increment failed count before re-raising
         email_repository.update_email_status(
             run_id=run_id, email_id=email_id, status="FAILED"
         )
+        run_repository.increment_failed_email_count(run_id)  # Add this line
         raise
 
 

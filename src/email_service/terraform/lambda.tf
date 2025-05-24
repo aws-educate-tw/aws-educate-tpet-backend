@@ -17,6 +17,7 @@ locals {
   create_email_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-create_email-${random_string.this.result}"
   send_email_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-send_email-${random_string.this.result}"
   list_runs_function_name_and_ecr_repo_name      = "${var.environment}-${var.service_underscore}-list_runs-${random_string.this.result}"
+  get_run_function_name_and_ecr_repo_name        = "${var.environment}-${var.service_underscore}-get_run-${random_string.this.result}"
   list_emails_function_name_and_ecr_repo_name    = "${var.environment}-${var.service_underscore}-list_emails-${random_string.this.result}"
   path_include                                   = ["**"]
   path_exclude                                   = ["**/__pycache__/**"]
@@ -144,11 +145,13 @@ module "validate_input_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"                = var.environment,
-    "SERVICE"                    = var.service_underscore
-    "BUCKET_NAME"                = "${var.environment}-aws-educate-tpet-storage"
-    "CREATE_EMAIL_SQS_QUEUE_URL" = module.create_email_sqs.queue_url
-    "RUN_DYNAMODB_TABLE"         = var.run_dynamodb_table
+    "ENVIRONMENT"                        = var.environment
+    "SERVICE"                            = var.service_underscore
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
   }
 
   allowed_triggers = {
@@ -170,6 +173,28 @@ module "validate_input_lambda" {
 
   attach_policy_statements = true
   policy_statements = {
+    rds_data_access = {
+      effect = "Allow",
+      actions = [
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_arn
+      ]
+    },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    }
     s3_crud = {
       effect = "Allow",
       actions = [
@@ -198,23 +223,6 @@ module "validate_input_lambda" {
         "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.create_email_sqs.queue_name}"
       ]
     },
-    dynamodb_crud = {
-      effect = "Allow",
-      actions = [
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem"
-      ],
-      resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}/index/*"
-      ]
-    }
   }
 }
 
@@ -286,13 +294,14 @@ module "create_email_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"                = var.environment,
-    "SERVICE"                    = var.service_underscore
-    "BUCKET_NAME"                = "${var.environment}-aws-educate-tpet-storage"
-    "CREATE_EMAIL_SQS_QUEUE_URL" = module.create_email_sqs.queue_url
-    "SEND_EMAIL_SQS_QUEUE_URL"   = module.send_email_sqs.queue_url
-    "RUN_DYNAMODB_TABLE"         = var.run_dynamodb_table
-    "EMAIL_DYNAMODB_TABLE"       = var.dynamodb_table
+    "ENVIRONMENT"                        = var.environment
+    "SERVICE"                            = var.service_underscore
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
+    "SEND_EMAIL_SQS_QUEUE_URL"           = module.send_email_sqs.queue_url
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
   }
 
   allowed_triggers = {
@@ -314,6 +323,28 @@ module "create_email_lambda" {
 
   attach_policy_statements = true
   policy_statements = {
+    rds_data_access = {
+      effect = "Allow",
+      actions = [
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_arn
+      ]
+    },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    },
 
     sqs_receive_message = {
       effect = "Allow",
@@ -343,25 +374,6 @@ module "create_email_lambda" {
       resources = [
         "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
         "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
-      ]
-    },
-    dynamodb_crud = {
-      effect = "Allow",
-      actions = [
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem"
-      ],
-      resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/*",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}/index/*",
       ]
     },
     sqs_send_message = {
@@ -443,13 +455,15 @@ module "send_email_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"              = var.environment,
-    "SERVICE"                  = var.service_underscore
-    "EMAIL_DYNAMODB_TABLE"     = var.dynamodb_table
-    "RUN_DYNAMODB_TABLE"       = var.run_dynamodb_table
-    "BUCKET_NAME"              = "${var.environment}-aws-educate-tpet-storage"
-    "PRIVATE_BUCKET_NAME"      = "${var.environment}-aws-educate-tpet-private-storage"
-    "SEND_EMAIL_SQS_QUEUE_URL" = module.send_email_sqs.queue_url
+    "ENVIRONMENT"                        = var.environment,
+    "SERVICE"                            = var.service_underscore,
+    "DOMAIN_NAME"                        = var.domain_name,
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage",
+    "PRIVATE_BUCKET_NAME"                = "${var.environment}-aws-educate-tpet-private-storage",
+    "SEND_EMAIL_SQS_QUEUE_URL"           = module.send_email_sqs.queue_url
+    "DATABASE_NAME"                      = var.database_name,
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn,
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
   }
 
   allowed_triggers = {
@@ -471,25 +485,29 @@ module "send_email_lambda" {
 
   attach_policy_statements = true
   policy_statements = {
-    dynamodb_crud = {
+    rds_data_access = {
       effect = "Allow",
       actions = [
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem"
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/*",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}/index/*",
+        module.aurora_postgresql_v2.cluster_arn
       ]
     },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    },
+
     ses_send_email = {
       effect = "Allow",
       actions = [
@@ -601,12 +619,12 @@ module "list_runs_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"                     = var.environment,
-    "SERVICE"                         = var.service_underscore
-    "DYNAMODB_TABLE"                  = var.dynamodb_table
-    "RUN_DYNAMODB_TABLE"              = var.run_dynamodb_table
-    "PAGINATION_STATE_DYNAMODB_TABLE" = var.pagination_state_dynamodb_table
-    "BUCKET_NAME"                     = "${var.environment}-aws-educate-tpet-storage"
+    "ENVIRONMENT"                        = var.environment
+    "SERVICE"                            = var.service_underscore
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
   }
 
   allowed_triggers = {
@@ -628,26 +646,29 @@ module "list_runs_lambda" {
 
   attach_policy_statements = true
   policy_statements = {
-    dynamodb_crud = {
+    rds_data_access = {
       effect = "Allow",
       actions = [
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem"
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/*",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.pagination_state_dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}/index/*",
+        module.aurora_postgresql_v2.cluster_arn
       ]
     },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    },
+
     s3_crud = {
       effect = "Allow",
       actions = [
@@ -708,6 +729,142 @@ module "list_runs_docker_image" {
 ####################################
 ####################################
 ####################################
+# GET /runs/{run_id} ###############
+####################################
+####################################
+####################################
+
+module "get_run_lambda" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "7.7.0"
+
+  function_name  = local.get_run_function_name_and_ecr_repo_name                              # Remember to change
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /files" # Remember to change
+  create_package = false
+  timeout        = 30
+
+  ##################
+  # Container Image
+  ##################
+  package_type  = "Image"
+  architectures = [var.lambda_architecture]
+  image_uri     = module.get_run_docker_image.image_uri # Remember to change
+
+  publish = true # Whether to publish creation/change as new Lambda Function Version.
+
+
+  environment_variables = {
+    "ENVIRONMENT"                        = var.environment
+    "SERVICE"                            = var.service_underscore
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+  }
+
+  allowed_triggers = {
+    AllowExecutionFromAPIGateway = {
+      service    = "apigateway"
+      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+    }
+  }
+
+  tags = {
+    "Terraform"   = "true",
+    "Environment" = var.environment,
+    "Service"     = var.service_underscore
+    "Prewarm"     = "true"
+  }
+  ######################
+  # Additional policies
+  ######################
+
+  attach_policy_statements = true
+  policy_statements = {
+    rds_data_access = {
+      effect = "Allow",
+      actions = [
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_arn
+      ]
+    },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    },
+
+    s3_crud = {
+      effect = "Allow",
+      actions = [
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucketMultipartUploads",
+        "s3:ListMultipartUploadParts",
+        "s3:AbortMultipartUpload"
+      ],
+      resources = [
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+      ]
+    }
+  }
+}
+
+module "get_run_docker_image" {
+  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version = "7.7.0"
+
+  create_ecr_repo      = true
+  keep_remotely        = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = local.get_run_function_name_and_ecr_repo_name # Remember to change
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
+  source_path = "${local.source_path}/get_run/" # Remember to change
+  triggers = {
+    dir_sha = local.dir_sha
+  }
+
+}
+
+
+
+####################################
+####################################
+####################################
 # GET /runs/{run_id}/emails ########
 ####################################
 ####################################
@@ -733,11 +890,12 @@ module "list_emails_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT"                     = var.environment,
-    "SERVICE"                         = var.service_underscore
-    "DYNAMODB_TABLE"                  = var.dynamodb_table
-    "PAGINATION_STATE_DYNAMODB_TABLE" = var.pagination_state_dynamodb_table
-    "BUCKET_NAME"                     = "${var.environment}-aws-educate-tpet-storage"
+    "ENVIRONMENT"                        = var.environment
+    "SERVICE"                            = var.service_underscore
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
   }
 
   allowed_triggers = {
@@ -759,22 +917,26 @@ module "list_emails_lambda" {
 
   attach_policy_statements = true
   policy_statements = {
-    dynamodb_crud = {
+    rds_data_access = {
       effect = "Allow",
       actions = [
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem"
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/*",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.pagination_state_dynamodb_table}",
+        module.aurora_postgresql_v2.cluster_arn
+      ]
+    },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
       ]
     },
     s3_crud = {
