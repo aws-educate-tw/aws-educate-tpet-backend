@@ -40,7 +40,7 @@ def extract_template_variables(html_content: str) -> list[str]:
 
         # Remove duplicates and strip whitespace
         variables = list({placeholder.strip() for placeholder in placeholders})
-        
+
         # Sort for consistent output
         variables.sort()
 
