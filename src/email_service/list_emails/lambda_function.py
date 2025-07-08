@@ -12,6 +12,9 @@ from email_repository import EmailRepository
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# Calculate batch size to avoid RDS Data API 1MB limit
+RDS_DATA_API_SAFE_BATCH_SIZE = 500  # Safe limit to avoid 1MB response size
+
 
 class DecimalEncoder(json.JSONEncoder):
     """Custom JSON encoder for Decimal objects."""
@@ -102,8 +105,85 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
     try:
         logger.info("Fetching emails with criteria: %s", filter_criteria)
-        emails = email_repo.list_emails(filter_criteria)
-        # Create a copy of filter_criteria for count_emails, removing pagination params
+
+        requested_limit = limit
+
+        # If requested limit is small, use it directly
+        if requested_limit <= RDS_DATA_API_SAFE_BATCH_SIZE:
+            emails = email_repo.list_emails(filter_criteria)
+            # Handle potential None return from list_emails
+            if emails is None:
+                emails = []
+            logger.info(
+                "Single batch query successful, %d emails fetched.", len(emails)
+            )
+        else:
+            # For large requests, use batch fetching
+            logger.info(
+                "Large request detected (limit=%d), using batch fetching with max batch size %d",
+                requested_limit,
+                RDS_DATA_API_SAFE_BATCH_SIZE,
+            )
+
+            all_emails = []
+            current_offset = (
+                page - 1
+            ) * limit  # Calculate starting offset for the requested page
+            remaining_items = requested_limit
+
+            while remaining_items > 0:
+                # Calculate current batch size
+                current_batch_size = min(RDS_DATA_API_SAFE_BATCH_SIZE, remaining_items)
+
+                # Calculate current page for this batch based on current_offset
+                current_page = (current_offset // current_batch_size) + 1
+
+                # Create batch filter criteria
+                batch_filter_criteria = filter_criteria.copy()
+                batch_filter_criteria["limit"] = current_batch_size
+                batch_filter_criteria["page"] = current_page
+
+                logger.info(
+                    "Fetching batch: page=%d, limit=%d, offset=%d",
+                    current_page,
+                    current_batch_size,
+                    current_offset,
+                )
+
+                # Fetch current batch
+                batch_emails = email_repo.list_emails(batch_filter_criteria)
+
+                # Handle potential None return from list_emails
+                if batch_emails is None:
+                    batch_emails = []
+
+                # If we get less than expected, we've reached the end
+                if len(batch_emails) == 0:
+                    logger.info("No more emails to fetch, breaking from batch loop")
+                    break
+
+                # Add batch results to all_emails
+                all_emails.extend(batch_emails)
+
+                # Update counters
+                remaining_items -= len(batch_emails)
+                current_offset += len(batch_emails)
+
+                # If we got fewer items than batch size, we've reached the end
+                if len(batch_emails) < current_batch_size:
+                    logger.info(
+                        "Reached end of data (got %d items, expected %d)",
+                        len(batch_emails),
+                        current_batch_size,
+                    )
+                    break
+
+            emails = all_emails
+            logger.info(
+                "Batch fetching completed, %d total emails fetched.", len(emails)
+            )
+
+        # Get total count for pagination info
         count_filter_criteria = filter_criteria.copy()
         count_filter_criteria.pop("page", None)
         count_filter_criteria.pop("limit", None)
