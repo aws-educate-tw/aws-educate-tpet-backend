@@ -28,7 +28,18 @@ class DecimalEncoder(json.JSONEncoder):
 def extract_query_params(event: dict[str, any]) -> dict[str, any]:
     """Extract query parameters from the API Gateway event."""
     query_params = event.get("queryStringParameters") or {}
-    limit_param = query_params.get("limit", "10")  # support ALL
+    limit_param = query_params.get("limit")  # No default value
+
+    if limit_param is None:
+        logger.error("Missing required 'limit' query parameter.")
+        return {
+            "statusCode": 400,
+            "body": json.dumps(
+                {
+                    "message": "Missing required 'limit' query parameter. Please provide a number (max 5000) or 'ALL'."
+                }
+            ),
+        }
 
     try:
         # Support limit=ALL
@@ -36,6 +47,8 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
             limit = "ALL"
         else:
             limit = int(limit_param)
+            if limit <= 0 or limit > 5000:
+                raise ValueError("'limit' must be between 1 and 5000, or 'ALL'.")
         page = int(query_params.get("page", 1))
         status = query_params.get("status", None)
         sort_by = query_params.get("sort_by", "created_at")
