@@ -603,8 +603,8 @@ module "list_runs_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.list_runs_function_name_and_ecr_repo_name                            # Remember to change
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /files" # Remember to change
+  function_name  = local.list_runs_function_name_and_ecr_repo_name                           # Remember to change
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /runs" # Remember to change
   create_package = false
   timeout        = 30
 
@@ -738,8 +738,8 @@ module "get_run_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.get_run_function_name_and_ecr_repo_name                              # Remember to change
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /files" # Remember to change
+  function_name  = local.get_run_function_name_and_ecr_repo_name                                      # Remember to change
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /runs/{run_id}" # Remember to change
   create_package = false
   timeout        = 30
 
@@ -874,8 +874,8 @@ module "list_emails_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.list_emails_function_name_and_ecr_repo_name                          # Remember to change
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /files" # Remember to change
+  function_name  = local.list_emails_function_name_and_ecr_repo_name                                         # Remember to change
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /runs/{run_id}/emails" # Remember to change
   create_package = false
   timeout        = 30
 
