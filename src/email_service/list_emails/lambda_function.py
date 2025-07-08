@@ -28,8 +28,14 @@ class DecimalEncoder(json.JSONEncoder):
 def extract_query_params(event: dict[str, any]) -> dict[str, any]:
     """Extract query parameters from the API Gateway event."""
     query_params = event.get("queryStringParameters") or {}
+    limit_param = query_params.get("limit", "10")  # support ALL
+
     try:
-        limit = int(query_params.get("limit", 10))
+        # Support limit=ALL
+        if isinstance(limit_param, str) and limit_param.upper() == "ALL":
+            limit = "ALL"
+        else:
+            limit = int(limit_param)
         page = int(query_params.get("page", 1))
         status = query_params.get("status", None)
         sort_by = query_params.get("sort_by", "created_at")
@@ -46,7 +52,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
 
     # Log the extracted parameters
     logger.info(
-        "Extracted parameters - limit: %d, page: %d, status: %s, sort_by: %s, sort_order: %s",
+        "Extracted parameters - limit: %s, page: %d, status: %s, sort_by: %s, sort_order: %s",
         limit,
         page,
         status,
@@ -75,7 +81,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     if isinstance(extracted_params, dict) and extracted_params.get("statusCode"):
         return extracted_params
 
-    limit: int = extracted_params["limit"]
+    limit: int | str = extracted_params["limit"]
     page: int = extracted_params["page"]
     status: str | None = extracted_params["status"]
     sort_by: str = extracted_params["sort_by"]
@@ -102,6 +108,17 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     }
     if status:
         filter_criteria["status"] = status
+
+    # Support limit=ALL: count total items and override pagination
+    if limit == "ALL":
+        count_filter = {"run_id": run_id}
+        if status:
+            count_filter["status"] = status
+        total_items = email_repo.count_emails(count_filter)  # support count first
+        limit = total_items  # override limit for fetching
+        page = 1  # reset to first page
+        filter_criteria["limit"] = limit
+        filter_criteria["page"] = page
 
     try:
         logger.info("Fetching emails with criteria: %s", filter_criteria)
