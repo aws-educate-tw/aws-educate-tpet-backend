@@ -22,6 +22,7 @@ module "aurora_postgresql_v2" {
   apply_immediately    = true
   skip_final_snapshot  = true
   enable_http_endpoint = true
+  deletion_protection  = true
 
   serverlessv2_scaling_configuration = {
     min_capacity             = 0
