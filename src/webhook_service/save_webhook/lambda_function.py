@@ -14,10 +14,13 @@ import os
 import uuid
 from decimal import Decimal
 
+from current_user_util import current_user_util
 from time_util import get_current_utc_time
 from webhook_repository import WebhookRepository
 from webhook_total_count_repository import WebhookIncrementCountRepository
 from webhook_type_enum import WebhookType
+
+from email_service import EmailService
 
 trigger_webhook_api_endpoint = os.getenv("TRIGGER_WEBHOOK_API_ENDPOINT")
 
@@ -32,6 +35,11 @@ DEFAULT_DISPLAY_NAME = "AWS Educate 校園雲端大使"
 DEFAULT_REPLY_TO = "awseducate.cloudambassador@gmail.com"
 DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
 DEFAULT_WEBHOOK_NAME_PREFIX = "TPET webhook"
+DEFAULT_RUN_TYPE = "WEBHOOK"
+DEFAULT_RECIPIENT_SOURCE = "DIRECT"
+
+# Initialize services
+email_service = EmailService()
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -59,7 +67,50 @@ def check_missing_fields(data):
 
 def lambda_handler(event, context):  # pylint: disable=unused-argument
     """Lambda function handler to create a new webhook"""
+    # Validate authorization
+    access_token = current_user_util.extract_bearer_token(event.get("headers", {}))
+    if not access_token:
+        return {
+            "statusCode": 401,
+            "body": json.dumps({"message": "Missing or invalid Authorization header"}),
+            "headers": {"Content-Type": "application/json"},
+        }
+
+    # Get current user info
+    current_user_util.set_current_user_by_access_token(access_token)
+    current_user_info = current_user_util.get_current_user_info()
+
+    # Initialize aws_request_id early
+    aws_request_id = context.aws_request_id if context else "unknown"
+
     try:
+        # Create run before saving webhook
+        access_token = (
+            event["headers"].get("Authorization") if event.get("headers") else None
+        )
+        try:
+            create_run_response = email_service.create_run(
+                run_type=DEFAULT_RUN_TYPE,
+                recipient_source=DEFAULT_RECIPIENT_SOURCE,
+                access_token=access_token,
+            )
+            if not create_run_response:
+                raise ValueError("Failed to create run in email service")
+
+            logger.info("Run created successfully: %s", create_run_response)
+        except (RuntimeError, ValueError) as e:
+            logger.error("Failed to create run in email service: %s", str(e))
+            return {
+                "statusCode": 500,
+                "body": json.dumps(
+                    {
+                        "error": "Failed to create run in email service",
+                        "message": f"Failed to create run in email service, request ID: {aws_request_id}, error: {str(e)}",
+                        "request_id": aws_request_id,
+                    }
+                ),
+            }
+
         # Parse the event body
         data = json.loads(event["body"])
 
@@ -116,8 +167,10 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
             "webhook_type": webhook_type,
             "sequence_number": sequence_number,
             "webhook_id": webhook_id,
+            "run_id": create_run_response.get("run_id"),
             "webhook_url": webhook_url,
             "created_at": created_at,
+            "creator": current_user_info,
             "subject": data.get("subject", DEFAULT_SUBJECT),
             "display_name": data.get("display_name", DEFAULT_DISPLAY_NAME),
             "template_file_id": data.get("template_file_id"),
@@ -163,4 +216,7 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
         }
     except Exception as e:  # pylint: disable=broad-except
         logger.error("Error occurred: %s", str(e))
-        return {"statusCode": 500, "body": json.dumps({"message": str(e)})}
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"message": str(e), "request_id": aws_request_id}),
+        }
