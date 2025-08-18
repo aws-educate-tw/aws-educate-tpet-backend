@@ -39,13 +39,23 @@ EMAIL_PATTERN = r"[^@]+@[^@]+\.[^@]+"
 run_repository = RunRepository()
 
 
-def create_error_response(status_code: int, message: str) -> dict[str, Any]:
-    """Create a standardized error response."""
-    return {
-        "statusCode": status_code,
-        "body": json.dumps({"message": message}),
-        "headers": {"Content-Type": "application/json"},
-    }
+class ErrorResponder:
+    """A helper class to create standardized error responses with a request ID."""
+
+    def __init__(self, request_id: str):
+        self._request_id = request_id
+
+    def create_error_response(self, status_code: int, message: str) -> dict[str, Any]:
+        """Creates a standardized error response."""
+        error_body = {
+            "message": f"{message}, Request ID: {self._request_id}",
+            "request_id": self._request_id,
+        }
+        return {
+            "statusCode": status_code,
+            "body": json.dumps(error_body),
+            "headers": {"Content-Type": "application/json"},
+        }
 
 
 def validate_auth_header(headers: dict[str, str]) -> str | None:
@@ -273,6 +283,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Main Lambda function handler."""
     # Initialize aws_request_id early
     aws_request_id = context.aws_request_id if context else "unknown"
+    error_responder = ErrorResponder(aws_request_id)
 
     # Identify if the incoming event is a prewarm request
     if event.get("action") == "PREWARM":
@@ -283,7 +294,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Validate authorization
         access_token = validate_auth_header(event["headers"])
         if not access_token:
-            return create_error_response(401, "Missing or invalid Authorization header")
+            return error_responder.create_error_response(
+                401, "Missing or invalid Authorization header"
+            )
 
         current_user_util.set_current_user_by_access_token(access_token)
 
@@ -313,16 +326,20 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             )
             # Validate WEBHOOK run_type
             if not run_id:
-                return create_error_response(400, "Missing run_id for WEBHOOK run_type")
+                return error_responder.create_error_response(
+                    400, "Missing run_id for WEBHOOK run_type"
+                )
             if recipient_source != "DIRECT":
-                return create_error_response(
+                return error_responder.create_error_response(
                     400, "WEBHOOK run_type only supports DIRECT recipient source"
                 )
 
             # For webhook append mode, validation is based on the request body,
             # not the parent run. The run_id is only for grouping.
             if not run_repository.get_run_by_id(run_id):
-                return create_error_response(404, f"Run with ID {run_id} not found.")
+                return error_responder.create_error_response(
+                    404, f"Run with ID {run_id} not found."
+                )
 
             try:
                 # Validate required inputs from the body
@@ -344,11 +361,11 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 validate_email_addresses(cc + bcc, reply_to)
 
             except (ValueError, RequestException) as e:
-                return create_error_response(400, str(e))
+                return error_responder.create_error_response(400, str(e))
 
             # If validation passes, increment the counter atomically
             if not run_repository.increment_expected_email_send_count(run_id):
-                return create_error_response(
+                return error_responder.create_error_response(
                     404, f"Run with ID {run_id} not found for counter increment."
                 )
 
@@ -383,7 +400,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 logger.info("Webhook message sent to SQS for run_id: %s", run_id)
             except (ClientError, ValueError) as e:
                 logger.error("Failed to send webhook message to SQS: %s", e)
-                return create_error_response(
+                return error_responder.create_error_response(
                     500, "Failed to queue email request after validation."
                 )
 
@@ -403,9 +420,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         else:
             # Validate required inputs
             if not subject:
-                return create_error_response(400, "Missing email subject")
+                return error_responder.create_error_response(
+                    400, "Missing email subject"
+                )
             if not template_file_id:
-                return create_error_response(400, "Missing template file ID")
+                return error_responder.create_error_response(
+                    400, "Missing template file ID"
+                )
 
             # If run_id is not provided for non-webhook runs, generate one
             if not run_id:
@@ -441,7 +462,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 validate_email_addresses(cc + bcc, reply_to)
 
             except ValueError as e:
-                return create_error_response(400, str(e))
+                return error_responder.create_error_response(400, str(e))
 
         # Get current user info
         current_user_info = current_user_util.get_current_user_info()
@@ -486,9 +507,8 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         )
 
         if not run_repository.upsert_run(run_item):
-            return create_error_response(
-                500,
-                f"Failed to save run: {run_item['run_id']}, Request ID: {aws_request_id}",
+            return error_responder.create_error_response(
+                500, f"Failed to save run: {run_item['run_id']}"
             )
 
         # Send message to SQS
@@ -502,7 +522,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             logger.info("Message sent to SQS: %s", message_body)
         except (ClientError, ValueError) as e:
             logger.error("Failed to send message to SQS: %s", e)
-            return create_error_response(500, "Failed to queue email request")
+            return error_responder.create_error_response(
+                500, "Failed to queue email request"
+            )
 
         # Prepare success response
         return {
@@ -519,7 +541,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     except Exception as e:
         logger.error("Request ID: %s, Internal server error: %s", aws_request_id, e)
-        return create_error_response(
-            500,
-            f"Please try again later or contact support, Request ID: {aws_request_id}",
+        return error_responder.create_error_response(
+            500, "Please try again later or contact support"
         )
