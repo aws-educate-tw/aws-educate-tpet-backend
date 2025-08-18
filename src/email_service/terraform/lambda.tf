@@ -14,6 +14,7 @@ locals {
   source_path                                    = "${path.module}/.."
   health_check_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-health_check-${random_string.this.result}"
   validate_input_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-validate_input-${random_string.this.result}"
+  create_runs_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-create_runs-${random_string.this.result}"
   create_email_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-create_email-${random_string.this.result}"
   send_email_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-send_email-${random_string.this.result}"
   list_runs_function_name_and_ecr_repo_name      = "${var.environment}-${var.service_underscore}-list_runs-${random_string.this.result}"
@@ -725,6 +726,149 @@ module "list_runs_docker_image" {
 
 }
 
+####################################
+####################################
+####################################
+# POST /runs ########################
+####################################
+####################################
+####################################
+
+module "create_runs_lambda" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "7.7.0"
+
+  function_name  = local.create_runs_function_name_and_ecr_repo_name                             # Remember to change
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /runs" # Remember to change
+  create_package = false
+  timeout        = 60
+  memory_size    = 512
+
+  ##################
+  # Container Image
+  ##################
+  package_type  = "Image"
+  architectures = [var.lambda_architecture]
+  image_uri     = module.create_runs_docker_image.image_uri # Remember to change
+
+  publish = true # Whether to publish creation/change as new Lambda Function Version.
+
+
+  environment_variables = {
+    "ENVIRONMENT"                        = var.environment
+    "SERVICE"                            = var.service_underscore
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+  }
+
+  allowed_triggers = {
+    AllowExecutionFromAPIGateway = {
+      service    = "apigateway"
+      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+    }
+  }
+
+  tags = {
+    "Terraform"   = "true",
+    "Environment" = var.environment,
+    "Service"     = var.service_underscore
+    "Prewarm"     = "true"
+  }
+  ######################
+  # Additional policies
+  ######################
+
+  attach_policy_statements = true
+  policy_statements = {
+    rds_data_access = {
+      effect = "Allow",
+      actions = [
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_arn
+      ]
+    },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    }
+    s3_crud = {
+      effect = "Allow",
+      actions = [
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucketMultipartUploads",
+        "s3:ListMultipartUploadParts",
+        "s3:AbortMultipartUpload"
+      ],
+      resources = [
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+      ]
+    },
+    sqs_send_message = {
+      effect = "Allow",
+      actions = [
+        "sqs:SendMessage"
+      ],
+      resources = [
+        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.create_email_sqs.queue_name}"
+      ]
+    },
+  }
+}
+
+module "create_runs_docker_image" {
+  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version = "7.7.0"
+
+  create_ecr_repo      = true
+  keep_remotely        = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = local.create_runs_function_name_and_ecr_repo_name # Remember to change
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
+  source_path = "${local.source_path}/create_runs/" # Remember to change
+  triggers = {
+    dir_sha = local.dir_sha
+  }
+
+}
 
 ####################################
 ####################################
