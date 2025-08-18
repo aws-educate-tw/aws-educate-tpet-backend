@@ -203,6 +203,34 @@ class RunRepository:
         except Exception as e:
             logger.error("Error deleting run: %s", e)
 
+    def increment_expected_email_send_count(self, run_id: str) -> bool:
+        """
+        Atomically increments the expected_email_send_count for a given run.
+
+        :param run_id: The ID of the run to update.
+        :return: True if the update was successful, False otherwise.
+        """
+        sql = ""
+        params = []
+        try:
+            sql = """
+                UPDATE runs
+                SET expected_email_send_count = expected_email_send_count + 1
+                WHERE run_id = :run_id
+            """
+            params = [
+                {"name": "run_id", "value": {"stringValue": run_id}},
+            ]
+
+            response = self._execute(sql, params, fetch=False)
+            # Check if any row was actually updated
+            return response.get("numberOfRecordsUpdated", 0) > 0
+        except Exception as e:
+            logger.error("Error incrementing expected_email_send_count: %s", e)
+            raise RunRepositoryError(
+                "Error incrementing expected_email_send_count", sql, params, e
+            ) from e
+
     def increment_success_email_count(self, run_id: str) -> None:
         """
         Increment the success_email_count for a run in the PostgreSQL database.

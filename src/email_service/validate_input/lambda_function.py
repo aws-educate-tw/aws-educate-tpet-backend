@@ -32,6 +32,7 @@ DEFAULT_DISPLAY_NAME = "AWS Educate 雲端大使"
 DEFAULT_REPLY_TO = "awseducate.cloudambassador@gmail.com"
 DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
 DEFAULT_RECIPIENT_SOURCE = "SPREADSHEET"
+DEFAULT_RUN_TYPE = "EMAIL"
 EMAIL_PATTERN = r"[^@]+@[^@]+\.[^@]+"
 
 # Initialize repositories
@@ -289,15 +290,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Parse input
         body = json.loads(event.get("body", "{}"))
         recipient_source = body.get("recipient_source", DEFAULT_RECIPIENT_SOURCE)
-        run_type = body.get(
-            "run_type", recipient_source
-        )  # Default to recipient_source if not provided
+        run_type = body.get("run_type", DEFAULT_RUN_TYPE)
         template_file_id = body.get("template_file_id")
         spreadsheet_file_id = body.get("spreadsheet_file_id")
         recipients = body.get("recipients", [])
         subject = body.get("subject")
         display_name = body.get("display_name", DEFAULT_DISPLAY_NAME)
-        run_id = body.get("run_id") if body.get("run_id") else uuid.uuid4().hex
+        run_id = body.get("run_id")
         attachment_file_ids = body.get("attachment_file_ids", [])
         is_generate_certificate = body.get("is_generate_certificate", False)
         reply_to = body.get("reply_to", DEFAULT_REPLY_TO)
@@ -305,43 +304,144 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         cc = body.get("cc", [])
         bcc = body.get("bcc", [])
 
-        # Validate required inputs
-        if not subject:
-            return create_error_response(400, "Missing email title")
-        if not template_file_id:
-            return create_error_response(400, "Missing template file ID")
-
-        # Get template information
-        template_info = get_file_info(template_file_id, access_token)
-        template_content = get_template(template_info["s3_object_key"])
-
-        # Process based on recipient source
-        try:
-            spreadsheet_info = None
-            rows, columns = [], []
-            if recipient_source == "SPREADSHEET":
-                spreadsheet_info, rows, columns, expected_email_send_count = (
-                    validate_spreadsheet_mode(spreadsheet_file_id, access_token)
-                )
-                validate_template_variables(
-                    template_content, recipient_source, rows=rows
-                )
-            else:
-                expected_email_send_count = validate_direct_mode(recipients)
-                validate_template_variables(
-                    template_content, recipient_source, recipients=recipients
-                )
-
-            # Validate certificate requirements
-            validate_certificate_requirements(
-                is_generate_certificate, recipient_source, recipients, columns
+        # --- Webhook specific logic ---
+        if run_type == "WEBHOOK":
+            logger.info(
+                "Processing WEBHOOK run type with run_id: %s and recipients: %s",
+                run_id,
+                recipients,
             )
+            # Validate WEBHOOK run_type
+            if not run_id:
+                return create_error_response(400, "Missing run_id for WEBHOOK run_type")
+            if recipient_source != "DIRECT":
+                return create_error_response(
+                    400, "WEBHOOK run_type only supports DIRECT recipient source"
+                )
 
-            # Validate email addresses
-            validate_email_addresses(cc + bcc, reply_to)
+            # For webhook append mode, validation is based on the request body,
+            # not the parent run. The run_id is only for grouping.
+            if not run_repository.get_run_by_id(run_id):
+                return create_error_response(404, f"Run with ID {run_id} not found.")
 
-        except ValueError as e:
-            return create_error_response(400, str(e))
+            try:
+                # Validate required inputs from the body
+                if not subject:
+                    raise ValueError("Missing email subject")
+                if not template_file_id:
+                    raise ValueError("Missing template file ID")
+
+                # Reuse existing validation functions
+                validate_direct_mode(recipients)
+                template_info = get_file_info(template_file_id, access_token)
+                template_content = get_template(template_info["s3_object_key"])
+                validate_template_variables(
+                    template_content, "DIRECT", recipients=recipients
+                )
+                validate_certificate_requirements(
+                    is_generate_certificate, "DIRECT", recipients=recipients, columns=[]
+                )
+                validate_email_addresses(cc + bcc, reply_to)
+
+            except (ValueError, RequestException) as e:
+                return create_error_response(400, str(e))
+
+            # If validation passes, increment the counter atomically
+            if not run_repository.increment_expected_email_send_count(run_id):
+                return create_error_response(
+                    404, f"Run with ID {run_id} not found for counter increment."
+                )
+
+            # Prepare message body for SQS using data from the request body
+            current_user_info = current_user_util.get_current_user_info()
+            sender_id = current_user_info.get("user_id")
+
+            message_body = {
+                "run_id": run_id,
+                "run_type": "WEBHOOK",
+                "recipient_source": "DIRECT",
+                "recipients": recipients,
+                "subject": subject,
+                "template_file_id": template_file_id,
+                "attachment_file_ids": attachment_file_ids,
+                "is_generate_certificate": is_generate_certificate,
+                "sender_id": sender_id,
+                "reply_to": reply_to,
+                "sender_local_part": sender_local_part,
+                "display_name": display_name,
+                "cc": cc,
+                "bcc": bcc,
+                "access_token": access_token,
+            }
+
+            try:
+                if not CREATE_EMAIL_SQS_QUEUE_URL:
+                    raise ValueError(
+                        "CREATE_EMAIL_SQS_QUEUE_URL environment variable not set."
+                    )
+                send_message_to_queue(CREATE_EMAIL_SQS_QUEUE_URL, message_body)
+                logger.info("Webhook message sent to SQS for run_id: %s", run_id)
+            except (ClientError, ValueError) as e:
+                logger.error("Failed to send webhook message to SQS: %s", e)
+                return create_error_response(
+                    500, "Failed to queue email request after validation."
+                )
+
+            return {
+                "statusCode": 202,
+                "body": json.dumps(
+                    {
+                        "status": "SUCCESS",
+                        "message": "Your email request has been successfully received.",
+                        "run_id": run_id,
+                    }
+                ),
+                "headers": {"Content-Type": "application/json"},
+            }
+
+        # --- Default logic for non-WEBHOOK run type ---
+        else:
+            # Validate required inputs
+            if not subject:
+                return create_error_response(400, "Missing email subject")
+            if not template_file_id:
+                return create_error_response(400, "Missing template file ID")
+
+            # If run_id is not provided for non-webhook runs, generate one
+            if not run_id:
+                run_id = uuid.uuid4().hex
+
+            # Get template information
+            template_info = get_file_info(template_file_id, access_token)
+            template_content = get_template(template_info["s3_object_key"])
+
+            # Process based on recipient source
+            try:
+                spreadsheet_info = None
+                rows, columns = [], []
+                if recipient_source == "SPREADSHEET":
+                    spreadsheet_info, rows, columns, expected_email_send_count = (
+                        validate_spreadsheet_mode(spreadsheet_file_id, access_token)
+                    )
+                    validate_template_variables(
+                        template_content, recipient_source, rows=rows
+                    )
+                else:  # DIRECT mode
+                    expected_email_send_count = validate_direct_mode(recipients)
+                    validate_template_variables(
+                        template_content, recipient_source, recipients=recipients
+                    )
+
+                # Validate certificate requirements
+                validate_certificate_requirements(
+                    is_generate_certificate, recipient_source, recipients, columns
+                )
+
+                # Validate email addresses
+                validate_email_addresses(cc + bcc, reply_to)
+
+            except ValueError as e:
+                return create_error_response(400, str(e))
 
         # Get current user info
         current_user_info = current_user_util.get_current_user_info()
@@ -394,9 +494,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Send message to SQS
         message_body = {**common_data, "access_token": access_token}
         try:
+            if not CREATE_EMAIL_SQS_QUEUE_URL:
+                raise ValueError(
+                    "CREATE_EMAIL_SQS_QUEUE_URL environment variable not set."
+                )
             send_message_to_queue(CREATE_EMAIL_SQS_QUEUE_URL, message_body)
             logger.info("Message sent to SQS: %s", message_body)
-        except ClientError as e:
+        except (ClientError, ValueError) as e:
             logger.error("Failed to send message to SQS: %s", e)
             return create_error_response(500, "Failed to queue email request")
 
