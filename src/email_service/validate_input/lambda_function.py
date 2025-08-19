@@ -131,6 +131,9 @@ def extract_template_variables(template_content: str) -> list[str]:
         raise
 
 
+## TODO - valaidate_run_type
+
+
 def validate_template_variables(
     template_content: str,
     recipient_source: str,
@@ -427,10 +430,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 return error_responder.create_error_response(
                     400, "Missing template file ID"
                 )
+            if run_id:
+                return error_responder.create_error_response(
+                    400, "run_id should not be provided for non-WEBHOOK run type"
+                )
 
-            # If run_id is not provided for non-webhook runs, generate one
-            if not run_id:
-                run_id = uuid.uuid4().hex
+            # Generate a new run_id
+            run_id = uuid.uuid4().hex
 
             # Get template information
             template_info = get_file_info(template_file_id, access_token)
