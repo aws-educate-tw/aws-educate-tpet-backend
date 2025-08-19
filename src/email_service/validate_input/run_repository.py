@@ -222,9 +222,7 @@ class RunRepository:
                 {"name": "run_id", "value": {"stringValue": run_id}},
             ]
 
-            response = self._execute(sql, params, fetch=False)
-            # Check if any row was actually updated
-            return response.get("numberOfRecordsUpdated", 0) > 0
+            self._execute(sql, params)
         except Exception as e:
             logger.error("Error incrementing expected_email_send_count: %s", e)
             raise RunRepositoryError(
@@ -237,6 +235,8 @@ class RunRepository:
 
         :param run_id: The run ID to update
         """
+        sql = ""
+        params = []
         try:
             sql = """
                 UPDATE runs
