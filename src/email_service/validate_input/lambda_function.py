@@ -4,7 +4,7 @@ import logging
 import os
 import re
 import uuid
-from typing import Any
+from typing import Any, cast
 
 import boto3
 import pandas as pd
@@ -12,6 +12,7 @@ import requests
 from botocore.exceptions import ClientError
 from current_user_util import current_user_util
 from data_util import convert_float_to_decimal
+from recipient_source_enum import RecipientSource
 from requests.exceptions import RequestException
 from run_repository import RunRepository
 from run_type_enum import RunType
@@ -32,8 +33,8 @@ CREATE_EMAIL_SQS_QUEUE_URL = os.getenv("CREATE_EMAIL_SQS_QUEUE_URL")
 DEFAULT_DISPLAY_NAME = "AWS Educate 雲端大使"
 DEFAULT_REPLY_TO = "awseducate.cloudambassador@gmail.com"
 DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
-DEFAULT_RECIPIENT_SOURCE = "SPREADSHEET"
-DEFAULT_RUN_TYPE = "EMAIL"
+DEFAULT_RECIPIENT_SOURCE = RecipientSource.SPREADSHEET.value
+DEFAULT_RUN_TYPE = RunType.EMAIL.value
 EMAIL_PATTERN = r"[^@]+@[^@]+\.[^@]+"
 
 # Initialize repositories
@@ -106,7 +107,7 @@ def read_sheet_data_from_s3(
         request = s3.get_object(Bucket=BUCKET_NAME, Key=spreadsheet_file_s3_key)
         xlsx_content = request["Body"].read()
         excel_data = pd.read_excel(io.BytesIO(xlsx_content), engine="openpyxl")
-        rows = excel_data.to_dict(orient="records")
+        rows = cast(list[dict[str, Any]], excel_data.to_dict(orient="records"))
         if excel_data.empty:
             return [], []
         return rows, excel_data.columns.tolist()
@@ -162,7 +163,7 @@ def validate_template_variables(
     if not required_variables:
         return
 
-    if recipient_source == "DIRECT":
+    if recipient_source == RecipientSource.DIRECT.value:
         for recipient in recipients or []:
             template_vars = recipient.get("template_variables", {})
             missing_vars = [
@@ -233,7 +234,7 @@ def validate_certificate_requirements(
         return
 
     required_fields = ["Name", "Certificate Text"]
-    if recipient_source == "DIRECT":
+    if recipient_source == RecipientSource.DIRECT.value:
         for recipient in recipients:
             template_vars = recipient.get("template_variables", {})
             missing_fields = [
@@ -281,12 +282,14 @@ def prepare_run_data(
         "created_year_month_day": created_at[:10],
         "template_file": template_info,
         "spreadsheet_file": (
-            spreadsheet_info if recipient_source == "SPREADSHEET" else None
+            spreadsheet_info
+            if recipient_source == RecipientSource.SPREADSHEET.value
+            else None
         ),
         "attachment_files": attachment_files,
         "sender": current_user_info,
     }
-    return convert_float_to_decimal(run_item)
+    return cast(dict[str, Any], convert_float_to_decimal(run_item))
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
@@ -329,7 +332,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         bcc = body.get("bcc", [])
 
         # --- Webhook specific logic ---
-        if run_type == "WEBHOOK":
+        if run_type == RunType.WEBHOOK.value:
             logger.info(
                 "Processing WEBHOOK run type with run_id: %s and recipients: %s",
                 run_id,
@@ -340,7 +343,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 return error_responder.create_error_response(
                     400, "Missing run_id for WEBHOOK run_type"
                 )
-            if recipient_source != "DIRECT":
+            if recipient_source != RecipientSource.DIRECT.value:
                 return error_responder.create_error_response(
                     400, "WEBHOOK run_type only supports DIRECT recipient source"
                 )
@@ -351,7 +354,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 existing_run = run_repository.get_run_by_id(run_id)
                 if not existing_run:
                     raise ValueError(f"Run with ID {run_id} not found.")
-                if existing_run.get("run_type") != "WEBHOOK":
+                if existing_run.get("run_type") != RunType.WEBHOOK.value:
                     raise ValueError(
                         f"Run with ID {run_id} is not a WEBHOOK run type, but {existing_run.get('run_type')}"
                     )
@@ -366,10 +369,15 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 template_info = get_file_info(template_file_id, access_token)
                 template_content = get_template(template_info["s3_object_key"])
                 validate_template_variables(
-                    template_content, "DIRECT", recipients=recipients
+                    template_content,
+                    RecipientSource.DIRECT.value,
+                    recipients=recipients,
                 )
                 validate_certificate_requirements(
-                    is_generate_certificate, "DIRECT", recipients=recipients, columns=[]
+                    is_generate_certificate,
+                    RecipientSource.DIRECT.value,
+                    recipients=recipients,
+                    columns=[],
                 )
                 validate_email_addresses(cc + bcc, reply_to)
 
@@ -388,8 +396,8 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
             message_body = {
                 "run_id": run_id,
-                "run_type": "WEBHOOK",
-                "recipient_source": "DIRECT",
+                "run_type": RunType.WEBHOOK.value,
+                "recipient_source": RecipientSource.DIRECT.value,
                 "recipients": recipients,
                 "subject": subject,
                 "template_file_id": template_file_id,
@@ -456,7 +464,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             try:
                 spreadsheet_info = None
                 rows, columns = [], []
-                if recipient_source == "SPREADSHEET":
+                if recipient_source == RecipientSource.SPREADSHEET.value:
                     spreadsheet_info, rows, columns, expected_email_send_count = (
                         validate_spreadsheet_mode(spreadsheet_file_id, access_token)
                     )
@@ -496,7 +504,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "run_id": run_id,
             "template_file_id": template_file_id,
             "spreadsheet_file_id": (
-                spreadsheet_file_id if recipient_source == "SPREADSHEET" else None
+                spreadsheet_file_id
+                if recipient_source == RecipientSource.SPREADSHEET.value
+                else None
             ),
             "subject": subject,
             "display_name": display_name,
@@ -507,7 +517,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "sender_local_part": sender_local_part,
             "cc": cc,
             "bcc": bcc,
-            "recipients": recipients if recipient_source == "DIRECT" else [],
+            "recipients": (
+                recipients if recipient_source == RecipientSource.DIRECT.value else []
+            ),
             "success_email_count": 0,
             "expected_email_send_count": expected_email_send_count,
         }
