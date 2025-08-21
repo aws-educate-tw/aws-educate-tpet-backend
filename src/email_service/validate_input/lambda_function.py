@@ -14,6 +14,7 @@ from current_user_util import current_user_util
 from data_util import convert_float_to_decimal
 from requests.exceptions import RequestException
 from run_repository import RunRepository
+from run_type_enum import RunType
 from sqs import send_message_to_queue
 from time_util import get_current_utc_time
 
@@ -131,7 +132,13 @@ def extract_template_variables(template_content: str) -> list[str]:
         raise
 
 
-## TODO - valaidate_run_type
+def validate_run_type(run_type: str) -> None:
+    """Validate the run_type against the RunType enum."""
+    if not RunType.has_value(run_type):
+        valid_run_types = ", ".join([item.value for item in RunType])
+        raise ValueError(
+            f"Invalid run_type: {run_type}. Valid types are: {valid_run_types}"
+        )
 
 
 def validate_template_variables(
@@ -189,7 +196,7 @@ def validate_spreadsheet_mode(
     invalid_emails = [
         {"row": index, "email": row.get("Email")}
         for index, row in enumerate(rows, start=1)
-        if not row.get("Email") or not re.match(EMAIL_PATTERN, row.get("Email"))
+        if not (email := row.get("Email")) or not re.match(EMAIL_PATTERN, email)
     ]
     if invalid_emails:
         raise ValueError(f"Invalid email(s) in spreadsheet: {invalid_emails}")
@@ -307,6 +314,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         body = json.loads(event.get("body", "{}"))
         recipient_source = body.get("recipient_source", DEFAULT_RECIPIENT_SOURCE)
         run_type = body.get("run_type", DEFAULT_RUN_TYPE)
+        validate_run_type(run_type)
         template_file_id = body.get("template_file_id")
         spreadsheet_file_id = body.get("spreadsheet_file_id")
         recipients = body.get("recipients", [])
