@@ -347,12 +347,14 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
             # For webhook append mode, validation is based on the request body,
             # not the parent run. The run_id is only for grouping.
-            if not run_repository.get_run_by_id(run_id):
-                return error_responder.create_error_response(
-                    404, f"Run with ID {run_id} not found."
-                )
-
             try:
+                existing_run = run_repository.get_run_by_id(run_id)
+                if not existing_run:
+                    raise ValueError(f"Run with ID {run_id} not found.")
+                if existing_run.get("run_type") != "WEBHOOK":
+                    raise ValueError(
+                        f"Run with ID {run_id} is not a WEBHOOK run type, but {existing_run.get('run_type')}"
+                    )
                 # Validate required inputs from the body
                 if not subject:
                     raise ValueError("Missing email subject")
