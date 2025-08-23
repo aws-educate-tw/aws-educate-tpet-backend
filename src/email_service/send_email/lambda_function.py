@@ -37,14 +37,17 @@ def _ensure_database_awake() -> bool:
     health_check_url = f"https://{ENVIRONMENT}-email-service-internal-api-tpet.aws-educate.tw/{ENVIRONMENT}/email-service/health"
     max_retries = 7
     retry_delay = 5  # seconds
-    
+
+
     for attempt in range(max_retries):
+        print(f"Now Health check for {attempt+1} times ")
         try:
             logger.info(f"Attempting database health check (attempt {attempt+1}/{max_retries})")
-            response = requests.get(health_check_url, timeout=5)
+            response = requests.get(health_check_url, timeout=10)
             
             if response.status_code == 200:
                 health_data = response.json()
+                print("the status is", health_data.get("status"))
                 if health_data.get("status") == "HEALTHY":
                     logger.info("Database confirmed to be awake and healthy")
                     return True
