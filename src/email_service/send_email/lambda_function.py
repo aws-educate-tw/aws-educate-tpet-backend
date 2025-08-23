@@ -3,8 +3,8 @@ import logging
 import os
 import re
 import time
-import requests
 
+import requests
 from current_user_util import current_user_util
 from email_repository import EmailRepository
 from run_repository import RunRepository
@@ -28,21 +28,24 @@ file_service = FileService()
 email_repository = EmailRepository()
 run_repository = RunRepository()
 
+
 def _ensure_database_awake() -> bool:
     """
     Call health check API to ensure Aurora Serverless v2 is awake.
-    
+
     :return: True if database is confirmed awake, False otherwise
     """
     health_check_url = f"https://{ENVIRONMENT}-email-service-internal-api-tpet.aws-educate.tw/{ENVIRONMENT}/email-service/health"
     max_retries = 7
     retry_delay = 5  # seconds
-    
+
     for attempt in range(max_retries):
         try:
-            logger.info(f"Attempting database health check (attempt {attempt+1}/{max_retries})")
+            logger.info(
+                f"Attempting database health check (attempt {attempt + 1}/{max_retries})"
+            )
             response = requests.get(health_check_url, timeout=5)
-            
+
             if response.status_code == 200:
                 health_data = response.json()
                 if health_data.get("status") == "HEALTHY":
@@ -50,21 +53,24 @@ def _ensure_database_awake() -> bool:
                     return True
                 logger.warning(f"Database not healthy: {health_data}")
             else:
-                logger.warning(f"Health check failed with status code: {response.status_code}")
-                
+                logger.warning(
+                    f"Health check failed with status code: {response.status_code}"
+                )
+
             # If we haven't returned yet, we need to retry
             if attempt < max_retries - 1:
                 logger.info(f"Waiting {retry_delay} seconds before retrying...")
                 time.sleep(retry_delay)
-                
+
         except Exception as e:
             logger.error(f"Error during database health check: {str(e)}")
             if attempt < max_retries - 1:
                 logger.info(f"Waiting {retry_delay} seconds before retrying...")
                 time.sleep(retry_delay)
-    
+
     logger.error("Database health check failed after maximum retries")
     return False
+
 
 def _parse_json_field(json_string, default_value=None, field_name="field"):
     """Helper to parse JSON string fields from SQS message."""
@@ -99,10 +105,12 @@ def process_email(email_data: dict) -> None:
     recipient_email = email_data.get("recipient_email")
     email_id = email_data.get("email_id")
     run_id = email_data.get("run_id")
-    
+
     logger.info(f"Ensuring database is awake before processing email {email_id}")
     if not _ensure_database_awake():
-        logger.warning("Proceeding with email processing despite database health check failure")
+        logger.warning(
+            "Proceeding with email processing despite database health check failure"
+        )
 
     if not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email):
         logger.warning("Invalid email address provided: %s", recipient_email)
