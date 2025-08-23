@@ -45,7 +45,7 @@ def _ensure_database_awake() -> bool:
             
             if response.status_code == 200:
                 health_data = response.json()
-                if health_data.get("database_status") == "healthy":
+                if health_data.get("status") == "HEALTHY":
                     logger.info("Database confirmed to be awake and healthy")
                     return True
                 logger.warning(f"Database not healthy: {health_data}")
