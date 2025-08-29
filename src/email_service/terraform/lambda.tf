@@ -14,7 +14,7 @@ locals {
   source_path                                    = "${path.module}/.."
   health_check_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-health_check-${random_string.this.result}"
   validate_input_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-validate_input-${random_string.this.result}"
-  create_runs_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-create_runs-${random_string.this.result}"
+  create_run_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-create_run-${random_string.this.result}"
   create_email_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-create_email-${random_string.this.result}"
   send_email_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-send_email-${random_string.this.result}"
   list_runs_function_name_and_ecr_repo_name      = "${var.environment}-${var.service_underscore}-list_runs-${random_string.this.result}"
@@ -729,16 +729,16 @@ module "list_runs_docker_image" {
 ####################################
 ####################################
 ####################################
-# POST /runs ########################
+# POST /run ########################
 ####################################
 ####################################
 ####################################
 
-module "create_runs_lambda" {
+module "create_run_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.create_runs_function_name_and_ecr_repo_name                             # Remember to change
+  function_name  = local.create_run_function_name_and_ecr_repo_name                             # Remember to change
   description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /runs" # Remember to change
   create_package = false
   timeout        = 60
@@ -749,7 +749,7 @@ module "create_runs_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri     = module.create_runs_docker_image.image_uri # Remember to change
+  image_uri     = module.create_run_docker_image.image_uri # Remember to change
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -836,7 +836,7 @@ module "create_runs_lambda" {
   }
 }
 
-module "create_runs_docker_image" {
+module "create_run_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
@@ -844,7 +844,7 @@ module "create_runs_docker_image" {
   keep_remotely        = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = local.create_runs_function_name_and_ecr_repo_name # Remember to change
+  ecr_repo             = local.create_run_function_name_and_ecr_repo_name # Remember to change
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
@@ -863,7 +863,7 @@ module "create_runs_docker_image" {
   })
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
-  source_path = "${local.source_path}/create_runs/" # Remember to change
+  source_path = "${local.source_path}/create_run/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }
