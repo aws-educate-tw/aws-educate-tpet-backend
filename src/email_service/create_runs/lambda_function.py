@@ -4,20 +4,14 @@ import uuid
 
 from botocore.exceptions import ClientError
 from run_repository import RunRepository
-
-# current_user_util might be needed if we enforce run access by sender_id
-# from current_user_util import CurrentUserUtil
+from run_type_enum import RunType
+from recipient_source_enum import RecipientSource
 
 # Configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Valid values for run_type and recipient_source
-VALID_RUN_TYPES = ["WEBHOOK", "EMAIL"]
-VALID_RECIPIENT_SOURCES = ["DIRECT", "SPREADSHEET"]
-
 run_repo = RunRepository()
-
 
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for creating an empty run with a specified run_type."""
@@ -39,6 +33,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
         # Validate required fields
         if not run_type:
+            valid_run_types = [rt.value for rt in RunType]
             logger.error(
                 "Missing required field 'run_type'. Request ID: %s", aws_request_id
             )
@@ -46,7 +41,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                 "statusCode": 400,
                 "body": json.dumps(
                     {
-                        "message": "'run_type' is required and cannot be empty. the valid values include 'WEBHOOK', 'EMAIL'",
+                        "message": f"'run_type' is required and cannot be empty. the valid values include {', '.join(valid_run_types)}",
                         "error": "Missing required field",
                         "request_id": aws_request_id,
                     }
@@ -54,7 +49,8 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             }
 
         # Validate run_type value
-        if run_type not in VALID_RUN_TYPES:
+        valid_run_types = [rt.value for rt in RunType]
+        if run_type not in valid_run_types:
             logger.error(
                 "Invalid value for run_type: %s. Request ID: %s",
                 run_type,
@@ -64,7 +60,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                 "statusCode": 422,
                 "body": json.dumps(
                     {
-                        "message": "Invalid value for run_type. Allowed: WEBHOOK, EMAIL",
+                        "message": f"Invalid value for run_type. Allowed: {', '.join(valid_recipient_sources)}",
                         "error": "Invalid value",
                         "request_id": aws_request_id,
                     }
@@ -72,7 +68,8 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             }
 
         # Validate recipient_source if provided
-        if recipient_source and recipient_source not in VALID_RECIPIENT_SOURCES:
+        valid_recipient_sources = [rs.value for rs in RecipientSource]
+        if recipient_source and recipient_source not in valid_recipient_sources:
             logger.error(
                 "Invalid value for recipient_source: %s. Request ID: %s",
                 recipient_source,
@@ -82,7 +79,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                 "statusCode": 422,
                 "body": json.dumps(
                     {
-                        "message": "Invalid value for recipient_source. Allowed: DIRECT, SPREADSHEET",
+                        "message": f"Invalid value for recipient_source. Allowed: {', '.join(valid_recipient_sources)}",
                         "error": "Invalid value",
                         "request_id": aws_request_id,
                     }
@@ -108,15 +105,6 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             "spreadsheet_file_id": None,
             "spreadsheet_file": None,
             "template_file": None,
-        }
-
-        # For now, hardcode sender info for demonstration/testing
-        run_data["sender_id"] = "9881b370-0031-7037-b42e-ef737d3aa382"
-        run_data["sender"] = {
-            "email": "surveycake@aws-educate.tw",
-            "user_id": "9881b370-0031-7037-b42e-ef737d3aa382",
-            "username": "surveycake",
-            "cognito_sub": "9881b370-0031-7037-b42e-ef737d3aa382",
         }
 
         logger.info(
@@ -149,9 +137,8 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                 aws_request_id,
             )
 
-            # Return the newly created run with a 200 status code (as specified in requirements)
             return {
-                "statusCode": 200,  # Changed from 201 to 200 as per API design
+                "statusCode": 201,  
                 "headers": {"Content-Type": "application/json"},
                 "body": json.dumps(created_run),
             }
