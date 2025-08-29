@@ -16,6 +16,9 @@ run_repo = RunRepository()
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for creating an empty run with a specified run_type."""
 
+    valid_run_types = [rt.value for rt in RunType]
+    valid_recipient_sources = [rs.value for rs in RecipientSource]
+
     aws_request_id = getattr(context, "aws_request_id", None)
     logger.info("Received event: %s", event)
 
@@ -33,7 +36,6 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
         # Validate required fields
         if not run_type:
-            valid_run_types = [rt.value for rt in RunType]
             logger.error(
                 "Missing required field 'run_type'. Request ID: %s", aws_request_id
             )
@@ -48,8 +50,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                 ),
             }
 
-        # Validate run_type value
-        valid_run_types = [rt.value for rt in RunType]
+        
         if run_type not in valid_run_types:
             logger.error(
                 "Invalid value for run_type: %s. Request ID: %s",
@@ -60,15 +61,13 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                 "statusCode": 422,
                 "body": json.dumps(
                     {
-                        "message": f"Invalid value for run_type. Allowed: {', '.join(valid_recipient_sources)}",
+                        "message": f"Invalid value for run_type. Allowed: {', '.join(valid_run_types)}",
                         "error": "Invalid value",
                         "request_id": aws_request_id,
                     }
                 ),
             }
 
-        # Validate recipient_source if provided
-        valid_recipient_sources = [rs.value for rs in RecipientSource]
         if recipient_source and recipient_source not in valid_recipient_sources:
             logger.error(
                 "Invalid value for recipient_source: %s. Request ID: %s",
