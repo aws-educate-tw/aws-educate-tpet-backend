@@ -51,7 +51,6 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                 ),
             }
 
-        
         if run_type not in valid_run_types:
             logger.error(
                 "Invalid value for run_type: %s. Request ID: %s",
