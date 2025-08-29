@@ -2,6 +2,7 @@ import datetime
 import json
 import logging
 import os
+from run_repository import RunRepository
 
 # Initialize Logger
 logger = logging.getLogger()
@@ -43,9 +44,17 @@ def lambda_handler(event: dict, context) -> dict:
     formatted_service_name = format_service_name(SERVICE)
     logger.info("Health check started for service: %s", formatted_service_name)
 
+    repo = RunRepository()
+    if repo.check_connection():
+        status = "HEALTHY"
+        http_code = 200
+    else:
+        status = "UNHEALTHY"
+        http_code = 500
+
     # Build health check response
     health_status = {
-        "status": "HEALTHY",
+        "status": status,
         "service": formatted_service_name,
         "environment": ENVIRONMENT,
         "checked_at": datetime.datetime.now(datetime.UTC).strftime(TIME_FORMAT),
@@ -55,7 +64,7 @@ def lambda_handler(event: dict, context) -> dict:
 
     # Return health check response
     return {
-        "statusCode": 200,
+        "statusCode": http_code,
         "headers": {
             "Content-Type": "application/json",
         },
