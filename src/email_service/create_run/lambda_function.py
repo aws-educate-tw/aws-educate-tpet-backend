@@ -3,16 +3,15 @@ import logging
 import uuid
 
 from botocore.exceptions import ClientError
-from recipient_source_enum import RecipientSource
 from run_repository import RunRepository
 from run_type_enum import RunType
+from recipient_source_enum import RecipientSource
 
 # Configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 run_repo = RunRepository()
-
 
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for creating an empty run with a specified run_type."""
@@ -139,7 +138,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             )
 
             return {
-                "statusCode": 201,
+                "statusCode": 201,  
                 "headers": {"Content-Type": "application/json"},
                 "body": json.dumps(created_run),
             }
