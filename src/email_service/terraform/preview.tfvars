@@ -9,3 +9,4 @@ enable_pitr                                   = false
 enable_deletion_protection_for_dynamodb_table = true
 lambda_architecture                           = "x86_64"
 database_name                                 = "email_service_db"
+domain_name                                   = "aws-educate.tw"
