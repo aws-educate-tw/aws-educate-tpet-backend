@@ -681,6 +681,13 @@
 						"type": "text/javascript",
 						"packages": {}
 					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [],
+						"type": "text/javascript"
+					}
 				}
 			],
 			"protocolProfileBehavior": {
@@ -836,6 +843,204 @@
 					],
 					"cookie": [],
 					"body": "{\n    \"data\": [\n        {\n            \"bcc\": [\n                \"rich.liu627@gmail.com\"\n            ],\n            \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - BCC CC test-local-dev 11:11 （參與證明請參見附件）\",\n            \"cc\": [\n                \"ptqwe20020413@gmail.com\",\n                \"h830519h@yahoo.com.tw\"\n            ],\n            \"run_id\": \"5b2003e667134c8fa9aabec1e7f75cba\",\n            \"attachment_files\": [\n                {\n                    \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d7dc554e23d64414b9fcb5b85ca65351_%28For%20Test%29Certificate-for-bcc-test.xlsx\",\n                    \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                    \"updated_at\": \"2024-08-02T13:59:25Z\",\n                    \"file_name\": \"(For Test)Certificate-for-bcc-test.xlsx\",\n                    \"file_id\": \"d7dc554e23d64414b9fcb5b85ca65351\",\n                    \"s3_object_key\": \"d7dc554e23d64414b9fcb5b85ca65351_(For Test)Certificate-for-bcc-test.xlsx\",\n                    \"created_at\": \"2024-08-02T13:59:25Z\",\n                    \"file_extension\": \"xlsx\",\n                    \"file_size\": 32117\n                }\n            ],\n            \"created_at\": \"2024-08-02T15:11:48Z\",\n            \"sender_local_part\": \"event\",\n            \"spreadsheet_file_id\": \"d7dc554e23d64414b9fcb5b85ca65351\",\n            \"created_year_month\": \"2024-08\",\n            \"attachment_file_ids\": [\n                \"d7dc554e23d64414b9fcb5b85ca65351\"\n            ],\n            \"is_generate_certificate\": false,\n            \"spreadsheet_file\": {\n                \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d7dc554e23d64414b9fcb5b85ca65351_%28For%20Test%29Certificate-for-bcc-test.xlsx\",\n                \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                \"updated_at\": \"2024-08-02T13:59:25Z\",\n                \"file_name\": \"(For Test)Certificate-for-bcc-test.xlsx\",\n                \"file_id\": \"d7dc554e23d64414b9fcb5b85ca65351\",\n                \"s3_object_key\": \"d7dc554e23d64414b9fcb5b85ca65351_(For Test)Certificate-for-bcc-test.xlsx\",\n                \"created_at\": \"2024-08-02T13:59:25Z\",\n                \"file_extension\": \"xlsx\",\n                \"file_size\": 32117\n            },\n            \"display_name\": \"AWS Educate 參與證明\",\n            \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n            \"sender\": {\n                \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                \"email\": \"ptqwe20020413@gmail.com\",\n                \"username\": \"ptshiun\"\n            },\n            \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n            \"success_email_count\": 3,\n            \"expected_email_send_count\": 3,\n            \"reply_to\": \"harryup2000@gmail.com\",\n            \"template_file\": {\n                \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n                \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                \"updated_at\": \"2024-08-02T03:24:16Z\",\n                \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n                \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n                \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n                \"created_at\": \"2024-08-02T03:24:16Z\",\n                \"file_extension\": \"html\",\n                \"file_size\": 3164\n            },\n            \"created_year_month_day\": \"2024-08-02\",\n            \"created_year\": \"2024\"\n        }\n    ],\n    \"previous_last_evaluated_key\": null,\n    \"current_last_evaluated_key\": null,\n    \"next_last_evaluated_key\": \"eyJydW5faWQiOiAiNWIyMDAzZTY2NzEzNGM4ZmE5YWFiZWMxZTdmNzVjYmEiLCAiY3JlYXRlZF95ZWFyIjogIjIwMjQiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTA4LTAyVDE1OjExOjQ4WiJ9\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Create run",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// 將回應的 JSON 字串轉換為 JavaScript 物件，方便後續取用",
+							"const responseBody = pm.response.json();",
+							"",
+							"// 測試 1：檢查 HTTP 狀態碼是否為 201 Created",
+							"pm.test(\"Status code is 201 Created\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"// 測試 2：檢查回應 Body 的內容是否符合預期",
+							"pm.test(\"Response body values are correct\", function () {",
+							"    // 檢查 run_type 是否與請求的 \"WEBHOOK\" 相符",
+							"    pm.expect(responseBody.run_type).to.eql(\"WEBHOOK\");",
+							"    ",
+							"    // 檢查 recipient_source 是否與請求的 \"DIRECT\" 相符",
+							"    pm.expect(responseBody.recipient_source).to.eql(\"DIRECT\");",
+							"});",
+							"",
+							"// 測試 3：檢查關鍵欄位的存在與格式",
+							"pm.test(\"Key properties exist and have correct format\", function () {",
+							"    // 檢查 run_id 是否存在、是字串，且不是空字串",
+							"    pm.expect(responseBody).to.have.property(\"run_id\");",
+							"    pm.expect(responseBody.run_id).to.be.a('string').and.to.not.be.empty;",
+							"    ",
+							"    // 檢查 created_at 是否存在，且是字串格式 (可再用正規表達式做更嚴謹的日期格式驗證)",
+							"    pm.expect(responseBody).to.have.property(\"created_at\");",
+							"    pm.expect(responseBody.created_at).to.be.a('string');",
+							"});",
+							"",
+							"// 測試 4：檢查初始計數值是否為 0",
+							"pm.test(\"Initial counts are zero\", function () {",
+							"    pm.expect(responseBody.expected_email_send_count).to.eql(0);",
+							"    pm.expect(responseBody.success_email_count).to.eql(0);",
+							"    pm.expect(responseBody.failed_email_count).to.eql(0);",
+							"});",
+							"",
+							"// 測試 5：檢查特定欄位的資料型別是否為陣列",
+							"pm.test(\"Data types for array fields are correct\", function () {",
+							"    pm.expect(responseBody.recipients).to.be.an('array');",
+							"    pm.expect(responseBody.cc).to.be.an('array');",
+							"    pm.expect(responseBody.bcc).to.be.an('array');",
+							"});",
+							"",
+							"// (可選) 將 run_id 存為環境變數，方便後續的 API 請求（例如：GET /runs/{run_id}）使用",
+							"if (responseBody.run_id) {",
+							"    pm.environment.set(\"runId\", responseBody.run_id);",
+							"    console.log(\"已將 runId 存到環境變數: \" + responseBody.run_id);",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{access_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"run_type\": \"WEBHOOK\",\n    \"recipient_source\": \"DIRECT\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs",
+					"protocol": "https",
+					"host": [
+						"{{environment}}-email-service-internal-api-tpet",
+						"aws-educate",
+						"tw"
+					],
+					"path": [
+						"{{environment}}",
+						"runs"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "201",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"run_type\": \"WEBHOOK\",\n    \"recipient_source\": \"DIRECT\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "/runs",
+							"path": [
+								"runs"
+							]
+						}
+					},
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"run_id\": \"d8cdb093de9c4000b6c615f49b7c2416\",\n    \"run_type\": \"DIRECT\",\n    \"attachment_file_ids\": [],\n    \"attachment_files\": [],\n    \"created_at\": \"2025-05-11T00:26:56Z\",\n    \"created_year\": \"2025\",\n    \"created_year_month\": \"2025-05\",\n    \"created_year_month_day\": \"2025-05-11\",\n    \"expected_email_send_count\": 0,\n    \"is_generate_certificate\": false,\n    \"recipients\": [],\n    \"recipient_source\": \"DIRECT\",\n    \"reply_to\": \"\",\n    \"sender\": {\n        \"email\": \"surveycake@aws-educate.tw\",\n        \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"username\": \"surveycake\",\n        \"cognito_sub\": \"9881b370-0031-7037-b42e-ef737d3aa382\"\n    },\n    \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n    \"sender_local_part\": \"\",\n    \"spreadsheet_file\": null,\n    \"spreadsheet_file_id\": null,\n    \"subject\": \"\",\n    \"success_email_count\": 0,\n    \"template_file\": null,\n    \"template_file_id\": \"\",\n    \"failed_email_count\": 0\n}"
+				},
+				{
+					"name": "400 (missing run_type)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"recipient_source\": \"DIRECT\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "/runs",
+							"path": [
+								"runs"
+							]
+						}
+					},
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"'run_type' field is required and cannot be empty. Valid values are 'WEBHOOK' and 'EMAIL'.\",\n    \"error\": \"Missing required field\",\n    \"request_id\": \"d8cdb093de9c4000b6c615f49b7c2416\"\n}"
+				},
+				{
+					"name": "422 (Invalid Value)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"run_type\": \"WEBHOOOOOOK\",\n    \"recipient_source\": \"DIRECT\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "/runs",
+							"path": [
+								"runs"
+							]
+						}
+					},
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Invalid value for run_type. Allowed: WEBHOOK, EMAIL\",\n    \"error\": \"Invalid value\",\n    \"request_id\": \"d8cdb093de9c4000b6c615f49b7c2416\"\n}"
 				}
 			]
 		}
