@@ -65,6 +65,9 @@ module "health_check_lambda" {
   environment_variables = {
     "ENVIRONMENT" = var.environment,
     "SERVICE"     = var.service_underscore
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
   }
 
   allowed_triggers = {
@@ -80,6 +83,35 @@ module "health_check_lambda" {
     "Service"     = var.service_underscore
   }
 
+  ######################
+  # Additional policies
+  ######################
+
+  attach_policy_statements = true
+  policy_statements = {
+    rds_data_access = {
+      effect = "Allow",
+      actions = [
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_arn
+      ]
+    },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    }
+  }
 }
 
 module "health_check_docker_image" {
