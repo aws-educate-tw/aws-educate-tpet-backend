@@ -762,6 +762,7 @@ module "create_run_lambda" {
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+    "DOMAIN_NAME"                         = var.domain_name
   }
 
   allowed_triggers = {
