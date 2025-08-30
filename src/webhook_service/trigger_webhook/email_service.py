@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 RECIPIENT_SOURCE = "DIRECT"
+RUN_TYPE = "WEBHOOK"
 
 
 class EmailService:
@@ -30,6 +31,8 @@ class EmailService:
         ]
 
         return {
+            "run_type": RUN_TYPE,
+            "run_id": webhook_details.get("run_id"),
             "recipient_source": RECIPIENT_SOURCE,
             "subject": webhook_details["subject"],
             "display_name": webhook_details["display_name"],
