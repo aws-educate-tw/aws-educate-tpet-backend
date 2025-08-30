@@ -15,6 +15,7 @@ run_repo = RunRepository()
 
 test = 1
 
+
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for creating an empty run with a specified run_type."""
 
