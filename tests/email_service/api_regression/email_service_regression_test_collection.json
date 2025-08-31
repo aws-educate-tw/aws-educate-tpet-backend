@@ -703,8 +703,15 @@
 							}
 						},
 						"url": {
-							"raw": "/runs",
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-email-service-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
 							"path": [
+								"{{environment}}",
 								"runs"
 							]
 						}
