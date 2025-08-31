@@ -42,14 +42,20 @@ def _ensure_database_awake() -> bool:
 
     for attempt in range(max_retries):
         try:
-            logger.info("Attempting database health check (attempt %d/%d)", attempt + 1, max_retries)
+            logger.info(
+                "Attempting database health check (attempt %d/%d)",
+                attempt + 1,
+                max_retries,
+            )
             response = requests.get(health_check_url, timeout=5)
 
             if response.status_code == 200:
                 logger.info("Database confirmed to be awake and healthy")
                 return True
             else:
-                logger.warning("Health check failed with status code: %d", response.status_code)
+                logger.warning(
+                    "Health check failed with status code: %d", response.status_code
+                )
 
             # If we haven't returned yet, we need to retry
             if attempt < max_retries - 1:
@@ -183,7 +189,9 @@ def process_email(email_data: dict) -> None:
         try:
             run_repository.increment_failed_email_count(run_id)
         except Exception as repo_error:
-            logger.error("Error incrementing failed count after exception: %s", str(repo_error))
+            logger.error(
+                "Error incrementing failed count after exception: %s", str(repo_error)
+            )
             # Raise the repository error instead of the original error
             raise repo_error
         raise
