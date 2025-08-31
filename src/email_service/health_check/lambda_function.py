@@ -42,32 +42,43 @@ def lambda_handler(event: dict, context) -> dict:
     Returns:
         dict: Lambda response containing health check status
     """
-    formatted_service_name = format_service_name(SERVICE)
-    logger.info("Health check started for service: %s", formatted_service_name)
+    try:
+        formatted_service_name = format_service_name(SERVICE)
+        logger.info("Health check started for service: %s", formatted_service_name)
 
-    repo = RunRepository()
-    if repo.check_connection():
-        status = "HEALTHY"
-        http_code = 200
-    else:
-        status = "UNHEALTHY"
-        http_code = 500
+        repo = RunRepository()
+        if repo.check_connection():
+            status = "HEALTHY"
+            message = "Aurora database connection successful"
+        else:
+            status = "UNHEALTHY"
+            message = "Aurora database connection failed"
 
-    # Build health check response
-    health_status = {
-        "status": status,
-        "service": formatted_service_name,
-        "environment": ENVIRONMENT,
-        "checked_at": datetime.datetime.now(datetime.UTC).strftime(TIME_FORMAT),
-    }
+        # Build health check response
+        health_status = {
+            "status": status,
+            "message": message,
+            "service": formatted_service_name,
+            "environment": ENVIRONMENT,
+            "checked_at": datetime.datetime.now(datetime.UTC).strftime(TIME_FORMAT),
+        }
 
-    logger.info("Health check result: %s", json.dumps(health_status))
+        logger.info("Health check result: %s", json.dumps(health_status))
 
-    # Return health check response
-    return {
-        "statusCode": http_code,
-        "headers": {
-            "Content-Type": "application/json",
-        },
-        "body": json.dumps(health_status),
-    }
+        # Return health check response
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": "application/json",
+            },
+            "body": json.dumps(health_status),
+        }
+    except Exception as e:
+        logger.error("Error occurred during health check: %s", e)
+        return {
+            "statusCode": 500,
+            "headers": {
+                "Content-Type": "application/json",
+            },
+            "body": json.dumps({"error": str(e)}),
+        }

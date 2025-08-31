@@ -136,7 +136,7 @@ class RunRepository:
         Select 1 to check database connectivity.
         """
         try:
-            sql = "SELECT run_id FROM runs LIMIT 1"
+            sql = "SELECT 1"
             self._execute(sql, [], fetch=True)
             return True
         except Exception as e:
