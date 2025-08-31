@@ -22,6 +22,7 @@ logger.setLevel(logging.INFO)
 SEND_EMAIL_SQS_QUEUE_URL = os.getenv("SEND_EMAIL_SQS_QUEUE_URL")
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 ENVIRONMENT = os.environ.get("ENVIRONMENT")
+DOMAIN_NAME = os.getenv("DOMAIN_NAME")
 
 # Initialize clients and services
 file_service = FileService()
@@ -35,7 +36,7 @@ def _ensure_database_awake() -> bool:
 
     :return: True if database is confirmed awake, False otherwise
     """
-    health_check_url = f"https://{ENVIRONMENT}-email-service-internal-api-tpet.aws-educate.tw/{ENVIRONMENT}/email-service/health"
+    health_check_url = f"https://{ENVIRONMENT}-email-service-internal-api-tpet.{DOMAIN_NAME}/{ENVIRONMENT}/email-service/health"
     max_retries = 7
     retry_delay = 5  # seconds
 
