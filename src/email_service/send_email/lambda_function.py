@@ -42,28 +42,24 @@ def _ensure_database_awake() -> bool:
 
     for attempt in range(max_retries):
         try:
-            logger.info(
-                f"Attempting database health check (attempt {attempt + 1}/{max_retries})"
-            )
+            logger.info("Attempting database health check (attempt %d/%d)", attempt + 1, max_retries)
             response = requests.get(health_check_url, timeout=5)
 
             if response.status_code == 200:
                 logger.info("Database confirmed to be awake and healthy")
                 return True
             else:
-                logger.warning(
-                    f"Health check failed with status code: {response.status_code}"
-                )
+                logger.warning("Health check failed with status code: %d", response.status_code)
 
             # If we haven't returned yet, we need to retry
             if attempt < max_retries - 1:
-                logger.info(f"Waiting {retry_delay} seconds before retrying...")
+                logger.info("Waiting %d seconds before retrying...", retry_delay)
                 time.sleep(retry_delay)
 
         except Exception as e:
-            logger.error(f"Error during database health check: {str(e)}")
+            logger.error("Error during database health check: %s", str(e))
             if attempt < max_retries - 1:
-                logger.info(f"Waiting {retry_delay} seconds before retrying...")
+                logger.info("Waiting %d seconds before retrying...", retry_delay)
                 time.sleep(retry_delay)
 
     logger.error("Database health check failed after maximum retries")
@@ -104,7 +100,7 @@ def process_email(email_data: dict) -> None:
     email_id = email_data.get("email_id")
     run_id = email_data.get("run_id")
 
-    logger.info(f"Ensuring database is awake before processing email {email_id}")
+    logger.info("Ensuring database is awake before processing email %s", email_id)
     if not _ensure_database_awake():
         logger.warning(
             "Proceeding with email processing despite database health check failure"
