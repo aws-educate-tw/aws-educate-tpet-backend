@@ -102,9 +102,9 @@ def process_email(email_data: dict) -> None:
 
     logger.info("Ensuring database is awake before processing email %s", email_id)
     if not _ensure_database_awake():
-        logger.warning(
-            "Proceeding with email processing despite database health check failure"
-        )
+        logger.error("Database unavailable while processing email %s: %s", email_id, e)
+        logger.error("SQS Message for replay: %s", json.dumps(email_data))
+        raise Exception("Database is not available for processing email")
 
     if not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email):
         logger.warning("Invalid email address provided: %s", recipient_email)
@@ -162,9 +162,17 @@ def process_email(email_data: dict) -> None:
 
         # Increment success count if email was sent successfully
         if status == "SUCCESS":
-            run_repository.increment_success_email_count(run_id)
+            try:
+                run_repository.increment_success_email_count(run_id)
+            except Exception as repo_error:
+                logger.error("Error incrementing success count: %s", str(repo_error))
+                raise repo_error
         elif status == "FAILED":
-            run_repository.increment_failed_email_count(run_id)
+            try:
+                run_repository.increment_failed_email_count(run_id)
+            except Exception as repo_error:
+                logger.error("Error incrementing failed count: %s", str(repo_error))
+                raise repo_error
 
     except Exception as e:
         logger.error("Error processing email %s: %s", email_id, str(e))
@@ -172,7 +180,12 @@ def process_email(email_data: dict) -> None:
         email_repository.update_email_status(
             run_id=run_id, email_id=email_id, status="FAILED"
         )
-        run_repository.increment_failed_email_count(run_id)  # Add this line
+        try:
+            run_repository.increment_failed_email_count(run_id)
+        except Exception as repo_error:
+            logger.error("Error incrementing failed count after exception: %s", str(repo_error))
+            # Raise the repository error instead of the original error
+            raise repo_error
         raise
 
 
