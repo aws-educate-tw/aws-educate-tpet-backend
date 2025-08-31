@@ -102,7 +102,7 @@ def process_email(email_data: dict) -> None:
 
     logger.info("Ensuring database is awake before processing email %s", email_id)
     if not _ensure_database_awake():
-        logger.error("Database unavailable while processing email %s: %s", email_id, e)
+        logger.error("Database unavailable while processing email %s", email_id)
         logger.error("SQS Message for replay: %s", json.dumps(email_data))
         raise Exception("Database is not available for processing email")
 
