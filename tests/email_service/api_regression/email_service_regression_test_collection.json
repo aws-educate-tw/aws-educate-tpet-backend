@@ -600,7 +600,7 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"const responseBody = pm.response.json();",
+							"responseBody = pm.response.json();",
 							"",
 							"pm.test(\"Status code is 201 Created\", function () {",
 							"    pm.response.to.have.status(201);",
