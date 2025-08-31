@@ -137,7 +137,8 @@ class RunRepository:
         """
         try:
             sql = "SELECT run_id FROM runs LIMIT 1"
-            return self._execute(sql, [], fetch=True)
+            self._execute(sql, [], fetch=True)
+            return True
         except Exception as e:
             logger.error("Error checking database connection: %s", e)
             return False
