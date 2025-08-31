@@ -13,7 +13,7 @@ logger.setLevel(logging.INFO)
 
 run_repo = RunRepository()
 
-test = 2
+test = 3
 
 
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
