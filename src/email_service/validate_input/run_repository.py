@@ -82,10 +82,12 @@ def parse_field(col_name, field):
 
 # Custom JSON encoder to handle Decimal types
 class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return str(obj)
-        return super().default(obj)
+    """Custom JSON encoder for Decimal objects."""
+
+    def default(self, o: object) -> object:
+        if isinstance(o, Decimal):
+            return float(o)
+        return super().default(o)
 
 
 class RunRepositoryError(Exception):
@@ -203,12 +205,47 @@ class RunRepository:
         except Exception as e:
             logger.error("Error deleting run: %s", e)
 
+    def increment_expected_email_send_count(self, run_id: str) -> bool:
+        """
+        Atomically increments the expected_email_send_count for a given run.
+
+        :param run_id: The ID of the run to update.
+        :return: True if the update was successful, False otherwise.
+        """
+        sql = ""
+        params = []
+        try:
+            sql = """
+                UPDATE runs
+                SET expected_email_send_count = expected_email_send_count + 1
+                WHERE run_id = :run_id
+            """
+            params = [
+                {"name": "run_id", "value": {"stringValue": run_id}},
+            ]
+
+            response = self._execute(sql, params)
+            # Check if the update was successful
+            if response == 0:
+                logger.warning(
+                    "No rows updated for run_id %s. It may not exist.", run_id
+                )
+                return False
+            return True
+        except Exception as e:
+            logger.error("Error incrementing expected_email_send_count: %s", e)
+            raise RunRepositoryError(
+                "Error incrementing expected_email_send_count", sql, params, e
+            ) from e
+
     def increment_success_email_count(self, run_id: str) -> None:
         """
         Increment the success_email_count for a run in the PostgreSQL database.
 
         :param run_id: The run ID to update
         """
+        sql = ""
+        params = []
         try:
             sql = """
                 UPDATE runs
@@ -401,10 +438,13 @@ class RunRepository:
                 database=self._database_name,
                 sql=sql,
                 parameters=parameters,
+                includeResultMetadata=(True if fetch else False),
             )
 
             if not fetch:
-                return None
+                return response.get(
+                    "numberOfRecordsUpdated", 0
+                )  # If fetch is False, return number of records updated
 
             columns = [col["name"] for col in response["columnMetadata"]]
             return [
