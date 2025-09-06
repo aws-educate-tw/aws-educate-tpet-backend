@@ -2,7 +2,9 @@ import json  # Added for parsing JSON strings
 import logging
 import os
 import re
+import time
 
+import requests
 from current_user_util import current_user_util
 from email_repository import EmailRepository
 from run_repository import RunRepository
@@ -19,11 +21,55 @@ logger.setLevel(logging.INFO)
 # Get environment variables
 SEND_EMAIL_SQS_QUEUE_URL = os.getenv("SEND_EMAIL_SQS_QUEUE_URL")
 BUCKET_NAME = os.getenv("BUCKET_NAME")
+ENVIRONMENT = os.environ.get("ENVIRONMENT")
+DOMAIN_NAME = os.getenv("DOMAIN_NAME")
 
 # Initialize clients and services
 file_service = FileService()
 email_repository = EmailRepository()
 run_repository = RunRepository()
+
+
+def _ensure_database_awake() -> bool:
+    """
+    Call health check API to ensure Aurora Serverless v2 is awake.
+
+    :return: True if database is confirmed awake, False otherwise
+    """
+    health_check_url = f"https://{ENVIRONMENT}-email-service-internal-api-tpet.{DOMAIN_NAME}/{ENVIRONMENT}/email-service/health"
+    max_retries = 7
+    retry_delay = 5  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            logger.info(
+                "Attempting database health check (attempt %d/%d)",
+                attempt + 1,
+                max_retries,
+            )
+            response = requests.get(health_check_url, timeout=5)
+
+            if response.status_code == 200:
+                logger.info("Database confirmed to be awake and healthy")
+                return True
+            else:
+                logger.warning(
+                    "Health check failed with status code: %d", response.status_code
+                )
+
+            # If we haven't returned yet, we need to retry
+            if attempt < max_retries - 1:
+                logger.info("Waiting %d seconds before retrying...", retry_delay)
+                time.sleep(retry_delay)
+
+        except Exception as e:
+            logger.error("Error during database health check: %s", str(e))
+            if attempt < max_retries - 1:
+                logger.info("Waiting %d seconds before retrying...", retry_delay)
+                time.sleep(retry_delay)
+
+    logger.error("Database health check failed after maximum retries")
+    return False
 
 
 def _parse_json_field(json_string, default_value=None, field_name="field"):
@@ -59,6 +105,12 @@ def process_email(email_data: dict) -> None:
     recipient_email = email_data.get("recipient_email")
     email_id = email_data.get("email_id")
     run_id = email_data.get("run_id")
+
+    logger.info("Ensuring database is awake before processing email %s", email_id)
+    if not _ensure_database_awake():
+        logger.error("Database unavailable while processing email %s", email_id)
+        logger.error("SQS Message for replay: %s", json.dumps(email_data))
+        raise Exception("Database is not available for processing email")
 
     if not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email):
         logger.warning("Invalid email address provided: %s", recipient_email)
@@ -116,9 +168,17 @@ def process_email(email_data: dict) -> None:
 
         # Increment success count if email was sent successfully
         if status == "SUCCESS":
-            run_repository.increment_success_email_count(run_id)
+            try:
+                run_repository.increment_success_email_count(run_id)
+            except Exception as repo_error:
+                logger.error("Error incrementing success count: %s", str(repo_error))
+                raise repo_error
         elif status == "FAILED":
-            run_repository.increment_failed_email_count(run_id)
+            try:
+                run_repository.increment_failed_email_count(run_id)
+            except Exception as repo_error:
+                logger.error("Error incrementing failed count: %s", str(repo_error))
+                raise repo_error
 
     except Exception as e:
         logger.error("Error processing email %s: %s", email_id, str(e))
@@ -126,7 +186,14 @@ def process_email(email_data: dict) -> None:
         email_repository.update_email_status(
             run_id=run_id, email_id=email_id, status="FAILED"
         )
-        run_repository.increment_failed_email_count(run_id)  # Add this line
+        try:
+            run_repository.increment_failed_email_count(run_id)
+        except Exception as repo_error:
+            logger.error(
+                "Error incrementing failed count after exception: %s", str(repo_error)
+            )
+            # Raise the repository error instead of the original error
+            raise repo_error
         raise
 
 
