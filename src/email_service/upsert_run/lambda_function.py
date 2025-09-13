@@ -113,13 +113,26 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     try:
         for record in event["Records"]:
             sqs_message = None
+
             try:
                 sqs_message = get_sqs_message(record)
             except Exception as e:
                 logger.error("Error getting SQS message: %s", e)
                 continue
 
+            run_id   = sqs_message["run_id"]
+            run_type = sqs_message["run_type"]
+
             try:
+                if run_type == RunType.WEBHOOK.value:
+                    existing_run = run_repository.get_run_by_id(run_id)
+                    if not existing_run:
+                        raise ValueError(f"Run with ID {run_id} not found.")
+                    if existing_run.get("run_type") != RunType.WEBHOOK.value:
+                        raise ValueError(
+                            f"Run with ID {run_id} is not a WEBHOOK run type, but {existing_run.get('run_type')}"
+                        )
+            
                 message_body = json.loads(sqs_message["body"])
                 access_token = message_body.pop("access_token")
                 common_data = message_body
