@@ -29,49 +29,6 @@ file_service = FileService()
 email_repository = EmailRepository()
 run_repository = RunRepository()
 
-
-def _ensure_database_awake() -> bool:
-    """
-    Call health check API to ensure Aurora Serverless v2 is awake.
-
-    :return: True if database is confirmed awake, False otherwise
-    """
-    health_check_url = f"https://{ENVIRONMENT}-email-service-internal-api-tpet.{DOMAIN_NAME}/{ENVIRONMENT}/email-service/health"
-    max_retries = 7
-    retry_delay = 5  # seconds
-
-    for attempt in range(max_retries):
-        try:
-            logger.info(
-                "Attempting database health check (attempt %d/%d)",
-                attempt + 1,
-                max_retries,
-            )
-            response = requests.get(health_check_url, timeout=5)
-
-            if response.status_code == 200:
-                logger.info("Database confirmed to be awake and healthy")
-                return True
-            else:
-                logger.warning(
-                    "Health check failed with status code: %d", response.status_code
-                )
-
-            # If we haven't returned yet, we need to retry
-            if attempt < max_retries - 1:
-                logger.info("Waiting %d seconds before retrying...", retry_delay)
-                time.sleep(retry_delay)
-
-        except Exception as e:
-            logger.error("Error during database health check: %s", str(e))
-            if attempt < max_retries - 1:
-                logger.info("Waiting %d seconds before retrying...", retry_delay)
-                time.sleep(retry_delay)
-
-    logger.error("Database health check failed after maximum retries")
-    return False
-
-
 def _parse_json_field(json_string, default_value=None, field_name="field"):
     """Helper to parse JSON string fields from SQS message."""
     if isinstance(json_string, list | dict):  # Already parsed
@@ -107,10 +64,6 @@ def process_email(email_data: dict) -> None:
     run_id = email_data.get("run_id")
 
     logger.info("Ensuring database is awake before processing email %s", email_id)
-    if not _ensure_database_awake():
-        logger.error("Database unavailable while processing email %s", email_id)
-        logger.error("SQS Message for replay: %s", json.dumps(email_data))
-        raise Exception("Database is not available for processing email")
 
     if not re.match(r"[^@]+@[^@]+\.[^@]+", recipient_email):
         logger.warning("Invalid email address provided: %s", recipient_email)
