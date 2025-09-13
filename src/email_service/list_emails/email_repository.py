@@ -118,7 +118,8 @@ class EmailRepository:
         # Add sorting
         sort_by = filter_criteria_dict.get("sort_by", "created_at")
         sort_order = filter_criteria_dict.get("sort_order", "DESC").upper()
-        sql_string += f" ORDER BY {sort_by} {sort_order}"
+        # Add a secondary, unique sort key to ensure stable pagination
+        sql_string += f" ORDER BY {sort_by} {sort_order}, email_id {sort_order}"
 
         # Add pagination
         sql_string, sql_parameters_list = self._add_pagination_sql(
