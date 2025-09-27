@@ -347,13 +347,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             # For webhook append mode, validation is based on the request body,
             # not the parent run. The run_id is only for grouping.
             try:
-                # existing_run = run_repository.get_run_by_id(run_id)
-                # if not existing_run:
-                #     raise ValueError(f"Run with ID {run_id} not found.")
-                # if existing_run.get("run_type") != RunType.WEBHOOK.value:
-                #     raise ValueError(
-                #         f"Run with ID {run_id} is not a WEBHOOK run type, but {existing_run.get('run_type')}"
-                #     )
                 # Validate required inputs from the body
                 if not subject:
                     raise ValueError("Missing email subject")
@@ -379,12 +372,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
             except (ValueError, RequestException) as e:
                 return error_responder.create_error_response(400, str(e))
-
-            # If validation passes, increment the counter atomically
-            # if not run_repository.increment_expected_email_send_count(run_id):
-            #     return error_responder.create_error_response(
-            #         404, f"Run with ID {run_id} not found for counter increment."
-            #     )
 
             # Prepare message body for SQS using data from the request body
             current_user_info = current_user_util.get_current_user_info()
@@ -488,11 +475,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         current_user_info = current_user_util.get_current_user_info()
         sender_id = current_user_info.get("user_id")
 
-        # Get attachment file information
-        # attachment_files = [
-        #     get_file_info(file_id, access_token) for file_id in attachment_file_ids
-        # ]
-
         # Prepare common data
         common_data = {
             "recipient_source": recipient_source,
@@ -519,21 +501,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "success_email_count": 0,
             "expected_email_send_count": expected_email_send_count,
         }
-
-        # Prepare and save run item
-        # run_item = prepare_run_data(
-        #     recipient_source,
-        #     common_data,
-        #     template_info,
-        #     spreadsheet_info,
-        #     attachment_files,
-        #     current_user_info,
-        # )
-
-        # if not run_repository.upsert_run(run_item):
-        #     return error_responder.create_error_response(
-        #         500, f"Failed to save run: {run_item['run_id']}"
-        #     )
 
         # Send message to SQS
         message_body = {**common_data, "access_token": access_token}
