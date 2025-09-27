@@ -1,4 +1,5 @@
 import logging
+
 import jwt
 
 from auth_service import AuthService
