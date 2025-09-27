@@ -257,7 +257,7 @@ module "validate_input_lambda" {
         "sqs:SendMessage"
       ],
       resources = [
-        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.create_email_sqs.queue_name}"
+        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.auto_resumer_sqs.queue_name}"
       ]
     },
   }
@@ -324,7 +324,7 @@ module "auto_resume_aurora_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri     = module.auto_resume_aurora_docker_image# Remember to change
+  image_uri     = module.auto_resume_aurora_docker_image.image_uri # Remember to change
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -338,6 +338,7 @@ module "auto_resume_aurora_lambda" {
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+    "DOMAIN_NAME"                        = var.domain_name
   }
 
   allowed_triggers = {
@@ -390,7 +391,7 @@ module "auto_resume_aurora_lambda" {
         "sqs:GetQueueAttributes"
       ],
       resources = [
-        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.auto_resumer_sqs.queue_name}"
+        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.auto_resumer_sqs.queue_name}",
       ]
     },
     s3_crud = {
@@ -485,7 +486,7 @@ module "upsert_run_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri     = module.auto_resume_aurora_docker_image# Remember to change
+  image_uri     = module.upsert_run_docker_image.image_uri # Remember to change
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -495,6 +496,8 @@ module "upsert_run_lambda" {
     "SERVICE"                            = var.service_underscore
     "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
     "UPSERT_RUN_SQS_QUEUE_URL"           = module.upsert_run_sqs.queue_url
+    "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
+    "DOMAIN_NAME"                        = var.domain_name
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
@@ -550,7 +553,7 @@ module "upsert_run_lambda" {
         "sqs:GetQueueAttributes"
       ],
       resources = [
-        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.auto_resumer_sqs.queue_name}"
+        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.upsert_run_sqs.queue_name}",
       ]
     },
     s3_crud = {
@@ -578,7 +581,7 @@ module "upsert_run_lambda" {
         "sqs:SendMessage"
       ],
       resources = [
-        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.upsert_run_sqs.queue_name}"
+        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.create_email_sqs.queue_name}"
       ]
     }
   }
