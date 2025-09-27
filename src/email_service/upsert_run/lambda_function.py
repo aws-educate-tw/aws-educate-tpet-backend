@@ -153,12 +153,8 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             run_type = sqs_message["run_type"]
 
             try:
-                # message_body = json.loads(sqs_message["body"])
                 access_token = sqs_message.pop("access_token")
                 receipt_handle = sqs_message.pop("receipt_handle")
-                # common_data = message_body
-                # run_id = common_data["run_id"]
-                # run_type = common_data["run_type"]
 
                 if run_type == RunType.WEBHOOK.value:
                     existing_run = run_repository.get_run_by_id(run_id)
@@ -169,9 +165,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                             f"Run with ID {run_id} is not a WEBHOOK run type, but {existing_run.get('run_type')}"
                         )
 
-                # message_body = json.loads(sqs_message["body"])
-                # access_token = message_body.pop("access_token")
-                # common_data = message_body
                 current_user_util.set_current_user_by_access_token(access_token)
                 current_user_info = current_user_util.get_current_user_info()
                 recipient_source = sqs_message["recipient_source"]
