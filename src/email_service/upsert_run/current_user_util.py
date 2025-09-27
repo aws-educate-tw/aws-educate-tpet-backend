@@ -1,4 +1,5 @@
 import logging
+import jwt
 
 from auth_service import AuthService
 
@@ -46,6 +47,25 @@ class CurrentUserUtil:
         if self._current_access_token is None:
             raise ValueError("Current user not set")
         return self._current_access_token
+
+    def get_user_id_from_access_token(self, access_token: str) -> str:
+        """
+        Decode the JWT access token and extract the user_id (sub).
+
+        :param access_token: JWT token for authorization
+        :return: User ID (sub) as a string
+        """
+        try:
+            decoded_token = jwt.decode(
+                access_token, options={"verify_signature": False}
+            )
+            user_id = decoded_token.get("sub")
+            if not user_id:
+                raise ValueError("sub not found in token")
+            return user_id
+        except jwt.PyJWTError as e:
+            logger.error("Error decoding access token: %s", e)
+            raise
 
 
 # Initialize a global instance of CurrentUserUtil

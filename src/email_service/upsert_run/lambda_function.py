@@ -2,7 +2,7 @@ import io
 import json
 import logging
 import requests
-from typing import Any, cast
+from typing import Dict, Any, cast
 import os
 import re
 import uuid
@@ -15,7 +15,7 @@ from run_type_enum import RunType
 from time_util import get_current_utc_time
 from requests.exceptions import RequestException
 from sqs import delete_sqs_message, get_sqs_message, send_message_to_queue
-
+from botocore.exceptions import ClientError
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -24,9 +24,11 @@ logger.setLevel(logging.INFO)
 # Constants
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 ENVIRONMENT = os.getenv("ENVIRONMENT")
+DOMAIN_NAME = os.getenv("DOMAIN_NAME")
 FILE_SERVICE_API_BASE_URL = (
-    f"https://{ENVIRONMENT}-file-service-internal-api-tpet.aws-educate.tw/{ENVIRONMENT}"
+    f"https://{ENVIRONMENT}-file-service-internal-api-tpet.{DOMAIN_NAME}/{ENVIRONMENT}"
 )
+CREATE_EMAIL_SQS_QUEUE_URL = os.getenv("CREATE_EMAIL_SQS_QUEUE_URL")
 UPSERT_RUN_SQS_QUEUE_URL = os.getenv("UPSERT_RUN_SQS_QUEUE_URL")
 DEFAULT_DISPLAY_NAME = "AWS Educate 雲端大使"
 DEFAULT_REPLY_TO = "awseducate.cloudambassador@gmail.com"
@@ -76,22 +78,49 @@ def get_file_info(file_id: str, access_token: str) -> dict[str, Any]:
         raise
 
 def prepare_run_data(
-    run_data: dict[str, Any],
+    recipient_source: str,
+    common_data: dict[str, Any],
+    template_info: dict[str, Any],
+    spreadsheet_info: dict[str, Any] | None,
+    attachment_files: list[dict[str, Any]],
     current_user_info: dict[str, Any],
 ) -> dict[str, Any]:
     """Prepare run item data."""
     created_at = get_current_utc_time()
     run_item = {
-        **run_data,
+        **common_data,
         "created_at": created_at,
         "created_year": created_at[:4],
         "created_year_month": created_at[:7],
         "created_year_month_day": created_at[:10],
+        "template_file": template_info,
+        "spreadsheet_file": (
+            spreadsheet_info
+            if recipient_source == RecipientSource.SPREADSHEET.value
+            else None
+        ),
+        "attachment_files": attachment_files,
         "sender": current_user_info,
     }
     return cast(dict[str, Any], convert_float_to_decimal(run_item))
 
 
+def forward_message_to_target_queue(message: Dict[str, Any], target_queue_url: str) -> bool:
+    """
+    Forward a message from auto-resumer queue to a target queue.
+
+    :param message: The SQS message to forward
+    :return: True if message was forwarded successfully, False otherwise
+    """
+    try:
+        logger.info("Forwarding message to target SQS queue")
+        send_message_to_queue(target_queue_url, message)
+        logger.info("Successfully forwarded message to target SQS queue")
+        return True
+    except Exception as e:
+        logger.error("Failed to forward message to target SQS queue: %s", str(e))
+        return False
+    
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Main Lambda function handler for upsert run operations."""
     logger.info("Lambda triggered with event: %s", event)
@@ -99,7 +128,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     if event.get("action") == "PREWARM":
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
-    
 
     # Initialize aws_request_id early
     aws_request_id = context.aws_request_id if context else "unknown"
@@ -124,6 +152,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             run_type = sqs_message["run_type"]
 
             try:
+                # message_body = json.loads(sqs_message["body"])
+                access_token = sqs_message.pop("access_token")
+                receipt_handle = sqs_message.pop("receipt_handle")
+                # common_data = message_body
+                # run_id = common_data["run_id"]
+                # run_type = common_data["run_type"]
+
                 if run_type == RunType.WEBHOOK.value:
                     existing_run = run_repository.get_run_by_id(run_id)
                     if not existing_run:
@@ -133,15 +168,15 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                             f"Run with ID {run_id} is not a WEBHOOK run type, but {existing_run.get('run_type')}"
                         )
             
-                message_body = json.loads(sqs_message["body"])
-                access_token = message_body.pop("access_token")
-                common_data = message_body
+                # message_body = json.loads(sqs_message["body"])
+                # access_token = message_body.pop("access_token")
+                # common_data = message_body
                 current_user_util.set_current_user_by_access_token(access_token)
                 current_user_info = current_user_util.get_current_user_info()
-                recipient_source = common_data["recipient_source"]
-                template_file_id = common_data["template_file_id"]
-                spreadsheet_file_id = common_data.get("spreadsheet_file_id")
-                attachment_file_ids = common_data.get("attachment_file_ids", [])
+                recipient_source = sqs_message["recipient_source"]
+                template_file_id = sqs_message["template_file_id"]
+                spreadsheet_file_id = sqs_message.get("spreadsheet_file_id")
+                attachment_file_ids = sqs_message.get("attachment_file_ids", [])
 
                 template_info = get_file_info(template_file_id, access_token)
                 spreadsheet_info = (
@@ -155,15 +190,36 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
                 run_item = prepare_run_data(
                     recipient_source,
-                    common_data,
+                    sqs_message,
                     template_info,
                     spreadsheet_info,
                     attachment_files,
                     current_user_info,
                 )
-
+                
                 if not run_repository.upsert_run(run_item):
                     raise RuntimeError(f"Failed to save run: {run_item['run_id']}")
+                
+                # Forward the message to upsert_run SQS queue
+                forward_message = {**sqs_message, "access_token": access_token, "receipt_handle": receipt_handle}
+                success_create = forward_message_to_target_queue(forward_message, CREATE_EMAIL_SQS_QUEUE_URL)
+
+                if not success_create:
+                    return {
+                        "statusCode": 500,
+                        "body": json.dumps({
+                            "message": "Failed to forward message to create_email SQS queue",
+                            "error": "Message forwarding error",
+                            "request_id": aws_request_id
+                        }),
+                    }
+                return {
+                    "statusCode": 200,
+                    "body": json.dumps({
+                        "message": "Message processed successfully",
+                        "request_id": aws_request_id
+                    }),
+                }
             except Exception as e:
                 logger.error("Request ID: %s, Error processing record: %s", aws_request_id, e)
                 continue
@@ -172,10 +228,10 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     try:
                         delete_sqs_message(
                             UPSERT_RUN_SQS_QUEUE_URL,
-                            sqs_message["receipt_handle"],
+                            receipt_handle,
                         )
                         logger.info(
-                            "Deleted message from SQS: %s", sqs_message["receipt_handle"]
+                            "Deleted message from SQS: %s", receipt_handle
                         )
                     except Exception as e:
                         logger.error("Error deleting SQS message: %s", e)
