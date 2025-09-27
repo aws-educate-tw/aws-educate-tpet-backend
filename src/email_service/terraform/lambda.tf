@@ -940,8 +940,6 @@ module "send_email_docker_image" {
     ]
   })
 
-
-
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/send_email/" # Remember to change
   triggers = {
