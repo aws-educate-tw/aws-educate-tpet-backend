@@ -7,20 +7,18 @@ from typing import Dict, Any, Optional
 from botocore.exceptions import ClientError
 from run_type_enum import RunType
 from sqs import delete_sqs_message, get_sqs_message, send_message_to_queue
-from file_service import FileService
 
 # Set up logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Get environment variables
-SEND_EMAIL_SQS_QUEUE_URL = os.getenv("SEND_EMAIL_SQS_QUEUE_URL")
+AUTO_RESUMER_SQS_QUEUE_URL = os.getenv("AUTO_RESUMER_SQS_QUEUE_URL")
 CREATE_EMAIL_SQS_QUEUE_URL = os.getenv("CREATE_EMAIL_SQS_QUEUE_URL")
+UPSERT_RUN_SQS_QUEUE_URL = os.getenv("UPSERT_RUN_SQS_QUEUE_URL")
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 ENVIRONMENT = os.environ.get("ENVIRONMENT")
 DOMAIN_NAME = os.getenv("DOMAIN_NAME")
-AUTO_RESUMER_SQS_QUEUE_URL = os.getenv("AUTO_RESUMER_SQS_QUEUE_URL")
-UPSERT_RUN_SQS_QUEUE_URL = os.getenv("UPSERT_RUN_SQS_QUEUE_URL")
 
 class ErrorResponder:
     """A helper class to create standardized error responses with a request ID."""
@@ -47,8 +45,8 @@ def ensure_database_awake() -> bool:
     :return: True if database is confirmed awake, False otherwise
     """
     health_check_url = f"https://{ENVIRONMENT}-email-service-internal-api-tpet.{DOMAIN_NAME}/{ENVIRONMENT}/email-service/health"
-    max_retries = 7
-    retry_delay = 5  # seconds
+    max_retries = 10
+    retry_delay = 7  # seconds
 
     for attempt in range(max_retries):
         try:
@@ -97,7 +95,7 @@ def forward_message_to_target_queue(message: Dict[str, Any], target_queue_url: s
         logger.error("Failed to forward message to target SQS queue: %s", str(e))
         return False
 
-def process_sqs_message(message: Dict[str, Any], target_sqs_url: str, receipt_handle: str, aws_request_id: str, error_responder: ErrorResponder) -> Dict[str, Any]:
+def process_sqs_message(message: Dict[str, Any], receipt_handle: str, aws_request_id: str, error_responder: ErrorResponder) -> Dict[str, Any]:
     """
     Process a single SQS message:
     1. Ensure Aurora database is awake
@@ -128,28 +126,18 @@ def process_sqs_message(message: Dict[str, Any], target_sqs_url: str, receipt_ha
         
         # Aurora is awake, forward message to upsert_run SQS queue
         logger.info("Aurora database is awake, forwarding message to upsert_run SQS queue. Request ID: %s", aws_request_id)
-        
+
         # Forward the message to upsert_run SQS queue
-        if not forward_message_to_target_queue(message, target_sqs_url):
+        success_upsert = forward_message_to_target_queue(message, UPSERT_RUN_SQS_QUEUE_URL)
+        if not success_upsert:
             return {
                 "statusCode": 500,
                 "body": json.dumps({
-                    "message": "Failed to forward message to target SQS queue",
+                    "message": "Failed to forward message to upsert_run SQS queue",
                     "error": "Message forwarding error",
                     "request_id": aws_request_id
                 }),
             }
-        
-        # Delete the message from auto-resumer SQS queue
-        try:
-            delete_sqs_message(AUTO_RESUMER_SQS_QUEUE_URL, receipt_handle)
-            logger.info("Message processed and deleted from auto-resumer SQS queue. Request ID: %s", aws_request_id)
-        except (ClientError, ValueError) as e:
-            logger.error("Failed to send webhook message to SQS: %s", e)
-            return error_responder.create_error_response(
-                500, "Failed to queue email request after validation."
-            )
-        
         return {
             "statusCode": 200,
             "body": json.dumps({
@@ -194,17 +182,26 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
             logger.error("Error getting SQS message: %s", e)
             continue
         
-        sqs_url = None
         try:
-            run_type = sqs_message["run_type"]
-
-            if run_type == RunType.WEBHOOK.value:
-                sqs_url = UPSERT_RUN_SQS_QUEUE_URL
-                process_sqs_message(sqs_message, sqs_url, record.get("receiptHandle"), context.aws_request_id, error_responder)
-            elif run_type == RunType.EMAIL.value:
-                sqs_url = CREATE_EMAIL_SQS_QUEUE_URL
-                process_sqs_message(sqs_message, sqs_url, record.get("receiptHandle"), context.aws_request_id, error_responder)
+            process_sqs_message(sqs_message, record.get("receiptHandle"), context.aws_request_id, error_responder)
 
         except Exception as e:
             logger.error("Error processing message: %s", e)
             raise
+        finally:
+            if sqs_message and AUTO_RESUMER_SQS_QUEUE_URL:
+                try:
+                    delete_sqs_message(
+                        AUTO_RESUMER_SQS_QUEUE_URL,
+                        sqs_message["receipt_handle"],
+                    )
+                    logger.info(
+                        "Deleted message from SQS: %s", sqs_message["receipt_handle"]
+                    )
+                except Exception as e:
+                    logger.error("Error deleting SQS message: %s", e)
+            elif not AUTO_RESUMER_SQS_QUEUE_URL:
+                logger.error(
+                    "AUTO_RESUMER_SQS_QUEUE_URL is not available: %s",
+                    AUTO_RESUMER_SQS_QUEUE_URL,
+                )
