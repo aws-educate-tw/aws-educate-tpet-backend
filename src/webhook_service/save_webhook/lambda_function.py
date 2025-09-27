@@ -85,9 +85,7 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
 
     try:
         # Create run before saving webhook
-        access_token = (
-            event["headers"].get("Authorization") if event.get("headers") else None
-        )
+        # Use the already extracted bearer token from the validation step above
         try:
             create_run_response = email_service.create_run(
                 run_type=DEFAULT_RUN_TYPE,
