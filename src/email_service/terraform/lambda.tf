@@ -316,7 +316,7 @@ module "auto_resume_aurora_lambda" {
     }
   }
   create_package = false
-  timeout        = 600
+  timeout        = 60
   memory_size    = 1024
 
   ##################
