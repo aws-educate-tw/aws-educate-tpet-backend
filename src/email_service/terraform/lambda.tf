@@ -506,7 +506,7 @@ module "upsert_run_lambda" {
   allowed_triggers = {
     allow_execution_from_sqs = {
       principal  = "sqs.amazonaws.com"
-      source_arn = module.auto_resumer_sqs.queue_arn
+      source_arn = module.upsert_run_sqs.queue_arn
     }
   }
 
