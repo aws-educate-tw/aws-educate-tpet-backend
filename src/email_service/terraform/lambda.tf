@@ -14,6 +14,8 @@ locals {
   source_path                                    = "${path.module}/.."
   health_check_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-health_check-${random_string.this.result}"
   validate_input_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-validate_input-${random_string.this.result}"
+  auto_resume_aurora_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-auto_resume_aurora-${random_string.this.result}"
+  upsert_run_function_name_and_ecr_repo_name      = "${var.environment}-${var.service_underscore}-upsert_run-${random_string.this.result}"
   create_run_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-create_run-${random_string.this.result}"
   create_email_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-create_email-${random_string.this.result}"
   send_email_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-send_email-${random_string.this.result}"
@@ -181,6 +183,8 @@ module "validate_input_lambda" {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
     "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "AUTO_RESUMER_SQS_QUEUE_URL"         = module.auto_resumer_sqs.queue_url
+    "UPSERT_RUN_SQS_QUEUE_URL"           = module.upsert_run_sqs.queue_url
     "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
@@ -253,7 +257,7 @@ module "validate_input_lambda" {
         "sqs:SendMessage"
       ],
       resources = [
-        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.create_email_sqs.queue_name}"
+        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.auto_resumer_sqs.queue_name}"
       ]
     },
   }
@@ -293,6 +297,329 @@ module "validate_input_docker_image" {
 
 }
 
+module "auto_resume_aurora_lambda" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "7.7.0"
+
+  function_name = local.auto_resume_aurora_function_name_and_ecr_repo_name                                                # Remember to change
+  description   = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /send-email (auto resume aurora  & forward to upsert_run)" # Remember to change
+  event_source_mapping = {
+    sqs = {
+      event_source_arn        = module.auto_resumer_sqs.queue_arn
+      function_response_types = ["ReportBatchItemFailures"] # Setting to ["ReportBatchItemFailures"] means that when the Lambda function processes a batch of SQS messages, it can report which messages failed to process.
+      scaling_config = {
+        # The `maximum_concurrency` parameter limits the number of concurrent Lambda instances that can process messages from the SQS queue.
+        # Setting `maximum_concurrency = 5` means that up to 5 Lambda instances can run simultaneously, each processing different messages from the SQS queue.
+        # It ensures that multiple messages can be processed in parallel, increasing throughput, but each message is still processed only once by a single Lambda instance.
+        maximum_concurrency = 20
+      }
+    }
+  }
+  create_package = false
+  timeout        = 60
+  memory_size    = 1024
+
+  ##################
+  # Container Image
+  ##################
+  package_type  = "Image"
+  architectures = [var.lambda_architecture]
+  image_uri     = module.auto_resume_aurora_docker_image.image_uri # Remember to change
+
+  publish = true # Whether to publish creation/change as new Lambda Function Version.
+
+
+  environment_variables = {
+    "ENVIRONMENT"                        = var.environment
+    "SERVICE"                            = var.service_underscore
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "AUTO_RESUMER_SQS_QUEUE_URL"         = module.auto_resumer_sqs.queue_url
+    "UPSERT_RUN_SQS_QUEUE_URL"           = module.upsert_run_sqs.queue_url
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+    "DOMAIN_NAME"                        = var.domain_name
+  }
+
+  allowed_triggers = {
+    allow_execution_from_sqs = {
+      principal  = "sqs.amazonaws.com"
+      source_arn = module.auto_resumer_sqs.queue_arn
+    }
+  }
+
+  tags = {
+    "Terraform"   = "true",
+    "Environment" = var.environment,
+    "Service"     = var.service_underscore
+    "Prewarm"     = "true"
+  }
+  ######################
+  # Additional policies
+  ######################
+
+  attach_policy_statements = true
+  policy_statements = {
+    rds_data_access = {
+      effect = "Allow",
+      actions = [
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_arn
+      ]
+    },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    },
+
+    sqs_receive_message = {
+      effect = "Allow",
+      actions = [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes"
+      ],
+      resources = [
+        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.auto_resumer_sqs.queue_name}",
+      ]
+    },
+    s3_crud = {
+      effect = "Allow",
+      actions = [
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucketMultipartUploads",
+        "s3:ListMultipartUploadParts",
+        "s3:AbortMultipartUpload"
+      ],
+      resources = [
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+      ]
+    },
+    sqs_send_message = {
+      effect = "Allow",
+      actions = [
+        "sqs:SendMessage"
+      ],
+      resources = [
+        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.upsert_run_sqs.queue_name}"
+      ]
+    }
+  }
+}
+
+module "auto_resume_aurora_docker_image" {
+  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version = "7.7.0"
+
+  create_ecr_repo      = true
+  keep_remotely        = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = local.auto_resume_aurora_function_name_and_ecr_repo_name # Remember to change
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
+  source_path = "${local.source_path}/auto_resume/" # Remember to change
+  triggers = {
+    dir_sha = local.dir_sha
+  }
+
+}
+
+module "upsert_run_lambda" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "7.7.0"
+
+  function_name = local.upsert_run_function_name_and_ecr_repo_name                                                # Remember to change
+  description   = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /send-email (upsert run)" # Remember to change
+  event_source_mapping = {
+    sqs = {
+      event_source_arn        = module.upsert_run_sqs.queue_arn
+      function_response_types = ["ReportBatchItemFailures"] # Setting to ["ReportBatchItemFailures"] means that when the Lambda function processes a batch of SQS messages, it can report which messages failed to process.
+      scaling_config = {
+        # The `maximum_concurrency` parameter limits the number of concurrent Lambda instances that can process messages from the SQS queue.
+        # Setting `maximum_concurrency = 5` means that up to 5 Lambda instances can run simultaneously, each processing different messages from the SQS queue.
+        # It ensures that multiple messages can be processed in parallel, increasing throughput, but each message is still processed only once by a single Lambda instance.
+        maximum_concurrency = 20
+      }
+    }
+  }
+  create_package = false
+  timeout        = 600
+  memory_size    = 1024
+
+  ##################
+  # Container Image
+  ##################
+  package_type  = "Image"
+  architectures = [var.lambda_architecture]
+  image_uri     = module.upsert_run_docker_image.image_uri # Remember to change
+
+  publish = true # Whether to publish creation/change as new Lambda Function Version.
+
+
+  environment_variables = {
+    "ENVIRONMENT"                        = var.environment
+    "SERVICE"                            = var.service_underscore
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "UPSERT_RUN_SQS_QUEUE_URL"           = module.upsert_run_sqs.queue_url
+    "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
+    "DOMAIN_NAME"                        = var.domain_name
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+  }
+
+  allowed_triggers = {
+    allow_execution_from_sqs = {
+      principal  = "sqs.amazonaws.com"
+      source_arn = module.upsert_run_sqs.queue_arn
+    }
+  }
+
+  tags = {
+    "Terraform"   = "true",
+    "Environment" = var.environment,
+    "Service"     = var.service_underscore
+    "Prewarm"     = "true"
+  }
+  ######################
+  # Additional policies
+  ######################
+
+  attach_policy_statements = true
+  policy_statements = {
+    rds_data_access = {
+      effect = "Allow",
+      actions = [
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_arn
+      ]
+    },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    },
+
+    sqs_receive_message = {
+      effect = "Allow",
+      actions = [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes"
+      ],
+      resources = [
+        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.upsert_run_sqs.queue_name}",
+      ]
+    },
+    s3_crud = {
+      effect = "Allow",
+      actions = [
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucketMultipartUploads",
+        "s3:ListMultipartUploadParts",
+        "s3:AbortMultipartUpload"
+      ],
+      resources = [
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+      ]
+    },
+    sqs_send_message = {
+      effect = "Allow",
+      actions = [
+        "sqs:SendMessage"
+      ],
+      resources = [
+        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.create_email_sqs.queue_name}"
+      ]
+    }
+  }
+}
+
+module "upsert_run_docker_image" {
+  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version = "7.7.0"
+
+  create_ecr_repo      = true
+  keep_remotely        = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = local.upsert_run_function_name_and_ecr_repo_name # Remember to change
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
+  source_path = "${local.source_path}/upsert_run/" # Remember to change
+  triggers = {
+    dir_sha = local.dir_sha
+  }
+
+}
 
 module "create_email_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
@@ -612,8 +939,6 @@ module "send_email_docker_image" {
       }
     ]
   })
-
-
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/send_email/" # Remember to change
