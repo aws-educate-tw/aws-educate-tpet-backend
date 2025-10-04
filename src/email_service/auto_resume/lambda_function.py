@@ -37,7 +37,7 @@ def ensure_database_awake() -> bool:
             )
             response = requests.get(health_check_url, timeout=5)
 
-            if response.status_code == 200:
+            if response.status == "HEALTHY":
                 logger.info("Database confirmed to be awake and healthy")
                 return True
             else:
