@@ -37,25 +37,6 @@ EMAIL_PATTERN = r"[^@]+@[^@]+\.[^@]+"
 run_repository = RunRepository()
 
 
-class ErrorResponder:
-    """A helper class to create standardized error responses with a request ID."""
-
-    def __init__(self, request_id: str):
-        self._request_id = request_id
-
-    def create_error_response(self, status_code: int, message: str) -> dict[str, Any]:
-        """Creates a standardized error response."""
-        error_body = {
-            "message": f"{message}, Request ID: {self._request_id}",
-            "request_id": self._request_id,
-        }
-        return {
-            "statusCode": status_code,
-            "body": json.dumps(error_body),
-            "headers": {"Content-Type": "application/json"},
-        }
-
-
 def get_file_info(file_id: str, access_token: str) -> dict[str, Any]:
     """Retrieve file information from the file service API."""
     try:
@@ -116,10 +97,75 @@ def forward_message_to_target_queue(
         logger.info("Forwarding message to target SQS queue")
         send_message_to_queue(target_queue_url, message)
         logger.info("Successfully forwarded message to target SQS queue")
-        return True
     except Exception as e:
         logger.error("Failed to forward message to target SQS queue: %s", str(e))
-        return False
+        raise
+
+def process_record(record: dict[str, Any], aws_request_id: str) -> None:
+    """
+    Process a single SQS record.
+    
+    :param record: The SQS record to process
+    :param aws_request_id: The AWS request ID for logging
+    :raises: Exception if processing fails
+    """
+    sqs_message = get_sqs_message(record)
+
+    run_id = sqs_message["run_id"]
+    run_type = sqs_message["run_type"]
+
+    access_token = sqs_message.pop("access_token")
+    receipt_handle = sqs_message.pop("receipt_handle")
+
+    # Validate run type if webhook
+    if run_type == RunType.WEBHOOK.value:
+        existing_run = run_repository.get_run_by_id(run_id)
+        if not existing_run:
+            raise ValueError(f"Run with ID {run_id} not found.")
+        if existing_run.get("run_type") != RunType.WEBHOOK.value:
+            raise ValueError(
+                f"Run with ID {run_id} is not a WEBHOOK run type, "
+                f"but {existing_run.get('run_type')}"
+            )
+    current_user_util.set_current_user_by_access_token(access_token)
+    current_user_info = current_user_util.get_current_user_info()
+    recipient_source = sqs_message["recipient_source"]
+    template_file_id = sqs_message["template_file_id"]
+    spreadsheet_file_id = sqs_message.get("spreadsheet_file_id")
+    attachment_file_ids = sqs_message.get("attachment_file_ids", [])
+
+    template_info = get_file_info(template_file_id, access_token)
+    spreadsheet_info = (
+        get_file_info(spreadsheet_file_id, access_token)
+        if recipient_source == RecipientSource.SPREADSHEET.value
+        and spreadsheet_file_id
+        else None
+    )
+    attachment_files = [
+        get_file_info(file_id, access_token)
+        for file_id in attachment_file_ids
+    ]
+
+    run_item = prepare_run_data(
+        recipient_source,
+        sqs_message,
+        template_info,
+        spreadsheet_info,
+        attachment_files,
+        current_user_info,
+    )
+
+    if not run_repository.upsert_run(run_item):
+        raise RuntimeError(f"Failed to save run: {run_item['run_id']}")
+
+    # Forward the message to upsert_run SQS queue
+    forward_message = {
+        **sqs_message,
+        "access_token": access_token,
+        "receipt_handle": receipt_handle,
+    }
+
+    forward_message_to_target_queue(forward_message, CREATE_EMAIL_SQS_QUEUE_URL)
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
@@ -130,127 +176,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
-    # Initialize aws_request_id early
-    aws_request_id = context.aws_request_id if context else "unknown"
-    error_responder = ErrorResponder(aws_request_id)
+    batch_item_failures = []
 
-    # Identify if the incoming event is a prewarm request
-    if event.get("action") == "PREWARM":
-        logger.info("Received a prewarm request. Skipping business logic.")
-        return {"statusCode": 200, "body": "Successfully warmed up"}
-
-    try:
-        for record in event["Records"]:
-            sqs_message = None
-
-            try:
-                sqs_message = get_sqs_message(record)
-            except Exception as e:
-                logger.error("Error getting SQS message: %s", e)
-                continue
-
-            run_id = sqs_message["run_id"]
-            run_type = sqs_message["run_type"]
-
-            try:
-                access_token = sqs_message.pop("access_token")
-                receipt_handle = sqs_message.pop("receipt_handle")
-
-                if run_type == RunType.WEBHOOK.value:
-                    existing_run = run_repository.get_run_by_id(run_id)
-                    if not existing_run:
-                        raise ValueError(f"Run with ID {run_id} not found.")
-                    if existing_run.get("run_type") != RunType.WEBHOOK.value:
-                        raise ValueError(
-                            f"Run with ID {run_id} is not a WEBHOOK run type, but {existing_run.get('run_type')}"
-                        )
-
-                current_user_util.set_current_user_by_access_token(access_token)
-                current_user_info = current_user_util.get_current_user_info()
-                recipient_source = sqs_message["recipient_source"]
-                template_file_id = sqs_message["template_file_id"]
-                spreadsheet_file_id = sqs_message.get("spreadsheet_file_id")
-                attachment_file_ids = sqs_message.get("attachment_file_ids", [])
-
-                template_info = get_file_info(template_file_id, access_token)
-                spreadsheet_info = (
-                    get_file_info(spreadsheet_file_id, access_token)
-                    if recipient_source == RecipientSource.SPREADSHEET.value
-                    and spreadsheet_file_id
-                    else None
-                )
-                attachment_files = [
-                    get_file_info(file_id, access_token)
-                    for file_id in attachment_file_ids
-                ]
-
-                run_item = prepare_run_data(
-                    recipient_source,
-                    sqs_message,
-                    template_info,
-                    spreadsheet_info,
-                    attachment_files,
-                    current_user_info,
-                )
-
-                if not run_repository.upsert_run(run_item):
-                    raise RuntimeError(f"Failed to save run: {run_item['run_id']}")
-
-                # Forward the message to upsert_run SQS queue
-                forward_message = {
-                    **sqs_message,
-                    "access_token": access_token,
-                    "receipt_handle": receipt_handle,
-                }
-                success_create = forward_message_to_target_queue(
-                    forward_message, CREATE_EMAIL_SQS_QUEUE_URL
-                )
-
-                if not success_create:
-                    return {
-                        "statusCode": 500,
-                        "body": json.dumps(
-                            {
-                                "message": "Failed to forward message to create_email SQS queue",
-                                "error": "Message forwarding error",
-                                "request_id": aws_request_id,
-                            }
-                        ),
-                    }
-                return {
-                    "statusCode": 200,
-                    "body": json.dumps(
-                        {
-                            "message": "Message processed successfully",
-                            "request_id": aws_request_id,
-                        }
-                    ),
-                }
-            except Exception as e:
-                logger.error(
-                    "Request ID: %s, Error processing record: %s", aws_request_id, e
-                )
-                continue
-            finally:
-                if sqs_message and UPSERT_RUN_SQS_QUEUE_URL:
-                    try:
-                        delete_sqs_message(
-                            UPSERT_RUN_SQS_QUEUE_URL,
-                            receipt_handle,
-                        )
-                        logger.info("Deleted message from SQS: %s", receipt_handle)
-                    except Exception as e:
-                        logger.error("Error deleting SQS message: %s", e)
-                elif not UPSERT_RUN_SQS_QUEUE_URL:
-                    logger.error(
-                        "UPSERT_RUN_SQS_QUEUE_URL is not available: %s",
-                        UPSERT_RUN_SQS_QUEUE_URL,
-                    )
-
-        return {"statusCode": 200, "body": json.dumps({"status": "SUCCESS"})}
-
-    except Exception as e:
-        logger.error("Request ID: %s, Internal server error: %s", aws_request_id, e)
-        return error_responder.create_error_response(
-            500, "Please try again later or contact support"
-        )
+    for record in event["Records"]:
+        try:
+            process_record(record, context.aws_request_id)
+        except Exception as e:
+            logger.error("Error processing record: %s", e)
+            batch_item_failures.append({"itemIdentifier": record["messageId"]})
+    
+    return {"batchItemFailures": batch_item_failures}

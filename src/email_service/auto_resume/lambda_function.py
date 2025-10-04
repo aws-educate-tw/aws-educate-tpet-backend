@@ -5,7 +5,7 @@ import time
 from typing import Any
 
 import requests
-from sqs import delete_sqs_message, get_sqs_message, send_message_to_queue
+from sqs import get_sqs_message, send_message_to_queue
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -13,30 +13,9 @@ logger.setLevel(logging.INFO)
 
 # Get environment variables
 AUTO_RESUMER_SQS_QUEUE_URL = os.getenv("AUTO_RESUMER_SQS_QUEUE_URL")
-CREATE_EMAIL_SQS_QUEUE_URL = os.getenv("CREATE_EMAIL_SQS_QUEUE_URL")
 UPSERT_RUN_SQS_QUEUE_URL = os.getenv("UPSERT_RUN_SQS_QUEUE_URL")
-BUCKET_NAME = os.getenv("BUCKET_NAME")
 ENVIRONMENT = os.environ.get("ENVIRONMENT")
 DOMAIN_NAME = os.getenv("DOMAIN_NAME")
-
-
-class ErrorResponder:
-    """A helper class to create standardized error responses with a request ID."""
-
-    def __init__(self, request_id: str):
-        self._request_id = request_id
-
-    def create_error_response(self, status_code: int, message: str) -> dict[str, Any]:
-        """Creates a standardized error response."""
-        error_body = {
-            "message": f"{message}, Request ID: {self._request_id}",
-            "request_id": self._request_id,
-        }
-        return {
-            "statusCode": status_code,
-            "body": json.dumps(error_body),
-            "headers": {"Content-Type": "application/json"},
-        }
 
 
 def ensure_database_awake() -> bool:
@@ -104,7 +83,6 @@ def process_sqs_message(
     message: dict[str, Any],
     receipt_handle: str,
     aws_request_id: str,
-    error_responder: ErrorResponder,
 ) -> dict[str, Any]:
     """
     Process a single SQS message:
@@ -118,74 +96,22 @@ def process_sqs_message(
     :param target_sqs_url: The target SQS queue URL to forward the message to
     :return: Response with status code and body
     """
-    try:
-        # Try to wake up Aurora database
-        logger.info(
-            "Attempting to wake up Aurora database. Request ID: %s", aws_request_id
-        )
+    logger.info(
+        "Attempting to wake up Aurora database. Request ID: %s", aws_request_id
+    )
 
-        if not ensure_database_awake():
-            logger.error(
-                "Failed to wake up Aurora database after maximum retries. Request ID: %s",
-                aws_request_id,
-            )
-            # Don't delete the message, it will be retried automatically by SQS
-            return {
-                "statusCode": 500,
-                "body": json.dumps(
-                    {
-                        "message": "Failed to wake up Aurora database",
-                        "error": "Database connection error",
-                        "request_id": aws_request_id,
-                    }
-                ),
-            }
+    if not ensure_database_awake():
+        raise RuntimeError("Aurora DB unavailable")
 
-        # Aurora is awake, forward message to upsert_run SQS queue
-        logger.info(
-            "Aurora database is awake, forwarding message to upsert_run SQS queue. Request ID: %s",
-            aws_request_id,
-        )
+    # Aurora is awake, forward message to upsert_run SQS queue
+    logger.info(
+        "Aurora database is awake, forwarding message to upsert_run SQS queue. Request ID: %s",
+        aws_request_id,
+    )
 
-        # Forward the message to upsert_run SQS queue
-        success_upsert = forward_message_to_target_queue(
-            message, UPSERT_RUN_SQS_QUEUE_URL
-        )
-        if not success_upsert:
-            return {
-                "statusCode": 500,
-                "body": json.dumps(
-                    {
-                        "message": "Failed to forward message to upsert_run SQS queue",
-                        "error": "Message forwarding error",
-                        "request_id": aws_request_id,
-                    }
-                ),
-            }
-        return {
-            "statusCode": 200,
-            "body": json.dumps(
-                {
-                    "message": "Message processed successfully",
-                    "request_id": aws_request_id,
-                }
-            ),
-        }
-    except Exception as e:
-        logger.error(
-            "Error processing message: %s. Request ID: %s", str(e), aws_request_id
-        )
-        return {
-            "statusCode": 500,
-            "body": json.dumps(
-                {
-                    "message": f"An unexpected error occurred: {e}",
-                    "error": "Server error",
-                    "request_id": aws_request_id,
-                }
-            ),
-        }
-
+    if not forward_message_to_target_queue(message, UPSERT_RUN_SQS_QUEUE_URL):
+        raise RuntimeError("Failed to forward message to upsert_run queue")
+    
 
 def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
     """
@@ -195,14 +121,15 @@ def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
 
     :param event: The event from SQS trigger
     :param context: Lambda context
-    :return: Response with status code and body
+    :return: Response with batch item failures if any
     """
     logger.info("Lambda triggered with event: %s", event)
-    error_responder = ErrorResponder(context.aws_request_id)
 
     if event.get("action") == "PREWARM":
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
+    
+    batch_item_failures = []
 
     for record in event["Records"]:
         sqs_message = None
@@ -210,6 +137,7 @@ def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
             sqs_message = get_sqs_message(record)
         except Exception as e:
             logger.error("Error getting SQS message: %s", e)
+            batch_item_failures.append({"itemIdentifier": record["messageId"]})
             continue
 
         try:
@@ -217,26 +145,10 @@ def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
                 sqs_message,
                 record.get("receiptHandle"),
                 context.aws_request_id,
-                error_responder,
             )
 
         except Exception as e:
             logger.error("Error processing message: %s", e)
-            raise
-        finally:
-            if sqs_message and AUTO_RESUMER_SQS_QUEUE_URL:
-                try:
-                    delete_sqs_message(
-                        AUTO_RESUMER_SQS_QUEUE_URL,
-                        sqs_message["receipt_handle"],
-                    )
-                    logger.info(
-                        "Deleted message from SQS: %s", sqs_message["receipt_handle"]
-                    )
-                except Exception as e:
-                    logger.error("Error deleting SQS message: %s", e)
-            elif not AUTO_RESUMER_SQS_QUEUE_URL:
-                logger.error(
-                    "AUTO_RESUMER_SQS_QUEUE_URL is not available: %s",
-                    AUTO_RESUMER_SQS_QUEUE_URL,
-                )
+            batch_item_failures.append({"itemIdentifier": record["messageId"]})
+        
+    return {"batchItemFailures": batch_item_failures}
