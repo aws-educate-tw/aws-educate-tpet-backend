@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import time
@@ -96,9 +95,7 @@ def process_sqs_message(
     :param target_sqs_url: The target SQS queue URL to forward the message to
     :return: Response with status code and body
     """
-    logger.info(
-        "Attempting to wake up Aurora database. Request ID: %s", aws_request_id
-    )
+    logger.info("Attempting to wake up Aurora database. Request ID: %s", aws_request_id)
 
     if not ensure_database_awake():
         raise RuntimeError("Aurora DB unavailable")
@@ -111,7 +108,7 @@ def process_sqs_message(
 
     if not forward_message_to_target_queue(message, UPSERT_RUN_SQS_QUEUE_URL):
         raise RuntimeError("Failed to forward message to upsert_run queue")
-    
+
 
 def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
     """
@@ -128,7 +125,7 @@ def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
     if event.get("action") == "PREWARM":
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
-    
+
     batch_item_failures = []
 
     for record in event["Records"]:
@@ -150,5 +147,5 @@ def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
         except Exception as e:
             logger.error("Error processing message: %s", e)
             batch_item_failures.append({"itemIdentifier": record["messageId"]})
-        
+
     return {"batchItemFailures": batch_item_failures}

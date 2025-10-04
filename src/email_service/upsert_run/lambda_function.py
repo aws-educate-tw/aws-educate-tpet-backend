@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 from typing import Any, cast
@@ -10,7 +9,7 @@ from recipient_source_enum import RecipientSource
 from requests.exceptions import RequestException
 from run_repository import RunRepository
 from run_type_enum import RunType
-from sqs import delete_sqs_message, get_sqs_message, send_message_to_queue
+from sqs import get_sqs_message, send_message_to_queue
 from time_util import get_current_utc_time
 
 # Set up logging
@@ -101,10 +100,11 @@ def forward_message_to_target_queue(
         logger.error("Failed to forward message to target SQS queue: %s", str(e))
         raise
 
+
 def process_record(record: dict[str, Any], aws_request_id: str) -> None:
     """
     Process a single SQS record.
-    
+
     :param record: The SQS record to process
     :param aws_request_id: The AWS request ID for logging
     :raises: Exception if processing fails
@@ -137,13 +137,11 @@ def process_record(record: dict[str, Any], aws_request_id: str) -> None:
     template_info = get_file_info(template_file_id, access_token)
     spreadsheet_info = (
         get_file_info(spreadsheet_file_id, access_token)
-        if recipient_source == RecipientSource.SPREADSHEET.value
-        and spreadsheet_file_id
+        if recipient_source == RecipientSource.SPREADSHEET.value and spreadsheet_file_id
         else None
     )
     attachment_files = [
-        get_file_info(file_id, access_token)
-        for file_id in attachment_file_ids
+        get_file_info(file_id, access_token) for file_id in attachment_file_ids
     ]
 
     run_item = prepare_run_data(
@@ -184,5 +182,5 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         except Exception as e:
             logger.error("Error processing record: %s", e)
             batch_item_failures.append({"itemIdentifier": record["messageId"]})
-    
+
     return {"batchItemFailures": batch_item_failures}
