@@ -1,3 +1,3 @@
 # Auth Service
 
-![](TPET-v2-authservice.jpg)
+![](../../imgs/TPET-v2-authservice.jpg)
