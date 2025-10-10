@@ -1,6 +1,6 @@
 
 <div align="center">
-  <img src="./imgs/AWS Educate TPET Backend Architecture.png" alt="cover">
+  <img src="./imgs/TPET-v2.jpg" alt="cover">
 </div>
 
 <br>
