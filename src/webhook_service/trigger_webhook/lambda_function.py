@@ -22,6 +22,9 @@ email_service = EmailService()
 def lambda_handler(event, context):  # pylint: disable=unused-argument
     """Lambda function handler to trigger the webhook"""
 
+    # Initialize aws_request_id early
+    aws_request_id = context.aws_request_id if context else "unknown"
+
     # Identify if the incoming event is a prewarm request
     if event.get("action") == "PREWARM":
         logger.info("Received a prewarm request. Skipping business logic.")
@@ -47,6 +50,16 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
             return {
                 "statusCode": 404,
                 "body": json.dumps({"message": "Webhook not found"}),
+            }
+        if not webhook_details.get("run_id"):
+            return {
+                "statusCode": 500,
+                "body": json.dumps(
+                    {
+                        "message": f"Webhook run_id is missing, please contact TPET tech support to generate a new run for webhook {webhook_id}. Request ID: {aws_request_id}",
+                        "request_id": aws_request_id,
+                    }
+                ),
             }
 
         try:
@@ -125,4 +138,7 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
 
     except Exception as e:
         logger.error("Error: %s", str(e))
-        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": str(e), "request_id": aws_request_id}),
+        }

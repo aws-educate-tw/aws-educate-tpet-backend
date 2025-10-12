@@ -11,17 +11,18 @@ resource "random_string" "this" {
 }
 
 locals {
-  source_path                                          = "${path.module}/.."
-  health_check_function_name_and_ecr_repo_name         = "${var.environment}-${var.service_underscore}-health_check-${random_string.this.result}"
-  upload_multiple_file_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-upload_multiple_file-${random_string.this.result}"
-  list_files_function_name_and_ecr_repo_name           = "${var.environment}-${var.service_underscore}-list_files-${random_string.this.result}"
-  get_file_function_name_and_ecr_repo_name             = "${var.environment}-${var.service_underscore}-get_file-${random_string.this.result}"
-  path_include                                         = ["**"]
-  path_exclude                                         = ["**/__pycache__/**"]
-  files_include                                        = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
-  files_exclude                                        = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
-  files                                                = sort(setsubtract(local.files_include, local.files_exclude))
-  dir_sha                                              = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
+  source_path                                            = "${path.module}/.."
+  health_check_function_name_and_ecr_repo_name           = "${var.environment}-${var.service_underscore}-health_check-${random_string.this.result}"
+  upload_multiple_file_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-upload_multiple_file-${random_string.this.result}"
+  list_files_function_name_and_ecr_repo_name             = "${var.environment}-${var.service_underscore}-list_files-${random_string.this.result}"
+  get_file_function_name_and_ecr_repo_name               = "${var.environment}-${var.service_underscore}-get_file-${random_string.this.result}"
+  get_template_variables_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-get_template_variables-${random_string.this.result}"
+  path_include                                           = ["**"]
+  path_exclude                                           = ["**/__pycache__/**"]
+  files_include                                          = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
+  files_exclude                                          = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
+  files                                                  = sort(setsubtract(local.files_include, local.files_exclude))
+  dir_sha                                                = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
 }
 
 provider "docker" {
@@ -490,4 +491,120 @@ module "get_file_docker_image" {
     dir_sha = local.dir_sha
   }
 
+}
+
+####################################
+####################################
+####################################
+# GET /files/{file_id}/template-variables
+####################################
+####################################
+####################################
+
+module "get_template_variables_lambda" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "7.7.0"
+
+  function_name  = local.get_template_variables_function_name_and_ecr_repo_name
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /files/{file_id}/template-variables"
+  create_package = false
+  timeout        = 30
+
+  ##################
+  # Container Image
+  ##################
+  package_type  = "Image"
+  architectures = [var.lambda_architecture]
+  image_uri     = module.get_template_variables_docker_image.image_uri
+
+  publish = true # Whether to publish creation/change as new Lambda Function Version.
+
+  environment_variables = {
+    "ENVIRONMENT"    = var.environment,
+    "SERVICE"        = var.service_underscore
+    "DYNAMODB_TABLE" = var.dynamodb_table
+    "S3_BUCKET_NAME" = "${var.environment}-aws-educate-tpet-storage"
+  }
+
+  allowed_triggers = {
+    AllowExecutionFromAPIGateway = {
+      service    = "apigateway"
+      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+    }
+  }
+
+  tags = {
+    "Terraform"   = "true",
+    "Environment" = var.environment,
+    "Service"     = var.service_underscore
+    "Prewarm"     = "true"
+  }
+
+  ######################
+  # Additional policies
+  ######################
+
+  attach_policy_statements = true
+  policy_statements = {
+    dynamodb_crud = {
+      effect = "Allow",
+      actions = [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+      ],
+      resources = [
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}"
+      ]
+    },
+    s3_crud = {
+      effect = "Allow",
+      actions = [
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:GetObject"
+      ],
+      resources = [
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+      ]
+    }
+  }
+}
+
+module "get_template_variables_docker_image" {
+  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version = "7.7.0"
+
+  create_ecr_repo      = true
+  keep_remotely        = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = local.get_template_variables_function_name_and_ecr_repo_name
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  source_path = "${local.source_path}/get_template_variables/"
+  triggers = {
+    dir_sha = local.dir_sha
+  }
 }

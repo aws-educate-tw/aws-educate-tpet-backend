@@ -140,7 +140,7 @@ module "get_webhook_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri = module.get_webhook_docker_image.image_uri
+  image_uri     = module.get_webhook_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -244,7 +244,7 @@ module "update_webhook_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri = module.update_webhook_docker_image.image_uri
+  image_uri     = module.update_webhook_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -348,7 +348,7 @@ module "list_webhooks_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri = module.list_webhooks_docker_image.image_uri
+  image_uri     = module.list_webhooks_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -456,13 +456,14 @@ module "save_webhook_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri = module.save_webhook_docker_image.image_uri
+  image_uri     = module.save_webhook_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
     "ENVIRONMENT"                  = var.environment,
     "SERVICE"                      = var.service_underscore,
+    "DOMAIN_NAME"                  = var.domain_name,
     "DYNAMODB_TABLE"               = var.dynamodb_table
     "DYNAMODB_TABLE_TOTAL_COUNT"   = var.dynamodb_table_total_count
     "TRIGGER_WEBHOOK_API_ENDPOINT" = local.api_endpoints.trigger_webhook
@@ -563,7 +564,7 @@ module "trigger_webhook_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri = module.trigger_webhook_docker_image.image_uri
+  image_uri     = module.trigger_webhook_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 

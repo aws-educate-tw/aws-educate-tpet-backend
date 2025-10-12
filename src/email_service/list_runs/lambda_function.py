@@ -1,248 +1,203 @@
 import json
 import logging
-from decimal import Decimal
+import math  # Added for math.ceil
 
 from botocore.exceptions import ClientError
-from current_user_util import CurrentUserUtil
-from email_service_pagination_state_repository import (
-    EmailServicePaginationStateRepository,
-)
-from last_evaluated_key_util import decode_key, encode_key
 from run_repository import RunRepository
-from time_util import get_current_utc_time, get_previous_year
+
+# Removed unused time_util import
 
 # Configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-
-class DecimalEncoder(json.JSONEncoder):
-    """Custom JSON encoder for Decimal objects."""
-
-    def default(self, o: object) -> object:
-        if isinstance(o, Decimal):
-            return float(o)
-        return super().default(o)
+# DecimalEncoder is removed as RunRepository handles Decimal to float for PostgreSQL JSONB.
 
 
 def extract_query_params(event: dict[str, any]) -> dict[str, any]:
-    """Extract query parameters from the API Gateway event."""
-    limit: int = 10
-    last_evaluated_key: str | None = None
-    sort_order: str = "DESC"
-    created_year: str | None = None
+    """Extract and validate query parameters from the API Gateway event."""
+    params = (
+        event.get("queryStringParameters")
+        if event.get("queryStringParameters") is not None
+        else {}
+    )
 
-    # Extract query parameters if they exist
-    if event.get("queryStringParameters"):
-        try:
-            limit = int(event["queryStringParameters"].get("limit", 10))
-            last_evaluated_key = event["queryStringParameters"].get(
-                "last_evaluated_key", None
+    try:
+        page: int = int(params.get("page", 1))
+        limit: int = int(
+            params.get("limit", 20)
+        )  # Default to 20 as per example response
+        sort_by: str = params.get("sort_by", "created_at")
+        sort_order: str = params.get("sort_order", "DESC").upper()
+        run_type: str | None = params.get("run_type", None)
+        created_year: str | None = params.get("created_year", None)
+        # Add any other filter parameters the user might send, e.g. sender_id
+        sender_id: str | None = params.get("sender_id", None)
+
+        if sort_order not in ["ASC", "DESC"]:
+            logger.warning(
+                "Invalid sort_order '%s' received, defaulting to DESC.", sort_order
             )
-            sort_order = event["queryStringParameters"].get("sort_order", "DESC")
-            created_year = event["queryStringParameters"].get("created_year", None)
-        except ValueError as e:
-            logger.error("Invalid query parameter: %s", e)
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"message": "Invalid query parameter: " + str(e)}),
-            }
+            sort_order = "DESC"
+
+        if page < 1:
+            logger.warning("Invalid page number %d received, defaulting to 1.", page)
+            page = 1
+
+        if limit < 1:
+            logger.warning("Invalid limit %d received, defaulting to 20.", limit)
+            limit = 20
+
+    except ValueError as e:
+        logger.error("Invalid query parameter type: %s", e)
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"message": "Invalid query parameter type: " + str(e)}),
+        }
 
     # Log the extracted parameters
     logger.info(
-        "Extracted parameters - limit: %d, last_evaluated_key: %s, sort_order: %s, created_year: %s",
+        "Extracted parameters - page: %d, limit: %d, sort_by: %s, sort_order: %s, run_type: %s, created_year: %s, sender_id: %s",
+        page,
         limit,
-        last_evaluated_key,
+        sort_by,
         sort_order,
+        run_type,
         created_year,
+        sender_id,
     )
 
     return {
+        "page": page,
         "limit": limit,
-        "last_evaluated_key": last_evaluated_key,
+        "sort_by": sort_by,
         "sort_order": sort_order,
+        "run_type": run_type,
         "created_year": created_year,
+        "sender_id": sender_id,  # Include sender_id if it's a filter
     }
 
 
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
-    """Lambda function handler for listing runs."""
+    """Lambda function handler for listing runs using PostgreSQL."""
+    aws_request_id = context.aws_request_id
 
-    # Identify if the incoming event is a prewarm request
     if event.get("action") == "PREWARM":
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
-    extracted_params = extract_query_params(event)
-    if isinstance(extracted_params, dict) and extracted_params.get("statusCode"):
-        return extracted_params
+    # Extract and validate query parameters
+    query_params_result = extract_query_params(event)
+    if isinstance(query_params_result, dict) and query_params_result.get("statusCode"):
+        return query_params_result
 
-    limit: int = extracted_params["limit"]
-    last_evaluated_key: str | None = extracted_params["last_evaluated_key"]
-    sort_order: str = extracted_params["sort_order"]
-    created_year: str | None = extracted_params["created_year"]
+    # Ensure all expected keys are present, providing defaults if necessary
+    page = query_params_result.get("page", 1)
+    limit = query_params_result.get("limit", 100)
+    sort_by = query_params_result.get("sort_by", "created_at")
+    sort_order = query_params_result.get("sort_order", "DESC")
+    # Filters for the repository
+    filters = {}
+    if query_params_result.get("run_type"):
+        filters["run_type"] = query_params_result["run_type"]
+    if query_params_result.get("created_year"):
+        filters["created_year"] = query_params_result["created_year"]
+    if query_params_result.get("sender_id"):  # Assuming sender_id is a direct filter
+        filters["sender_id"] = query_params_result["sender_id"]
 
-    # Check if the created_year is provided by the client
-    if created_year is not None:
-        is_created_year_provided_by_client = True
-    else:
-        is_created_year_provided_by_client = False
-
-    index_name = "created_year-created_at-gsi"
-
-    # Get access token from headers and retrieve user_id
+    # Get access token from headers (user_id might be needed for filtering by sender_id if not passed directly)
+    # For now, assuming sender_id can be an optional filter from query params.
+    # If runs should always be scoped to the current user, this logic would need adjustment.
     authorization_header = event["headers"].get("authorization")
     if not authorization_header or not authorization_header.startswith("Bearer "):
         return {
             "statusCode": 401,
             "body": json.dumps({"message": "Missing or invalid Authorization header"}),
         }
-    access_token = authorization_header.split(" ")[1]
-    user_id = CurrentUserUtil().get_user_id_from_access_token(access_token)
+    # access_token = authorization_header.split(" ")[1]
+    # user_id = CurrentUserUtil().get_user_id_from_access_token(access_token)
+    # If filtering by current user is mandatory, add user_id to filters:
+    # filters["sender_id"] = user_id
 
-    # Init dynamoDB entities
     run_repo = RunRepository()
-    pagination_state_repo = EmailServicePaginationStateRepository()
 
-    if last_evaluated_key:
-        try:
-            # Decode the base64 last_evaluated_key
-            current_last_evaluated_key = last_evaluated_key
-            last_evaluated_key = decode_key(last_evaluated_key)
-            logger.info("Decoded last_evaluated_key: %s", last_evaluated_key)
-
-            # Client provide a created_year in the query params, validate it against the last_evaluated_key
-            if created_year:
-                # Check if the created_year in the last_evaluated_key matches the provided created_year
-                if last_evaluated_key.get("created_year") != created_year:
-                    return {
-                        "statusCode": 400,
-                        "body": json.dumps(
-                            {
-                                "message": f"The created_year from the last_evaluated_key ({last_evaluated_key.get('created_year')}) does not match the provided created_year ({created_year})."
-                            }
-                        ),
-                    }
-            # Client did not provide a created_year in the query params, extract it from the last_evaluated_key
-            created_year = last_evaluated_key.get("created_year")
-
-        except ValueError as e:
-            logger.error("Invalid last_evaluated_key format: %s", e)
-            return {
-                "statusCode": 400,
-                "body": json.dumps(
-                    {
-                        "message": "Invalid last_evaluated_key format. It must be a valid base64 encoded JSON string."
-                    }
-                ),
-            }
-    else:
-        current_last_evaluated_key = None
-        # Clear old pagination state if no last_evaluated_key is provided
-        pagination_state_repo.save_pagination_state(
-            {
-                "user_id": user_id,
-                "index_name": index_name,
-                "last_evaluated_keys": [],
-                "created_at": get_current_utc_time(),
-                "updated_at": get_current_utc_time(),
-                "limit": limit,
-            }
-        )
-
-    # Determine the years to query based on the provided created_year
-    years_to_query = []
-    if created_year:
-        years_to_query.append(created_year)
-        if not is_created_year_provided_by_client:
-            years_to_query.append(get_previous_year(created_year))
-    else:
-        current_year = get_current_utc_time()[:4]
-        years_to_query.extend([current_year, get_previous_year(current_year)])
-
-    runs = []
-
-    # Query the table using the provided parameters
     try:
-        for year in years_to_query:
-            while True:
-                response = run_repo.query_runs_by_created_year_and_created_at_gsi(
-                    year, limit - len(runs), last_evaluated_key, sort_order
-                )
-                runs.extend(response.get("Items", []))
-                last_evaluated_key = response.get("LastEvaluatedKey")
-
-                if last_evaluated_key is None or len(runs) >= limit:
-                    break
-
-            if len(runs) >= limit:
-                break
-
-        next_last_evaluated_key = response.get("LastEvaluatedKey")
-
-        logger.info("Query successful")
-    except ClientError as e:
-        logger.error("Query failed: %s", e)
-        return {"statusCode": 400, "body": json.dumps({"message": str(e)})}
-
-    # Encode last_evaluated_key to base64 if it's not null
-    if next_last_evaluated_key:
-        next_last_evaluated_key = encode_key(next_last_evaluated_key)
-
-    # Store the pagination state for the next request
-    pagination_state = (
-        pagination_state_repo.get_pagination_state_by_user_id_and_index_name(
-            user_id, index_name
-        )
-    )
-    last_evaluated_keys = pagination_state.get("last_evaluated_keys", [])
-
-    # Append the next_last_evaluated_key only if it is not already in the list
-    if next_last_evaluated_key and next_last_evaluated_key not in last_evaluated_keys:
-        last_evaluated_keys.append(next_last_evaluated_key)
-
-    pagination_state_repo.save_pagination_state(
-        {
-            "user_id": user_id,
-            "index_name": index_name,
-            "last_evaluated_keys": last_evaluated_keys,
-            "created_at": pagination_state.get("created_at", get_current_utc_time()),
-            "updated_at": get_current_utc_time(),
+        # Prepare params for repository methods
+        repo_params = {
+            "page": page,
             "limit": limit,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+            "filters": filters,  # Pass collected filters
         }
-    )
 
-    # Sort the results by created_at
-    reverse_order = True if sort_order.upper() == "DESC" else False
-    runs.sort(key=lambda x: x.get("created_at", ""), reverse=reverse_order)
+        # Add specific top-level params if your repository expects them directly
+        # For example, if run_type and created_year are not part of a 'filters' dict:
+        if "run_type" in filters:
+            repo_params["run_type"] = filters["run_type"]
+        if "created_year" in filters:
+            repo_params["created_year"] = filters["created_year"]
+        if "sender_id" in filters:
+            repo_params["sender_id"] = filters["sender_id"]
 
-    # Encode last_evaluated_key to base64 if it's not null
-    for run in runs:
-        for key, value in run.items():
-            if isinstance(value, Decimal):
-                run[key] = float(value)
+        runs = run_repo.list_runs(repo_params)
+        total_items = run_repo.count_runs(repo_params)
 
-    # Find the index of the current_last_evaluated_key in last_evaluated_keys
-    if current_last_evaluated_key in last_evaluated_keys:
-        current_index = last_evaluated_keys.index(current_last_evaluated_key)
-        previous_last_evaluated_key = (
-            last_evaluated_keys[current_index - 1] if current_index > 0 else None
+        logger.info(
+            "Query successful. Fetched %d runs. Total items: %d", len(runs), total_items
         )
-    else:
-        previous_last_evaluated_key = None
+
+    except ClientError as e:  # Catch boto3 client errors specifically if needed
+        logger.error(
+            "Repository query failed (ClientError): %s, Request ID: %s",
+            e,
+            aws_request_id,
+        )
+        return {
+            "statusCode": 500,
+            "body": json.dumps(
+                {"message": f"Error querying runs: {e}, Request ID: {aws_request_id}"}
+            ),
+        }
+    except Exception as e:  # Catch other potential errors from repository or logic
+        logger.error(
+            "Repository query failed (Exception): %s, Request ID: %s", e, aws_request_id
+        )
+        return {
+            "statusCode": 500,
+            "body": json.dumps(
+                {
+                    "message": f"An unexpected error occurred: {e}, Request ID: {aws_request_id}"
+                }
+            ),
+        }
+
+    # Calculate pagination details
+    total_pages = math.ceil(total_items / limit) if limit > 0 else 0
+    has_next_page = page < total_pages
+    has_previous_page = page > 1
 
     result = {
-        "data": runs[:limit],
-        "previous_last_evaluated_key": previous_last_evaluated_key,
-        "current_last_evaluated_key": current_last_evaluated_key,
-        "next_last_evaluated_key": next_last_evaluated_key,
+        "data": runs,  # Assumes runs are already in correct format (e.g., Decimals handled by repo)
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total_items": total_items,
+            "total_pages": total_pages,
+            "has_next_page": has_next_page,
+            "has_previous_page": has_previous_page,
+        },
     }
 
-    logger.info("Returning response with %d runs", len(runs))
     return {
         "statusCode": 200,
         "headers": {
             "Content-Type": "application/json",
+            # Add CORS headers if needed
+            # "Access-Control-Allow-Origin": "*",
+            # "Access-Control-Allow-Credentials": True,
         },
-        "body": json.dumps(result, cls=DecimalEncoder),
+        "body": json.dumps(
+            result
+        ),  # Default json.dumps should be fine if repo returns serializable data
     }

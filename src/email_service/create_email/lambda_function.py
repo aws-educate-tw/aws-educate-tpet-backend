@@ -23,14 +23,16 @@ SEND_EMAIL_SQS_QUEUE_URL = os.getenv(
     "SEND_EMAIL_SQS_QUEUE_URL"
 )  # Queue for triggering email sending
 
+DEFAULT_RUN_TYPE = "EMAIL"
+
 # Initialize services
 file_service = FileService()
 email_repository = EmailRepository()
 
 
-def create_email_item(run_id: str, email_data: dict, row_data: dict) -> dict:
+def prepare_email_item(run_id: str, email_data: dict, row_data: dict) -> dict:
     """
-    Create an email item with the necessary data.
+    Prepare an email item with the necessary data.
 
     :param run_id: The run ID for tracking the email operation
     :param email_data: Dictionary containing email metadata
@@ -63,7 +65,7 @@ def create_email_item(run_id: str, email_data: dict, row_data: dict) -> dict:
     }
 
 
-def send_to_email_queue(email_item: dict) -> None:
+def enqueue_email_to_send_email_sqs_queue(email_item: dict) -> None:
     """
     Send email item to the send email queue.
 
@@ -102,7 +104,7 @@ def send_to_email_queue(email_item: dict) -> None:
         raise
 
 
-def process_recipients(sqs_message: dict) -> list[dict]:
+def build_recipient_list_from_sqs_message(sqs_message: dict) -> list[dict]:
     """
     Process recipients based on the source type (SPREADSHEET or DIRECT).
 
@@ -132,6 +134,28 @@ def process_recipients(sqs_message: dict) -> list[dict]:
         return sheet_data
 
 
+def upsert_emails_and_enqueue_emails_to_send_email_sqs_queue(sqs_message: dict) -> None:
+    """
+    Processes recipients from the SQS message and creates corresponding email items.
+
+    :param sqs_message: The SQS message containing run and recipient data.
+    """
+    recipients_data = build_recipient_list_from_sqs_message(sqs_message)
+
+    for row_data in recipients_data:
+        # Create and save email item
+        email_item = prepare_email_item(sqs_message["run_id"], sqs_message, row_data)
+        email_repository.upsert_email(email_item)
+
+        # Enqueue the email for sending
+        enqueue_email_to_send_email_sqs_queue(email_item)
+
+    logger.info(
+        "Successfully processed all recipients for run_id: %s",
+        sqs_message["run_id"],
+    )
+
+
 def lambda_handler(event, context):
     """
     AWS Lambda handler function to process email creation requests.
@@ -146,51 +170,47 @@ def lambda_handler(event, context):
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
     for record in event["Records"]:
+        sqs_message = None
         try:
             sqs_message = get_sqs_message(record)
             access_token = sqs_message["access_token"]
+            run_type = sqs_message.get("run_type", DEFAULT_RUN_TYPE)
 
             # Set the current user information
             current_user_util.set_current_user_by_access_token(access_token)
 
-            # Check if emails already exist for this run_id
-            response = email_repository.query_emails(
-                run_id=sqs_message["run_id"],
-                limit=1,
-                last_evaluated_key=None,
-                sort_order="ASC",
-            )
-
-            # If no emails exist, process recipients and create email items
-            if response["Count"] == 0:
-                # Process recipients and create email items
-                recipients_data = process_recipients(sqs_message)
-
-                for row_data in recipients_data:
-                    # Create and save email item
-                    email_item = create_email_item(
-                        sqs_message["run_id"], sqs_message, row_data
-                    )
-                    email_repository.save_email(email_item)
-
-                    # Queue the email for sending
-                    send_to_email_queue(email_item)
-
+            if run_type == "WEBHOOK":
+                # For WEBHOOK, append emails without checking for existence.
+                # The SQS message from validate_input contains only the new recipients.
                 logger.info(
-                    "Successfully processed all recipients for run_id: %s",
-                    sqs_message["run_id"],
+                    "Processing WEBHOOK run_type for run_id: %s", sqs_message["run_id"]
                 )
+                upsert_emails_and_enqueue_emails_to_send_email_sqs_queue(sqs_message)
             else:
-                logger.info(
-                    "Emails already exist for run_id: %s. Skipping creation.",
-                    sqs_message["run_id"],
+                # For other run_types (like EMAIL), maintain idempotency check
+                # to prevent reprocessing the entire spreadsheet.
+                existing_emails = email_repository.list_emails(
+                    {
+                        "run_id": sqs_message["run_id"],
+                        "limit": 1,
+                    }
                 )
+
+                if not existing_emails:
+                    upsert_emails_and_enqueue_emails_to_send_email_sqs_queue(
+                        sqs_message
+                    )
+                else:
+                    logger.info(
+                        "Emails already exist for run_id: %s. Skipping creation.",
+                        sqs_message["run_id"],
+                    )
 
         except Exception as e:
             logger.error("Error processing message: %s", e)
             raise
         finally:
-            if CREATE_EMAIL_SQS_QUEUE_URL:
+            if sqs_message and CREATE_EMAIL_SQS_QUEUE_URL:
                 try:
                     delete_sqs_message(
                         CREATE_EMAIL_SQS_QUEUE_URL,
@@ -201,7 +221,7 @@ def lambda_handler(event, context):
                     )
                 except Exception as e:
                     logger.error("Error deleting SQS message: %s", e)
-            else:
+            elif not CREATE_EMAIL_SQS_QUEUE_URL:
                 logger.error(
                     "CREATE_EMAIL_SQS_QUEUE_URL is not available: %s",
                     CREATE_EMAIL_SQS_QUEUE_URL,

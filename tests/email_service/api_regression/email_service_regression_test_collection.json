@@ -67,15 +67,12 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"// Verify status code is 202",
 							"pm.test(\"Status code is 202\", function () {",
 							"    pm.response.to.have.status(202);",
 							"});",
 							"",
-							"// Parse the JSON response body",
 							"const responseData = pm.response.json();",
 							"",
-							"// Verify the response contains the required fields",
 							"pm.test(\"Response contains all required fields\", function () {",
 							"    pm.expect(responseData).to.have.property(\"status\");",
 							"    pm.expect(responseData).to.have.property(\"message\");",
@@ -96,12 +93,10 @@
 							"    pm.expect(responseData).to.have.property(\"expected_email_send_count\");",
 							"});",
 							"",
-							"// Verify status is \"SUCCESS\"",
 							"pm.test(\"Status is SUCCESS\", function () {",
 							"    pm.expect(responseData.status).to.eql(\"SUCCESS\");",
 							"});",
 							"",
-							"// Verify run_id is not null",
 							"pm.test(\"Run ID is present\", function () {",
 							"    pm.expect(responseData.run_id).to.not.be.null;",
 							"});"
@@ -599,84 +594,242 @@
 			]
 		},
 		{
+			"name": "Create run",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"responseBody = pm.response.json();",
+							"",
+							"pm.test(\"Status code is 201 Created\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Response body values are correct\", function () {",
+							"    pm.expect(responseBody.run_type).to.eql(\"WEBHOOK\");",
+							"    pm.expect(responseBody.recipient_source).to.eql(\"DIRECT\");",
+							"});",
+							"",
+							"pm.test(\"Key properties exist and have correct format\", function () {",
+							"    pm.expect(responseBody).to.have.property(\"run_id\");",
+							"    pm.expect(responseBody.run_id).to.be.a('string').and.to.not.be.empty;",
+							"    ",
+							"    pm.expect(responseBody).to.have.property(\"created_at\");",
+							"    pm.expect(responseBody.created_at).to.be.a('string');",
+							"});",
+							"",
+							"pm.test(\"Initial counts are zero\", function () {",
+							"    pm.expect(responseBody.expected_email_send_count).to.eql(0);",
+							"    pm.expect(responseBody.success_email_count).to.eql(0);",
+							"    pm.expect(responseBody.failed_email_count).to.eql(0);",
+							"});",
+							"",
+							"pm.test(\"Data types for array fields are correct\", function () {",
+							"    pm.expect(responseBody.recipients).to.be.an('array');",
+							"    pm.expect(responseBody.cc).to.be.an('array');",
+							"    pm.expect(responseBody.bcc).to.be.an('array');",
+							"});",
+							"",
+							"if (responseBody.run_id) {",
+							"    pm.environment.set(\"runId\", responseBody.run_id);",
+							"    console.log(\"已將 runId 存到環境變數: \" + responseBody.run_id);",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{access_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"run_type\": \"WEBHOOK\",\n    \"recipient_source\": \"DIRECT\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs",
+					"protocol": "https",
+					"host": [
+						"{{environment}}-email-service-internal-api-tpet",
+						"aws-educate",
+						"tw"
+					],
+					"path": [
+						"{{environment}}",
+						"runs"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "201",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"run_type\": \"WEBHOOK\",\n    \"recipient_source\": \"DIRECT\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-email-service-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"runs"
+							]
+						}
+					},
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"run_id\": \"d8cdb093de9c4000b6c615f49b7c2416\",\n    \"run_type\": \"DIRECT\",\n    \"attachment_file_ids\": [],\n    \"attachment_files\": [],\n    \"created_at\": \"2025-05-11T00:26:56Z\",\n    \"created_year\": \"2025\",\n    \"created_year_month\": \"2025-05\",\n    \"created_year_month_day\": \"2025-05-11\",\n    \"expected_email_send_count\": 0,\n    \"is_generate_certificate\": false,\n    \"recipients\": [],\n    \"recipient_source\": \"DIRECT\",\n    \"reply_to\": \"\",\n    \"sender\": {\n        \"email\": \"surveycake@aws-educate.tw\",\n        \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"username\": \"surveycake\",\n        \"cognito_sub\": \"9881b370-0031-7037-b42e-ef737d3aa382\"\n    },\n    \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n    \"sender_local_part\": \"\",\n    \"spreadsheet_file\": null,\n    \"spreadsheet_file_id\": null,\n    \"subject\": \"\",\n    \"success_email_count\": 0,\n    \"template_file\": null,\n    \"template_file_id\": \"\",\n    \"failed_email_count\": 0\n}"
+				},
+				{
+					"name": "400 (missing run_type)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"recipient_source\": \"DIRECT\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "/runs",
+							"path": [
+								"runs"
+							]
+						}
+					},
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"'run_type' field is required and cannot be empty. Valid values are 'WEBHOOK' and 'EMAIL'.\",\n    \"error\": \"Missing required field\",\n    \"request_id\": \"d8cdb093de9c4000b6c615f49b7c2416\"\n}"
+				},
+				{
+					"name": "422 (Invalid Value)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"run_type\": \"WEBHOOOOOOK\",\n    \"recipient_source\": \"DIRECT\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "/runs",
+							"path": [
+								"runs"
+							]
+						}
+					},
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"message\": \"Invalid value for run_type. Allowed: WEBHOOK, EMAIL\",\n    \"error\": \"Invalid value\",\n    \"request_id\": \"d8cdb093de9c4000b6c615f49b7c2416\"\n}"
+				}
+			]
+		},
+		{
 			"name": "List runs",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
-							"// Check if the status code is 200",
-							"pm.test(\"Status code is 200\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});",
-							"",
-							"// Verify if the response is in JSON format",
-							"pm.test(\"Response is JSON\", function () {",
-							"    pm.response.to.be.json;",
-							"});",
-							"",
-							"// Check if 'data' array exists and contains only one item",
-							"pm.test(\"Data array contains exactly one item\", function () {",
-							"    const jsonData = pm.response.json();",
-							"    pm.expect(jsonData.data).to.be.an('array');",
-							"    pm.expect(jsonData.data.length).to.equal(1); // Ensure there is exactly one item",
-							"});",
-							"",
-							"// Ensure 'previous_last_evaluated_key' and 'current_last_evaluated_key' are null",
-							"pm.test(\"previous_last_evaluated_key and current_last_evaluated_key are null\", function () {",
-							"    const jsonData = pm.response.json();",
-							"    pm.expect(jsonData.previous_last_evaluated_key).to.be.null;",
-							"    pm.expect(jsonData.current_last_evaluated_key).to.be.null;",
-							"});",
-							"",
-							"// Ensure 'next_last_evaluated_key' exists and is not empty",
-							"pm.test(\"next_last_evaluated_key exists and is not empty\", function () {",
-							"    const jsonData = pm.response.json();",
-							"    pm.expect(jsonData.next_last_evaluated_key).to.be.a(\"string\");",
-							"    pm.expect(jsonData.next_last_evaluated_key).to.not.be.empty;",
-							"});",
-							"",
-							"// Check if 'template_file' exists and validate its structure",
-							"pm.test(\"template_file exists and structure is correct\", function () {",
-							"    const jsonData = pm.response.json();",
-							"    const exampleRun = jsonData.data[0]; // Test the first (and only) item in the data array",
-							"",
-							"    pm.expect(exampleRun).to.have.property(\"template_file\").that.is.an(\"object\");",
-							"    const templateFile = exampleRun.template_file;",
-							"",
-							"    pm.expect(templateFile).to.have.property(\"file_url\").that.is.a(\"string\");",
-							"    pm.expect(templateFile).to.have.property(\"file_name\").that.is.a(\"string\");",
-							"    pm.expect(templateFile).to.have.property(\"file_extension\").that.is.a(\"string\");",
-							"    pm.expect(templateFile).to.have.property(\"file_id\").that.is.a(\"string\");",
-							"    pm.expect(templateFile).to.have.property(\"created_at\").that.is.a(\"string\");",
-							"});",
-							"",
-							"// Validate the structure of the single item in the 'data' array",
-							"pm.test(\"Data structure is correct\", function () {",
-							"    const jsonData = pm.response.json();",
-							"    const exampleRun = jsonData.data[0]; // Only one item due to limit=1",
-							"",
-							"    pm.expect(exampleRun).to.have.property(\"run_id\").that.is.a(\"string\");",
-							"    pm.expect(exampleRun).to.have.property(\"subject\").that.is.a(\"string\");",
-							"    pm.expect(exampleRun).to.have.property(\"created_at\").that.is.a(\"string\");",
-							"    pm.expect(exampleRun).to.have.property(\"success_email_count\").that.is.a(\"number\");",
-							"    pm.expect(exampleRun).to.have.property(\"sender\").that.is.an(\"object\");",
-							"    pm.expect(exampleRun.sender).to.have.property(\"email\").that.is.a(\"string\");",
-							"});",
-							"",
-							"// Check the structure of 'attachment_files' if they exist",
-							"pm.test(\"Attachment files structure is correct\", function () {",
-							"    const jsonData = pm.response.json();",
-							"    const exampleRun = jsonData.data[0]; // Only one item due to limit=1",
-							"",
-							"    if (exampleRun.attachment_files.length > 0) {",
-							"        const attachment = exampleRun.attachment_files[0];",
-							"        pm.expect(attachment).to.have.property(\"file_url\").that.is.a(\"string\");",
-							"        pm.expect(attachment).to.have.property(\"file_name\").that.is.a(\"string\");",
-							"        pm.expect(attachment).to.have.property(\"file_extension\").that.is.a(\"string\");",
-							"    }",
-							"});",
-							""
+							"pm.test(\"Status code is 200 OK\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response body has correct structure\", function () {\r",
+							"    const responseBody = pm.response.json();\r",
+							"    \r",
+							"    pm.expect(responseBody).to.have.property('data');\r",
+							"    pm.expect(responseBody).to.have.property('pagination');\r",
+							"    \r",
+							"    pm.expect(responseBody.data).to.be.an('array');\r",
+							"    \r",
+							"    const pagination = responseBody.pagination;\r",
+							"    pm.expect(pagination).to.have.all.keys('page', 'limit', 'total_items', 'total_pages', 'has_next_page', 'has_previous_page');\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Each item in 'data' array has required properties\", function () {\r",
+							"    const responseBody = pm.response.json();\r",
+							"    const dataArray = responseBody.data;\r",
+							"\r",
+							"    dataArray.forEach(item => {\r",
+							"        pm.expect(item).to.be.an('object');\r",
+							"        pm.expect(item).to.have.property('run_id').that.is.a('string');\r",
+							"        pm.expect(item).to.have.property('run_type').that.is.a('string');\r",
+							"        pm.expect(item).to.have.property('created_at').that.is.a('string');\r",
+							"    });\r",
+							"});"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -709,7 +862,7 @@
 					}
 				},
 				"url": {
-					"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs?limit=1",
+					"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs?limit=5&page=2",
 					"protocol": "https",
 					"host": [
 						"{{environment}}-email-service-internal-api-tpet",
@@ -721,11 +874,6 @@
 						"runs"
 					],
 					"query": [
-						{
-							"key": "last_evaluated_key",
-							"value": "eyJydW5faWQiOiAiMWU5ZDlmNTBhNjNkNDEwM2I3ZjUyNmU2NDgwMTU1MGIiLCAiY3JlYXRlZF95ZWFyIjogIjIwMjQiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTEyLTA3VDA5OjEzOjUyWiJ9",
-							"disabled": true
-						},
 						{
 							"key": "sort_by",
 							"value": "created_at",
@@ -739,14 +887,18 @@
 							"disabled": true
 						},
 						{
-							"key": "created_year",
-							"value": null,
-							"description": "(Optional) 篩選某年份所創建的資料，Default=自動取當前時間的年份",
+							"key": "limit",
+							"value": "5"
+						},
+						{
+							"key": "run_type",
+							"value": "WEBHOOK",
+							"description": "(Optinoal) DIRECT / SPREADSHEET / WEBHOOK",
 							"disabled": true
 						},
 						{
-							"key": "limit",
-							"value": "1"
+							"key": "page",
+							"value": "2"
 						}
 					]
 				}
@@ -767,7 +919,7 @@
 							}
 						},
 						"url": {
-							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs?limit=1&created_year",
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs?limit=5&run_type=WEBHOOK&page=1",
 							"protocol": "https",
 							"host": [
 								"{{environment}}-email-service-internal-api-tpet",
@@ -781,13 +933,15 @@
 							"query": [
 								{
 									"key": "limit",
-									"value": "1",
-									"description": "(Optional) 最多取回多少筆 data, Default=10"
+									"value": "5"
 								},
 								{
-									"key": "last_evaluated_key",
-									"value": "eyJydW5faWQiOiAiNmJiMzMxMGIwOTEzNDhhOGI2MTU3NGJjNWRlZTVlODciLCAiY3JlYXRlZF95ZWFyIjogIjIwMjQiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTA4LTAyVDE0OjU2OjAyWiJ9",
-									"disabled": true
+									"key": "run_type",
+									"value": "WEBHOOK"
+								},
+								{
+									"key": "page",
+									"value": "1"
 								},
 								{
 									"key": "sort_by",
@@ -800,11 +954,6 @@
 									"value": "ASC",
 									"description": "(Optional) {ASC / DESC}, Default=DESC",
 									"disabled": true
-								},
-								{
-									"key": "created_year",
-									"value": null,
-									"description": "(Optional) 篩選某年份所創建的資料，Default=自動取當前時間的年份"
 								}
 							]
 						}
@@ -815,7 +964,7 @@
 					"header": [
 						{
 							"key": "Date",
-							"value": "Fri, 02 Aug 2024 15:18:17 GMT"
+							"value": "Sun, 11 May 2025 01:15:58 GMT"
 						},
 						{
 							"key": "Content-Type",
@@ -823,7 +972,7 @@
 						},
 						{
 							"key": "Content-Length",
-							"value": "3135"
+							"value": "13745"
 						},
 						{
 							"key": "Connection",
@@ -831,11 +980,11 @@
 						},
 						{
 							"key": "Apigw-Requestid",
-							"value": "b4vMggCUvHcEJKA="
+							"value": "KYQMOhkKvHcESPQ="
 						}
 					],
 					"cookie": [],
-					"body": "{\n    \"data\": [\n        {\n            \"bcc\": [\n                \"rich.liu627@gmail.com\"\n            ],\n            \"subject\": \"【參與證明】AWS Educate 雲端大使感謝您的參與 - BCC CC test-local-dev 11:11 （參與證明請參見附件）\",\n            \"cc\": [\n                \"ptqwe20020413@gmail.com\",\n                \"h830519h@yahoo.com.tw\"\n            ],\n            \"run_id\": \"5b2003e667134c8fa9aabec1e7f75cba\",\n            \"attachment_files\": [\n                {\n                    \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d7dc554e23d64414b9fcb5b85ca65351_%28For%20Test%29Certificate-for-bcc-test.xlsx\",\n                    \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                    \"updated_at\": \"2024-08-02T13:59:25Z\",\n                    \"file_name\": \"(For Test)Certificate-for-bcc-test.xlsx\",\n                    \"file_id\": \"d7dc554e23d64414b9fcb5b85ca65351\",\n                    \"s3_object_key\": \"d7dc554e23d64414b9fcb5b85ca65351_(For Test)Certificate-for-bcc-test.xlsx\",\n                    \"created_at\": \"2024-08-02T13:59:25Z\",\n                    \"file_extension\": \"xlsx\",\n                    \"file_size\": 32117\n                }\n            ],\n            \"created_at\": \"2024-08-02T15:11:48Z\",\n            \"sender_local_part\": \"event\",\n            \"spreadsheet_file_id\": \"d7dc554e23d64414b9fcb5b85ca65351\",\n            \"created_year_month\": \"2024-08\",\n            \"attachment_file_ids\": [\n                \"d7dc554e23d64414b9fcb5b85ca65351\"\n            ],\n            \"is_generate_certificate\": false,\n            \"spreadsheet_file\": {\n                \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d7dc554e23d64414b9fcb5b85ca65351_%28For%20Test%29Certificate-for-bcc-test.xlsx\",\n                \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                \"updated_at\": \"2024-08-02T13:59:25Z\",\n                \"file_name\": \"(For Test)Certificate-for-bcc-test.xlsx\",\n                \"file_id\": \"d7dc554e23d64414b9fcb5b85ca65351\",\n                \"s3_object_key\": \"d7dc554e23d64414b9fcb5b85ca65351_(For Test)Certificate-for-bcc-test.xlsx\",\n                \"created_at\": \"2024-08-02T13:59:25Z\",\n                \"file_extension\": \"xlsx\",\n                \"file_size\": 32117\n            },\n            \"display_name\": \"AWS Educate 參與證明\",\n            \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n            \"sender\": {\n                \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                \"email\": \"ptqwe20020413@gmail.com\",\n                \"username\": \"ptshiun\"\n            },\n            \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n            \"success_email_count\": 3,\n            \"expected_email_send_count\": 3,\n            \"reply_to\": \"harryup2000@gmail.com\",\n            \"template_file\": {\n                \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n                \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n                \"updated_at\": \"2024-08-02T03:24:16Z\",\n                \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n                \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n                \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n                \"created_at\": \"2024-08-02T03:24:16Z\",\n                \"file_extension\": \"html\",\n                \"file_size\": 3164\n            },\n            \"created_year_month_day\": \"2024-08-02\",\n            \"created_year\": \"2024\"\n        }\n    ],\n    \"previous_last_evaluated_key\": null,\n    \"current_last_evaluated_key\": null,\n    \"next_last_evaluated_key\": \"eyJydW5faWQiOiAiNWIyMDAzZTY2NzEzNGM4ZmE5YWFiZWMxZTdmNzVjYmEiLCAiY3JlYXRlZF95ZWFyIjogIjIwMjQiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTA4LTAyVDE1OjExOjQ4WiJ9\"\n}"
+					"body": "{\n  \"data\": [\n    {\n      \"run_id\": \"64e6f687536a40109bd2f8b4cf54c554\",\n      \"run_type\": \"WEBHOOK\",\n      \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n      ],\n      \"attachment_files\": [\n        {\n          \"file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n          \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d9df7cd2c6fa4fadbf82df5e0dc2612f_%5BFor%20Test%5DTPET-excel_%E9%99%AA%E8%B7%91%E8%A8%88%E7%95%AB%E8%80%83%E5%88%B0%E8%AD%89%E7%85%A7%E7%9A%84%E6%89%80%E6%9C%89%E5%90%8D%E5%96%AE_v0809.xlsx\",\n          \"file_name\": \"[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_size\": \"29866.0\",\n          \"created_at\": \"2024-08-09T18:07:26Z\",\n          \"updated_at\": \"2024-08-09T18:07:26Z\",\n          \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n          \"s3_object_key\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f_[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_extension\": \"xlsx\"\n        }\n      ],\n      \"bcc\": [],\n      \"cc\": [],\n      \"created_at\": \"2025-05-11T02:35:00Z\",\n      \"created_year\": \"2025\",\n      \"created_year_month\": \"2025-05\",\n      \"created_year_month_day\": \"2025-05-11\",\n      \"display_name\": \"參與證明\",\n      \"expected_email_send_count\": 1005,\n      \"is_generate_certificate\": true,\n      \"recipients\": [],\n      \"recipient_source\": \"SPREADSHEET\",\n      \"reply_to\": \"h830519h@yahoo.com.tw\",\n      \"sender\": {\n        \"email\": \"ptqwe20020413@gmail.com\",\n        \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"username\": \"ptshiun\",\n        \"cognito_sub\": \"9881b370-0031-7037-b42e-ef737d3aa382\"\n      },\n      \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n      \"sender_local_part\": \"event\",\n      \"spreadsheet_file\": {\n        \"file_id\": \"0046d466599b4e948afb5d728cf1b4dc\",\n        \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0046d466599b4e948afb5d728cf1b4dc_%28For%20Test%29Certificate-example-sheet%20-%20%E5%A3%93%E5%8A%9B%E6%B8%AC%E8%A9%A6%201000-1.xlsx\",\n        \"file_name\": \"(For Test)Certificate-example-sheet - 壓力測試 1000-1.xlsx\",\n        \"file_size\": \"76022.0\",\n        \"created_at\": \"2025-02-09T21:26:30Z\",\n        \"updated_at\": \"2025-02-09T21:26:30Z\",\n        \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"s3_object_key\": \"0046d466599b4e948afb5d728cf1b4dc_(For Test)Certificate-example-sheet - 壓力測試 1000-1.xlsx\",\n        \"file_extension\": \"xlsx\"\n      },\n      \"spreadsheet_file_id\": \"0046d466599b4e948afb5d728cf1b4dc\",\n      \"subject\": \"【參與證明】local-dev 06:04\",\n      \"success_email_count\": 108,\n      \"template_file\": {\n        \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n        \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n        \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n        \"file_size\": \"3164.0\",\n        \"created_at\": \"2024-08-02T03:24:16Z\",\n        \"updated_at\": \"2024-08-02T03:24:16Z\",\n        \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n        \"file_extension\": \"html\"\n      },\n      \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n      \"failed_email_count\": 0\n    },\n    {\n      \"run_id\": \"64ca66e8b41c4921a7e43c4c20d27123\",\n      \"run_type\": \"DIRECT\",\n      \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n      ],\n      \"attachment_files\": [\n        {\n          \"file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n          \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d9df7cd2c6fa4fadbf82df5e0dc2612f_%5BFor%20Test%5DTPET-excel_%E9%99%AA%E8%B7%91%E8%A8%88%E7%95%AB%E8%80%83%E5%88%B0%E8%AD%89%E7%85%A7%E7%9A%84%E6%89%80%E6%9C%89%E5%90%8D%E5%96%AE_v0809.xlsx\",\n          \"file_name\": \"[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_size\": \"29866.0\",\n          \"created_at\": \"2024-08-09T18:07:26Z\",\n          \"updated_at\": \"2024-08-09T18:07:26Z\",\n          \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n          \"s3_object_key\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f_[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_extension\": \"xlsx\"\n        }\n      ],\n      \"bcc\": [\n        \"ptqwe20020413@gmail.com\"\n      ],\n      \"cc\": [],\n      \"created_at\": \"2025-05-11T00:25:17Z\",\n      \"created_year\": \"2025\",\n      \"created_year_month\": \"2025-05\",\n      \"created_year_month_day\": \"2025-05-11\",\n      \"display_name\": \"參與證明\",\n      \"expected_email_send_count\": 1,\n      \"is_generate_certificate\": true,\n      \"recipients\": [\n        {\n          \"email\": \"h830519h@yahoo.com.tw\",\n          \"template_variables\": {\n            \"Name\": \"harry鍾\",\n            \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n          }\n        }\n      ],\n      \"recipient_source\": \"DIRECT\",\n      \"reply_to\": \"h830519h@yahoo.com.tw\",\n      \"sender\": {\n        \"email\": \"ptqwe20020413@gmail.com\",\n        \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"username\": \"ptshiun\",\n        \"cognito_sub\": \"9881b370-0031-7037-b42e-ef737d3aa382\"\n      },\n      \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n      \"sender_local_part\": \"event\",\n      \"spreadsheet_file\": null,\n      \"spreadsheet_file_id\": null,\n      \"subject\": \"【參與證明】local-dev 06:04\",\n      \"success_email_count\": 1,\n      \"template_file\": {\n        \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n        \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n        \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n        \"file_size\": \"3164.0\",\n        \"created_at\": \"2024-08-02T03:24:16Z\",\n        \"updated_at\": \"2024-08-02T03:24:16Z\",\n        \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n        \"file_extension\": \"html\"\n      },\n      \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\"\n    },\n    {\n      \"run_id\": \"1a8fea1fedf9490abe9df91627fa1259\",\n      \"run_type\": \"DIRECT\",\n      \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n      ],\n      \"attachment_files\": [\n        {\n          \"file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n          \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d9df7cd2c6fa4fadbf82df5e0dc2612f_%5BFor%20Test%5DTPET-excel_%E9%99%AA%E8%B7%91%E8%A8%88%E7%95%AB%E8%80%83%E5%88%B0%E8%AD%89%E7%85%A7%E7%9A%84%E6%89%80%E6%9C%89%E5%90%8D%E5%96%AE_v0809.xlsx\",\n          \"file_name\": \"[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_size\": \"29866.0\",\n          \"created_at\": \"2024-08-09T18:07:26Z\",\n          \"updated_at\": \"2024-08-09T18:07:26Z\",\n          \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n          \"s3_object_key\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f_[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_extension\": \"xlsx\"\n        }\n      ],\n      \"bcc\": [\n        \"ptqwe20020413@gmail.com\"\n      ],\n      \"cc\": [],\n      \"created_at\": \"2025-05-11T00:18:12Z\",\n      \"created_year\": \"2025\",\n      \"created_year_month\": \"2025-05\",\n      \"created_year_month_day\": \"2025-05-11\",\n      \"display_name\": \"參與證明\",\n      \"expected_email_send_count\": 1,\n      \"is_generate_certificate\": true,\n      \"recipients\": [\n        {\n          \"email\": \"h830519h@yahoo.com.tw\",\n          \"template_variables\": {\n            \"Name\": \"harry鍾\",\n            \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n          }\n        }\n      ],\n      \"recipient_source\": \"DIRECT\",\n      \"reply_to\": \"h830519h@yahoo.com.tw\",\n      \"sender\": {\n        \"email\": \"ptqwe20020413@gmail.com\",\n        \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"username\": \"ptshiun\",\n        \"cognito_sub\": \"9881b370-0031-7037-b42e-ef737d3aa382\"\n      },\n      \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n      \"sender_local_part\": \"event\",\n      \"spreadsheet_file\": null,\n      \"spreadsheet_file_id\": null,\n      \"subject\": \"【參與證明】local-dev 06:04\",\n      \"success_email_count\": 0,\n      \"template_file\": {\n        \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n        \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n        \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n        \"file_size\": \"3164.0\",\n        \"created_at\": \"2024-08-02T03:24:16Z\",\n        \"updated_at\": \"2024-08-02T03:24:16Z\",\n        \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n        \"file_extension\": \"html\"\n      },\n      \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\"\n    },\n    {\n      \"run_id\": \"02696bba7e844e2fba02ace1be2c1316\",\n      \"run_type\": \"DIRECT\",\n      \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n      ],\n      \"attachment_files\": [\n        {\n          \"file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n          \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d9df7cd2c6fa4fadbf82df5e0dc2612f_%5BFor%20Test%5DTPET-excel_%E9%99%AA%E8%B7%91%E8%A8%88%E7%95%AB%E8%80%83%E5%88%B0%E8%AD%89%E7%85%A7%E7%9A%84%E6%89%80%E6%9C%89%E5%90%8D%E5%96%AE_v0809.xlsx\",\n          \"file_name\": \"[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_size\": \"29866.0\",\n          \"created_at\": \"2024-08-09T18:07:26Z\",\n          \"updated_at\": \"2024-08-09T18:07:26Z\",\n          \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n          \"s3_object_key\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f_[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_extension\": \"xlsx\"\n        }\n      ],\n      \"bcc\": [\n        \"ptqwe20020413@gmail.com\"\n      ],\n      \"cc\": [],\n      \"created_at\": \"2025-05-11T00:07:00Z\",\n      \"created_year\": \"2025\",\n      \"created_year_month\": \"2025-05\",\n      \"created_year_month_day\": \"2025-05-11\",\n      \"display_name\": \"參與證明\",\n      \"expected_email_send_count\": 1,\n      \"is_generate_certificate\": true,\n      \"recipients\": [\n        {\n          \"email\": \"h830519h@yahoo.com.tw\",\n          \"template_variables\": {\n            \"Name\": \"harry鍾\",\n            \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n          }\n        }\n      ],\n      \"recipient_source\": \"DIRECT\",\n      \"reply_to\": \"h830519h@yahoo.com.tw\",\n      \"sender\": {\n        \"email\": \"ptqwe20020413@gmail.com\",\n        \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"username\": \"ptshiun\",\n        \"cognito_sub\": \"9881b370-0031-7037-b42e-ef737d3aa382\"\n      },\n      \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n      \"sender_local_part\": \"event\",\n      \"spreadsheet_file\": null,\n      \"spreadsheet_file_id\": null,\n      \"subject\": \"【參與證明】local-dev 06:04\",\n      \"success_email_count\": 0,\n      \"template_file\": {\n        \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n        \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n        \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n        \"file_size\": \"3164.0\",\n        \"created_at\": \"2024-08-02T03:24:16Z\",\n        \"updated_at\": \"2024-08-02T03:24:16Z\",\n        \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n        \"file_extension\": \"html\"\n      },\n      \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\"\n    },\n    {\n      \"run_id\": \"07babe32db304bb6b168c5f86f45c594\",\n      \"run_type\": \"DIRECT\",\n      \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n      ],\n      \"attachment_files\": [\n        {\n          \"file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n          \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d9df7cd2c6fa4fadbf82df5e0dc2612f_%5BFor%20Test%5DTPET-excel_%E9%99%AA%E8%B7%91%E8%A8%88%E7%95%AB%E8%80%83%E5%88%B0%E8%AD%89%E7%85%A7%E7%9A%84%E6%89%80%E6%9C%89%E5%90%8D%E5%96%AE_v0809.xlsx\",\n          \"file_name\": \"[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_size\": \"29866.0\",\n          \"created_at\": \"2024-08-09T18:07:26Z\",\n          \"updated_at\": \"2024-08-09T18:07:26Z\",\n          \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n          \"s3_object_key\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f_[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_extension\": \"xlsx\"\n        }\n      ],\n      \"bcc\": [],\n      \"cc\": [],\n      \"created_at\": \"2025-05-11T00:06:18Z\",\n      \"created_year\": \"2025\",\n      \"created_year_month\": \"2025-05\",\n      \"created_year_month_day\": \"2025-05-11\",\n      \"display_name\": \"參與證明\",\n      \"expected_email_send_count\": 1,\n      \"is_generate_certificate\": true,\n      \"recipients\": [\n        {\n          \"email\": \"h830519h@yahoo.com.tw\",\n          \"template_variables\": {\n            \"Name\": \"harry鍾\",\n            \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n          }\n        }\n      ],\n      \"recipient_source\": \"DIRECT\",\n      \"reply_to\": \"h830519h@yahoo.com.tw\",\n      \"sender\": {\n        \"email\": \"ptqwe20020413@gmail.com\",\n        \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"username\": \"ptshiun\",\n        \"cognito_sub\": \"9881b370-0031-7037-b42e-ef737d3aa382\"\n      },\n      \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n      \"sender_local_part\": \"event\",\n      \"spreadsheet_file\": null,\n      \"spreadsheet_file_id\": null,\n      \"subject\": \"【參與證明】local-dev 06:04\",\n      \"success_email_count\": 0,\n      \"template_file\": {\n        \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n        \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n        \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n        \"file_size\": \"3164.0\",\n        \"created_at\": \"2024-08-02T03:24:16Z\",\n        \"updated_at\": \"2024-08-02T03:24:16Z\",\n        \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n        \"file_extension\": \"html\"\n      },\n      \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\"\n    }\n  ],\n  \"pagination\": {\n    \"page\": 1,\n    \"limit\": 5,\n    \"total_items\": 17,\n    \"total_pages\": 4,\n    \"has_next_page\": true,\n    \"has_previous_page\": false\n  }\n}"
 				}
 			]
 		}

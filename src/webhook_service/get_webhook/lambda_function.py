@@ -81,6 +81,7 @@ def lambda_handler(event, context):  # pylint: disable=unused-argument
             "iv_key": webhook_details_item.get("iv_key"),
             "webhook_name": webhook_details_item.get("webhook_name"),
             "webhook_type": webhook_details_item.get("webhook_type"),
+            "run_id": webhook_details_item.get("run_id"),
         }
 
         # Return the successful response
