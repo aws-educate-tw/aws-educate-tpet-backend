@@ -35,8 +35,10 @@ def ensure_database_awake() -> bool:
                 max_retries,
             )
             response = requests.get(health_check_url, timeout=5)
+            response.raise_for_status()
+            health_check_api_response_json = response.json()
 
-            if response.status == "HEALTHY":
+            if health_check_api_response_json.get("status") == "HEALTHY":
                 logger.info("Database confirmed to be awake and healthy")
                 return True
             else:
@@ -80,7 +82,6 @@ def forward_message_to_target_queue(
 
 def process_sqs_message(
     message: dict[str, Any],
-    receipt_handle: str,
     aws_request_id: str,
 ) -> dict[str, Any]:
     """
@@ -90,7 +91,6 @@ def process_sqs_message(
     3. Delete message from auto-resumer queue
 
     :param message: The parsed SQS message
-    :param receipt_handle: The receipt handle for the SQS message
     :param aws_request_id: AWS request ID for tracking
     :param target_sqs_url: The target SQS queue URL to forward the message to
     :return: Response with status code and body
@@ -140,7 +140,6 @@ def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
         try:
             process_sqs_message(
                 sqs_message,
-                record.get("receiptHandle"),
                 context.aws_request_id,
             )
 
