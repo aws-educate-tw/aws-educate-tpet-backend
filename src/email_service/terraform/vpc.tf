@@ -13,6 +13,16 @@ locals {
   availability_zones = slice(sort(data.aws_availability_zones.available.names), 0, 2)
 }
 
+# Validation to ensure we have at least 2 AZs for RDS Multi-AZ deployment
+resource "terraform_data" "validate_azs" {
+  lifecycle {
+    precondition {
+      condition     = length(data.aws_availability_zones.available.names) >= 2
+      error_message = "At least 2 availability zones required for RDS Multi-AZ deployment. Found: ${length(data.aws_availability_zones.available.names)} AZs with opt-in-status='opt-in-not-required'."
+    }
+  }
+}
+
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.0"
@@ -22,6 +32,9 @@ module "vpc" {
 
   # Explicitly use the 2 selected AZs to ensure subnet distribution
   azs = local.availability_zones
+
+  # Ensure AZ validation passes before creating VPC resources
+  depends_on = [terraform_data.validate_azs]
 
   # Create database subnets with explicit AZ mapping
   # This ensures each subnet is in a different AZ
