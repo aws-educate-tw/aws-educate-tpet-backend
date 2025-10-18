@@ -50,3 +50,8 @@ variable "database_name" {
   description = "RDS Aurora PostgreSQL Database name"
   type        = string
 }
+
+variable "rds_engine_version" {
+  description = "RDS Aurora PostgreSQL engine version"
+  type        = string
+}
