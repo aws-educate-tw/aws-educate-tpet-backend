@@ -92,7 +92,6 @@ def process_sqs_message(
 
     :param message: The parsed SQS message
     :param aws_request_id: AWS request ID for tracking
-    :param target_sqs_url: The target SQS queue URL to forward the message to
     :return: Response with status code and body
     """
     logger.info("Attempting to wake up Aurora database. Request ID: %s", aws_request_id)
