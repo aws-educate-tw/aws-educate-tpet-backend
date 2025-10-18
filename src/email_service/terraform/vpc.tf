@@ -25,6 +25,7 @@ module "vpc" {
 
   # Create database subnets with explicit AZ mapping
   # This ensures each subnet is in a different AZ
+  # For more details, see: https://github.com/terraform-aws-modules/terraform-aws-vpc/blob/9b72a9ae8fbcdca4dec5535264e72e5357814a1f/main.tf#L151
   database_subnets = [
     cidrsubnet(local.vpc_cidr, 8, 0), # First AZ (e.g., us-west-2a)
     cidrsubnet(local.vpc_cidr, 8, 1), # Second AZ (e.g., us-west-2b)
