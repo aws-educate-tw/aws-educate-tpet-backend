@@ -1,6 +1,6 @@
 data "aws_rds_engine_version" "postgresql" {
   engine  = "aurora-postgresql"
-  version = "16.6"
+  version = var.rds_engine_version
 }
 
 module "aurora_postgresql_v2" {
