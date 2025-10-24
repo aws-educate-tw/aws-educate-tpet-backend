@@ -11,23 +11,23 @@ resource "random_string" "this" {
 }
 
 locals {
-  source_path                                    = "${path.module}/.."
-  health_check_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-health_check-${random_string.this.result}"
-  validate_input_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-validate_input-${random_string.this.result}"
+  source_path                                        = "${path.module}/.."
+  health_check_function_name_and_ecr_repo_name       = "${var.environment}-${var.service_underscore}-health_check-${random_string.this.result}"
+  validate_input_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-validate_input-${random_string.this.result}"
   auto_resume_aurora_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-auto_resume_aurora-${random_string.this.result}"
-  upsert_run_function_name_and_ecr_repo_name      = "${var.environment}-${var.service_underscore}-upsert_run-${random_string.this.result}"
-  create_run_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-create_run-${random_string.this.result}"
-  create_email_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-create_email-${random_string.this.result}"
-  send_email_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-send_email-${random_string.this.result}"
-  list_runs_function_name_and_ecr_repo_name      = "${var.environment}-${var.service_underscore}-list_runs-${random_string.this.result}"
-  get_run_function_name_and_ecr_repo_name        = "${var.environment}-${var.service_underscore}-get_run-${random_string.this.result}"
-  list_emails_function_name_and_ecr_repo_name    = "${var.environment}-${var.service_underscore}-list_emails-${random_string.this.result}"
-  path_include                                   = ["**"]
-  path_exclude                                   = ["**/__pycache__/**"]
-  files_include                                  = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
-  files_exclude                                  = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
-  files                                          = sort(setsubtract(local.files_include, local.files_exclude))
-  dir_sha                                        = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
+  upsert_run_function_name_and_ecr_repo_name         = "${var.environment}-${var.service_underscore}-upsert_run-${random_string.this.result}"
+  create_run_function_name_and_ecr_repo_name         = "${var.environment}-${var.service_underscore}-create_run-${random_string.this.result}"
+  create_email_function_name_and_ecr_repo_name       = "${var.environment}-${var.service_underscore}-create_email-${random_string.this.result}"
+  send_email_function_name_and_ecr_repo_name         = "${var.environment}-${var.service_underscore}-send_email-${random_string.this.result}"
+  list_runs_function_name_and_ecr_repo_name          = "${var.environment}-${var.service_underscore}-list_runs-${random_string.this.result}"
+  get_run_function_name_and_ecr_repo_name            = "${var.environment}-${var.service_underscore}-get_run-${random_string.this.result}"
+  list_emails_function_name_and_ecr_repo_name        = "${var.environment}-${var.service_underscore}-list_emails-${random_string.this.result}"
+  path_include                                       = ["**"]
+  path_exclude                                       = ["**/__pycache__/**"]
+  files_include                                      = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
+  files_exclude                                      = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
+  files                                              = sort(setsubtract(local.files_include, local.files_exclude))
+  dir_sha                                            = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
 }
 
 provider "docker" {
@@ -66,8 +66,8 @@ module "health_check_lambda" {
 
 
   environment_variables = {
-    "ENVIRONMENT" = var.environment,
-    "SERVICE"     = var.service_underscore
+    "ENVIRONMENT"                        = var.environment,
+    "SERVICE"                            = var.service_underscore
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
@@ -182,7 +182,7 @@ module "validate_input_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
     "AUTO_RESUMER_SQS_QUEUE_URL"         = module.auto_resumer_sqs.queue_url
     "UPSERT_RUN_SQS_QUEUE_URL"           = module.upsert_run_sqs.queue_url
     "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
@@ -247,8 +247,8 @@ module "validate_input_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
       ]
     },
     sqs_send_message = {
@@ -301,7 +301,7 @@ module "auto_resume_aurora_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name = local.auto_resume_aurora_function_name_and_ecr_repo_name                                                # Remember to change
+  function_name = local.auto_resume_aurora_function_name_and_ecr_repo_name                                                                       # Remember to change
   description   = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /send-email (auto resume aurora  & forward to upsert_run)" # Remember to change
   event_source_mapping = {
     sqs = {
@@ -332,7 +332,7 @@ module "auto_resume_aurora_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
     "AUTO_RESUMER_SQS_QUEUE_URL"         = module.auto_resumer_sqs.queue_url
     "UPSERT_RUN_SQS_QUEUE_URL"           = module.upsert_run_sqs.queue_url
     "DATABASE_NAME"                      = var.database_name
@@ -409,8 +409,8 @@ module "auto_resume_aurora_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
       ]
     },
     sqs_send_message = {
@@ -463,7 +463,7 @@ module "upsert_run_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name = local.upsert_run_function_name_and_ecr_repo_name                                                # Remember to change
+  function_name = local.upsert_run_function_name_and_ecr_repo_name                                              # Remember to change
   description   = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /send-email (upsert run)" # Remember to change
   event_source_mapping = {
     sqs = {
@@ -494,7 +494,7 @@ module "upsert_run_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
     "UPSERT_RUN_SQS_QUEUE_URL"           = module.upsert_run_sqs.queue_url
     "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
     "DOMAIN_NAME"                        = var.domain_name
@@ -571,8 +571,8 @@ module "upsert_run_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
       ]
     },
     sqs_send_message = {
@@ -656,7 +656,7 @@ module "create_email_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
     "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
     "SEND_EMAIL_SQS_QUEUE_URL"           = module.send_email_sqs.queue_url
     "DATABASE_NAME"                      = var.database_name
@@ -732,8 +732,8 @@ module "create_email_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
       ]
     },
     sqs_send_message = {
@@ -818,8 +818,8 @@ module "send_email_lambda" {
     "ENVIRONMENT"                        = var.environment,
     "SERVICE"                            = var.service_underscore,
     "DOMAIN_NAME"                        = var.domain_name,
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage",
-    "PRIVATE_BUCKET_NAME"                = "${var.environment}-aws-educate-tpet-private-storage",
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket",
+    "PRIVATE_BUCKET_NAME"                = "${var.environment}-aws-educate-tpet-private-bucket",
     "SEND_EMAIL_SQS_QUEUE_URL"           = module.send_email_sqs.queue_url
     "DATABASE_NAME"                      = var.database_name,
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn,
@@ -905,10 +905,10 @@ module "send_email_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-private-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-private-storage/*"
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-private-bucket",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-private-bucket/*"
       ]
     }
   }
@@ -979,7 +979,7 @@ module "list_runs_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
@@ -1042,8 +1042,8 @@ module "list_runs_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
       ]
     }
   }
@@ -1095,7 +1095,7 @@ module "create_run_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.create_run_function_name_and_ecr_repo_name                             # Remember to change
+  function_name  = local.create_run_function_name_and_ecr_repo_name                           # Remember to change
   description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /runs" # Remember to change
   create_package = false
   timeout        = 60
@@ -1114,12 +1114,12 @@ module "create_run_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
     "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
-    "DOMAIN_NAME"                         = var.domain_name
+    "DOMAIN_NAME"                        = var.domain_name
   }
 
   allowed_triggers = {
@@ -1178,8 +1178,8 @@ module "create_run_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
       ]
     },
     sqs_send_message = {
@@ -1258,7 +1258,7 @@ module "get_run_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
@@ -1321,8 +1321,8 @@ module "get_run_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
       ]
     }
   }
@@ -1394,7 +1394,7 @@ module "list_emails_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-storage"
+    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
@@ -1456,8 +1456,8 @@ module "list_emails_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-storage/*"
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
+        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
       ]
     }
   }
