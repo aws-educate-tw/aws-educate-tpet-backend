@@ -57,7 +57,7 @@ module "cloudfront" {
   ]
 
   viewer_certificate = {
-    acm_certificate_arn = data.aws_acm_certificate.issued_api_tpet_cert.arn
+    acm_certificate_arn = module.api_tpet_cert.acm_certificate_arn
     ssl_support_method  = "sni-only"
   }
 }
