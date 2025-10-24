@@ -38,13 +38,8 @@ variable "enable_deletion_protection_for_dynamodb_table" {
   type        = bool
 }
 
-variable "docker_host" {
-  description = "Docker host"
-  type        = string
-}
-
 variable "lambda_architecture" {
   description = "CPU architecture for container image"
-  type    = string
-  default = "x86_64"
+  type        = string
+  default     = "x86_64"
 }
