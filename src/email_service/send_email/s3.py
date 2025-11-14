@@ -3,6 +3,7 @@ import logging
 import os
 
 import boto3
+from botocore.config import Config
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -10,10 +11,18 @@ logger.setLevel(logging.INFO)
 
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 
+# Configure S3 client with adaptive retry mode for better handling of throttling
+s3_config = Config(
+    retries={
+        'mode': 'adaptive',
+        'max_attempts': 10
+    }
+)
+
 
 def read_html_template_file_from_s3(bucket, template_file_s3_key):
     try:
-        s3 = boto3.client("s3")
+        s3 = boto3.client("s3", config=s3_config)
         request = s3.get_object(Bucket=bucket, Key=template_file_s3_key)
         template_content = request["Body"].read().decode("utf-8")
         logger.info("Fetched template content from S3 key: %s", template_file_s3_key)
@@ -25,7 +34,7 @@ def read_html_template_file_from_s3(bucket, template_file_s3_key):
 
 def read_sheet_data_from_s3(spreadsheet_file_s3_key):
     try:
-        s3 = boto3.client("s3")
+        s3 = boto3.client("s3", config=s3_config)
         request = s3.get_object(Bucket=BUCKET_NAME, Key=spreadsheet_file_s3_key)
         xlsx_content = request["Body"].read()
         excel_data = pd.read_excel(io.BytesIO(xlsx_content), engine="openpyxl")
@@ -48,7 +57,7 @@ def read_file_from_s3(bucket_name, s3_key):
     :return: The content of the file as bytes.
     """
     try:
-        s3 = boto3.client("s3")
+        s3 = boto3.client("s3", config=s3_config)
         response = s3.get_object(Bucket=bucket_name, Key=s3_key)
         file_content = response["Body"].read()
         logger.info("Successfully read file from S3: %s", s3_key)
@@ -59,5 +68,5 @@ def read_file_from_s3(bucket_name, s3_key):
 
 
 def upload_file_to_s3(file_path, bucket_name, s3_key):
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", config=s3_config)
     s3.upload_file(file_path, bucket_name, s3_key)
