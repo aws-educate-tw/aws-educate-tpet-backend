@@ -31,6 +31,25 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_mkt" {
   ]
 }
 
+resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_tech" {
+  name          = "forward_to_tech" # rule name
+  rule_set_name = aws_ses_receipt_rule_set.ses_receipt_rule_set.rule_set_name
+  recipients    = [var.tech_email]
+  enabled       = true #  enabled receipt rules within the active rule set.
+  scan_enabled  = true
+
+  s3_action {
+    bucket_name = var.bucket_name
+    object_key_prefix = "tech/"
+    position    = 1
+  }
+
+  depends_on = [
+    aws_s3_bucket.aws_educate_tpet_email_bucket,
+    aws_s3_bucket_policy.ses_put_object
+  ]
+}
+
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_dev" {
   name          = "forward_to_dev" # rule name
   rule_set_name = aws_ses_receipt_rule_set.ses_receipt_rule_set.rule_set_name
