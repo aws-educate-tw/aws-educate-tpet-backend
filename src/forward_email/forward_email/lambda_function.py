@@ -23,7 +23,8 @@ SENDER_EMAIL_DOMAIN = "aws-educate.tw"
 DEFAULT_RECIPIENTS = ["awseducate.cloudambassador@gmail.com"]
 
 def load_forwarding_rules():
-    with open("forward_config.json", "r") as f:
+    config_path = os.path.join(os.path.dirname(__file__), "forward_config.json")
+    with open(config_path, "r") as f:
         return json.load(f)
 
 FORWARDING_RULES = load_forwarding_rules()
