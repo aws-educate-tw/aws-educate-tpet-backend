@@ -22,11 +22,14 @@ CHARSET = "utf-8"
 SENDER_EMAIL_DOMAIN = "aws-educate.tw"
 DEFAULT_RECIPIENTS = ["awseducate.cloudambassador@gmail.com"]
 
+
 def load_forwarding_rules():
-    with open("forward_config.json", "r") as f:
+    with open("forward_config.json") as f:
         return json.load(f)
 
+
 FORWARDING_RULES = load_forwarding_rules()
+
 
 def lambda_handler(event, context):
     # 環境變量
@@ -105,7 +108,6 @@ def lambda_handler(event, context):
         # 只有在原信件沒有 Reply-To 時才補上
         if not msg.get("Reply-To"):
             msg.add_header("Reply-To", original_sender_email)
-
 
         # 移除不必要的標頭
         if msg.get("Return-Path"):
