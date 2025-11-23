@@ -11,10 +11,10 @@ resource "random_string" "this" {
 }
 
 locals {
-  source_path                             = "${path.module}/.."
+  source_path                               = "${path.module}/"
   forward_email_function_name_and_ecr_repo_name = "${var.environment}-forward_email-${random_string.this.result}"
-  path_include                            = ["**"]
-  path_exclude                            = [
+  path_include                              = ["**"]
+  path_exclude                              = [
     "**/__pycache__/**",
     "**/terraform/**",
     "**/.terraform/**",
@@ -23,10 +23,10 @@ locals {
     "**/.terraform.lock.hcl",
     "**/*.tfvars"
   ]
-  files_include                           = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
-  files_exclude                           = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
-  files                                   = sort(setsubtract(local.files_include, local.files_exclude))
-  dir_sha                                 = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
+  files_include                             = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
+  files_exclude                             = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
+  files                                     = sort(setsubtract(local.files_include, local.files_exclude))
+  dir_sha                                   = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
 }
 
 provider "docker" {
@@ -88,6 +88,7 @@ module "forward_email_lambda" {
   attach_policy_statements = true
   policy_statements = {
     cloudwatch_logs_access = {
+      sid    = "CloudwatchLogsAccess"
       effect = "Allow"
       actions = [
         "logs:CreateLogGroup",
@@ -97,6 +98,7 @@ module "forward_email_lambda" {
       resources = ["*"]
     }
     s3_access = {
+      sid    = "S3Access"
       effect = "Allow"
       actions = [
         "s3:GetObject",
@@ -108,12 +110,13 @@ module "forward_email_lambda" {
       ]
     }
     ses_access = {
+      sid    = "SESAccess"
       effect = "Allow"
       actions = [
         "ses:SendEmail",
         "ses:SendRawEmail"
       ]
-      resources = [aws_ses_domain_identity.ses_aws_educate_tpet_domain.arn]
+      resources = ["*"]
     }
   }
 }
@@ -144,7 +147,8 @@ module "forward_email_docker_image" {
     ]
   })
 
-  source_path = "${local.source_path}/forward_email/"
+  source_path      = "${local.source_path}/forward_email/"
+  docker_file_path = "Dockerfile"
 
   # Remove triggers to avoid "Provider produced inconsistent final plan" error
   # The module will automatically detect changes via source_path
