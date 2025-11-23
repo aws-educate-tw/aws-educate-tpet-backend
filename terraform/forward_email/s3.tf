@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "aws_educate_tpet_email_bucket" {
-  bucket = var.bucket_name != "" ? var.bucket_name : "${var.environment}-${var.bucket_name}"
+  bucket = "${var.environment}-${var.bucket_name}"
 }
 
 # Use bucket ownership controls instead of ACL
