@@ -8,7 +8,7 @@ resource "aws_ses_email_identity" "ses_aws_educate_tpet_email" {
 }
 
 resource "aws_ses_receipt_rule_set" "ses_receipt_rule_set" {
-  rule_set_name = "forward_email"
+  rule_set_name = "${var.environment}-forward-email-rule-set"
 }
 
 # Add a header to the email and store it in S3
@@ -20,7 +20,7 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_mkt" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name = var.bucket_name
+    bucket_name = aws_s3_bucket.aws_educate_tpet_email_bucket.id
     object_key_prefix = "mkt/"
     position    = 1
   }
@@ -39,7 +39,7 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_tech" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name = var.bucket_name
+    bucket_name = aws_s3_bucket.aws_educate_tpet_email_bucket.id
     object_key_prefix = "tech/"
     position    = 1
   }
@@ -58,7 +58,7 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_dev" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name = var.bucket_name
+    bucket_name = aws_s3_bucket.aws_educate_tpet_email_bucket.id
     object_key_prefix = "dev/"
     position    = 1
   }
@@ -77,7 +77,7 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_event" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name = var.bucket_name
+    bucket_name = aws_s3_bucket.aws_educate_tpet_email_bucket.id
     object_key_prefix = "event/"
     position    = 1
   }
@@ -96,7 +96,7 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group1" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name = var.bucket_name
+    bucket_name = aws_s3_bucket.aws_educate_tpet_email_bucket.id
     object_key_prefix = "group1/"
     position    = 1
   }
@@ -115,7 +115,7 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group2" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name = var.bucket_name
+    bucket_name = aws_s3_bucket.aws_educate_tpet_email_bucket.id
     object_key_prefix = "group2/"
     position    = 1
   }
@@ -135,7 +135,7 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group3" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name = var.bucket_name
+    bucket_name = aws_s3_bucket.aws_educate_tpet_email_bucket.id
     object_key_prefix = "group3/"
     position    = 1
   }
@@ -154,7 +154,7 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_default" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name = var.bucket_name
+    bucket_name = aws_s3_bucket.aws_educate_tpet_email_bucket.id
     object_key_prefix = "default/"
     position    = 1
   }
