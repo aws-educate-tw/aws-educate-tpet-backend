@@ -1,1 +1,0 @@
-aws ses set-active-receipt-rule-set --rule-set-name forward_email --region ap-northeast-1
