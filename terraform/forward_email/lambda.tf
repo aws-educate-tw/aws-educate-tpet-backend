@@ -150,6 +150,7 @@ module "forward_email_docker_image" {
   source_path      = "${local.source_path}/forward_email/"
   docker_file_path = "Dockerfile"
 
-  # Remove triggers to avoid "Provider produced inconsistent final plan" error
-  # The module will automatically detect changes via source_path
+  triggers = {
+    dir_sha = local.dir_sha
+  }
 }
