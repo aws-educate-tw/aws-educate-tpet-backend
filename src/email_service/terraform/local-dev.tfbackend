@@ -1,4 +1,5 @@
-bucket = "terraform-state-20240618152116874600000001
+bucket = "terraform-state-20240618152116874600000001"
 region = "us-west-2"
 key    = "email_service/local-dev/terraform.tfstate"
 dynamodb_table = "terraform-locks"
+profile = "tpet-aws-educate"
