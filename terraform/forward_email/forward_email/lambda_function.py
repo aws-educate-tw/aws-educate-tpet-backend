@@ -10,11 +10,9 @@ from email.utils import formataddr, parseaddr
 import boto3
 from botocore.exceptions import ClientError
 
-# 設置日誌
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# 設置 AWS 客戶端
 s3_client = boto3.client("s3")
 ses_client = boto3.client("ses")
 
@@ -33,13 +31,9 @@ FORWARDING_RULES = load_forwarding_rules()
 
 
 def lambda_handler(event, context):
-    # 環境變量
     bucket_name = os.environ["BUCKET_NAME"]
-
-    # 打印完整的事件日誌
     logger.info(f"Received event: {event}")
 
-    # 解析 S3 事件並解碼 key
     encoded_key = event["Records"][0]["s3"]["object"]["key"]
     decoded_key = urllib.parse.unquote_plus(encoded_key)
 
@@ -47,14 +41,11 @@ def lambda_handler(event, context):
     logger.info(f"Encoded key: {encoded_key}")
 
     try:
-        # 從 S3 讀取郵件內容
         response = s3_client.get_object(Bucket=bucket_name, Key=decoded_key)
         raw_email = response["Body"].read()
 
-        # 解析 .eml 文件
         msg = BytesParser(policy=policy.default).parsebytes(raw_email)
 
-        # 提取原始寄件者
         original_sender_header = msg["From"]
         original_sender_name, original_sender_email = parseaddr(original_sender_header)
 
@@ -66,7 +57,6 @@ def lambda_handler(event, context):
         else:
             display_name = original_sender_name
 
-        # 提取收件地址
         to_address = msg["To"]
         if isinstance(to_address, str):
             to_address = to_address.lower().strip()
@@ -80,7 +70,6 @@ def lambda_handler(event, context):
                     to_address += header[0]
             to_address = to_address.lower().strip()
 
-        # 確定轉發規則
         forwarding_rule = FORWARDING_RULES.get(to_address, None)
 
         if forwarding_rule:
@@ -88,14 +77,12 @@ def lambda_handler(event, context):
             sender_local_part = forwarding_rule["sender_local_part"]
         else:
             recipient_emails = DEFAULT_RECIPIENTS
-            sender_local_part = to_address.split("@")[0]  # 使用地址的 local part
+            sender_local_part = to_address.split("@")[0]  
 
         sender_email = f"{sender_local_part}@{SENDER_EMAIL_DOMAIN}"
 
-        # 確保 From 使用我們的 domain
         from_address = sender_email
 
-        # 修改原始郵件的 From 和 To 標頭
         if msg.get("From"):
             msg.replace_header("From", formataddr((display_name, from_address)))
         else:
@@ -106,11 +93,9 @@ def lambda_handler(event, context):
         else:
             msg["To"] = ", ".join(recipient_emails)
 
-        # 只有在原信件沒有 Reply-To 時才補上
         if not msg.get("Reply-To"):
             msg.add_header("Reply-To", original_sender_email)
 
-        # 移除不必要的標頭
         if msg.get("Return-Path"):
             del msg["Return-Path"]
         if msg.get("Sender"):
@@ -120,10 +105,8 @@ def lambda_handler(event, context):
         while msg.get("DKIM-Signature"):
             del msg["DKIM-Signature"]
 
-        # 構建新的原始郵件內容
         raw_email = msg.as_bytes()
 
-        # 使用 SES 轉發郵件
         logger.info("Attempting to send email via SES...")
         response = ses_client.send_raw_email(
             Source=from_address,
