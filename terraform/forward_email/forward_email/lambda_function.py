@@ -77,7 +77,7 @@ def lambda_handler(event, context):
             sender_local_part = forwarding_rule["sender_local_part"]
         else:
             recipient_emails = DEFAULT_RECIPIENTS
-            sender_local_part = to_address.split("@")[0]  
+            sender_local_part = to_address.split("@")[0]
 
         sender_email = f"{sender_local_part}@{SENDER_EMAIL_DOMAIN}"
 
