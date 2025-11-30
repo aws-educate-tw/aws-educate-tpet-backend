@@ -16,12 +16,12 @@ locals {
   path_include                            = ["**"]
   path_exclude                            = [
     "**/__pycache__/**",
-    "**/terraform/**",          
-    "**/.terraform/**",        
-    "**/*.tfstate",           
-    "**/*.tfstate.backup",   
-    "**/.terraform.lock.hcl",  
-    "**/*.tfvars" 
+    "**/terraform/**",
+    "**/.terraform/**",
+    "**/*.tfstate",
+    "**/*.tfstate.backup",
+    "**/.terraform.lock.hcl",
+    "**/*.tfvars"
   ]
   files_include                           = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
   files_exclude                           = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
@@ -145,7 +145,7 @@ module "forward_email_docker_image" {
   })
 
   source_path = "${local.source_path}/forward_email/"
-  
+
   # Remove triggers to avoid "Provider produced inconsistent final plan" error
   # The module will automatically detect changes via source_path
 }

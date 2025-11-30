@@ -7,7 +7,7 @@ $emails = @(
     "tiffany.zsed18@gmail.com",
     "271yeye@gmail.com",
     "awseducate.cloudambassador+dev@gmail.com",
-   
+
     # 預設收件者
     "awseducate.cloudambassador@gmail.com"
 )
@@ -19,7 +19,7 @@ foreach ($email in $emails) {
         --email-address $email `
         --profile tpet-aws-educate `
         --region ap-northeast-1
-    
+
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✅ Sent to $email" -ForegroundColor Green
     } else {
