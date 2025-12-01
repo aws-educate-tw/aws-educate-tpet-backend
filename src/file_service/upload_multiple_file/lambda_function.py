@@ -67,16 +67,17 @@ def process_single_file(part, uploader_id):
     file_content = part.content
 
     file_id = uuid.uuid4().hex
-    
+
     # Generate prefix with user_id and year/month for better organization
     # Use UTC+8 (Taipei timezone) for year/month calculation
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
+
     utc_plus_8 = timezone(timedelta(hours=8))
     current_time = datetime.now(utc_plus_8)
     year = current_time.strftime("%Y")
     month = current_time.strftime("%m")
     prefix = f"users/{uploader_id}/{year}/{month}/"
-    
+
     unique_file_name = f"{prefix}{file_id}_{file_name}"
 
     # Upload file to S3

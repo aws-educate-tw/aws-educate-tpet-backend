@@ -3,8 +3,8 @@ import logging
 import os
 
 import boto3
-from botocore.config import Config
 import pandas as pd
+from botocore.config import Config
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -12,12 +12,7 @@ logger.setLevel(logging.INFO)
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 
 # Configure S3 client with adaptive retry mode for better handling of throttling
-s3_config = Config(
-    retries={
-        'mode': 'adaptive',
-        'max_attempts': 10
-    }
-)
+s3_config = Config(retries={"mode": "adaptive", "max_attempts": 10})
 
 
 def read_html_template_file_from_s3(bucket, template_file_s3_key):
