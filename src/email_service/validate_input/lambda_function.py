@@ -55,6 +55,14 @@ class ErrorResponder:
             "headers": {"Content-Type": "application/json"},
         }
 
+class ValidationError(Exception):
+    """Custom exception for validation errors."""
+    def __init__(self, message: str, error_code: str = "VALIDATION_ERROR", details: dict[str, Any] | None = None):
+        self.message = message
+        self.error_code = error_code
+        self.details = details
+        super().__init__(self.message)
+
 
 def validate_auth_header(headers: dict[str, str]) -> str | None:
     """Validate authorization header and return access token."""
@@ -195,8 +203,16 @@ def validate_spreadsheet_mode(
         for index, row in enumerate(rows, start=1)
         if not (email := row.get("Email")) or not re.match(EMAIL_PATTERN, email)
     ]
+
     if invalid_emails:
-        raise ValueError(f"Invalid email(s) in spreadsheet: {invalid_emails}")
+        raise ValidationError(
+            message=f"Found {len(invalid_emails)} invalid email(s) in spreadsheet. Please check the Email column format.",
+            error_code="INVALID_EMAIL_FORMAT",
+            details={
+                "invalid_count": len(invalid_emails),
+                "invalid_emails": invalid_emails[:10] 
+            }
+        )
 
     expected_email_send_count = len([row for row in rows if row.get("Email")])
     return spreadsheet_info, rows, columns, expected_email_send_count
@@ -530,8 +546,52 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "headers": {"Content-Type": "application/json"},
         }
 
-    except Exception as e:
-        logger.error("Request ID: %s, Internal server error: %s", aws_request_id, e)
+    # except Exception as e:
+    #     logger.error("Request ID: %s, Internal server error: %s", aws_request_id, e)
+    #     return error_responder.create_error_response(
+    #         500, "Please try again later or contact support"
+    #     )
+
+    except ValidationError as e:
+        logger.error(
+            "Validation error - Request ID: %s, Error code: %s, Message: %s, Details: %s",
+            aws_request_id,
+            e.error_code,
+            e.message,
+            e.details
+        )
         return error_responder.create_error_response(
-            500, "Please try again later or contact support"
+            400, 
+            e.message, 
+            e.error_code, 
+            e.details
+        )
+    
+    except RequestException as e:
+        logger.error("External API error: %s", str(e))
+        return error_responder.create_error_response(
+            502, 
+            "Failed to communicate with external service", 
+            "EXTERNAL_API_ERROR"
+        )
+    
+    except ClientError as e:
+        logger.error("AWS service error: %s", str(e))
+        return error_responder.create_error_response(
+            500, 
+            "Failed to queue email request", 
+            "SQS_QUEUE_ERROR"
+        )
+    
+    except Exception as e:
+        logger.error(
+            "Request ID: %s, Unexpected error: %s", 
+            aws_request_id, 
+            str(e), 
+            exc_info=True
+        )
+        return error_responder.create_error_response(
+            500, 
+            "An unexpected error occurred. Please try again later or contact support",
+            "INTERNAL_SERVER_ERROR"
         )
