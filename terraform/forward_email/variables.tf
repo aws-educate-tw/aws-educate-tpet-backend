@@ -13,8 +13,8 @@ variable "domain_name" {
 
 variable "lambda_architecture" {
   description = "CPU architecture for container image"
-  type    = string
-  default = "x86_64"
+  type        = string
+  default     = "x86_64"
 }
 
 variable "ses_email_identity" {

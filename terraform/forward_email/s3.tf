@@ -41,8 +41,8 @@ resource "aws_s3_bucket_policy" "ses_put_object" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid       = "AllowSESPutObject"
-        Effect    = "Allow"
+        Sid    = "AllowSESPutObject"
+        Effect = "Allow"
         Principal = {
           Service = "ses.amazonaws.com"
         }

@@ -1,4 +1,4 @@
-aws_region                                    = "us-east-1"
-environment                                   = "dev"
-lambda_architecture                           = "x86_64"
-domain_name                                 = "aws-educate.tw"
+aws_region          = "us-east-1"
+environment         = "dev"
+lambda_architecture = "x86_64"
+domain_name         = "aws-educate.tw"

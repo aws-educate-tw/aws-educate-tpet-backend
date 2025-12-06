@@ -11,10 +11,10 @@ resource "random_string" "this" {
 }
 
 locals {
-  source_path                               = "${path.module}/"
+  source_path                                   = "${path.module}/"
   forward_email_function_name_and_ecr_repo_name = "${var.environment}-forward_email-${random_string.this.result}"
-  path_include                              = ["**"]
-  path_exclude                              = [
+  path_include                                  = ["**"]
+  path_exclude = [
     "**/__pycache__/**",
     "**/terraform/**",
     "**/.terraform/**",
@@ -23,10 +23,10 @@ locals {
     "**/.terraform.lock.hcl",
     "**/*.tfvars"
   ]
-  files_include                             = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
-  files_exclude                             = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
-  files                                     = sort(setsubtract(local.files_include, local.files_exclude))
-  dir_sha                                   = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
+  files_include = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
+  files_exclude = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
+  files         = sort(setsubtract(local.files_include, local.files_exclude))
+  dir_sha       = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
 }
 
 provider "docker" {
