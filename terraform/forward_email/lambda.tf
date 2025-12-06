@@ -116,7 +116,9 @@ module "forward_email_lambda" {
         "ses:SendEmail",
         "ses:SendRawEmail"
       ]
-      resources = ["*"]
+      resources = [
+        aws_ses_domain_identity.ses_aws_educate_tpet_domain.arn
+      ]
     }
   }
 }

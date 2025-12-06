@@ -25,6 +25,7 @@ resource "aws_s3_bucket_notification" "s3_event_trigger" {
   bucket = aws_s3_bucket.aws_educate_tpet_email_bucket.id
 
   lambda_function {
+    id                  = "forward_email"
     lambda_function_arn = module.forward_email_lambda.lambda_function_arn
     events              = ["s3:ObjectCreated:*"]
   }
