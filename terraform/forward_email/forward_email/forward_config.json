@@ -1,0 +1,80 @@
+{
+  "dev@aws-educate.tw": {
+    "recipients": [
+      "shiunchiu.me@gmail.com",
+      "harryup2000@gmail.com",
+      "poyang1024@gmail.com",
+      "tiffany.zsed18@gmail.com",
+      "271yeye@gmail.com",
+      "allison20041209@gmail.com",
+      "jklzxy18@gmail.com",
+      "arielyu999@gmail.com",
+      "aaronwayway@gmail.com",
+      "bestshaw5@gmail.com",
+      "asd1111zxcv@gmail.com",
+      "dxes100144@gmail.com",
+      "lingfangggg@gmail.com",
+      "angela20151210@gmail.com",
+      "yishan2004931022@gmail.com",
+      "maggie0302501@gmail.com",
+      "awseducate.cloudambassador+dev@gmail.com"
+    ],
+    "sender_local_part": "dev"
+  },
+  "tech@aws-educate.tw": {
+    "recipients": [
+      "271yeye@gmail.com",
+      "reeve0319@gmail.com",
+      "arielyu999@gmail.com",
+      "dxes100144@gmail.com",
+      "angela20151210@gmail.com",
+      "aaronwayway@gmail.com",
+      "bestshaw5@gmail.com",
+      "asd1111zxcv@gmail.com",
+      "awseducate.cloudambassador+tech@gmail.com"
+    ],
+    "sender_local_part": "tech"
+  },
+  "event@aws-educate.tw": {
+    "recipients": [
+      "sophia20029138@gmail.com",
+      "tiffany.zsed18@gmail.com",
+      "maggie0302501@gmail.com",
+      "jklzxy18@gmail.com",
+      "a0901366228@gmail.com",
+      "lingfangggg@gmail.com",
+      "jessie950314@gmail.com",
+      "awseducate.cloudambassador+event@gmail.com"
+    ],
+    "sender_local_part": "event"
+  },
+  "mkt@aws-educate.tw": {
+    "recipients": [
+      "hiraeth0530jingle1225@gmail.com",
+      "r221tall@gmail.com",
+      "elma.syu.biz@gmail.com",
+      "yishan2004931022@gmail.com",
+      "allison20041209@gmail.com",
+      "awseducate.cloudambassador+mkt@gmail.com"
+    ],
+    "sender_local_part": "mkt"
+  },
+  "group1@aws-educate.tw": {
+    "recipients": [
+      "awseducate.cloudambassador+g1@gmail.com"
+    ],
+    "sender_local_part": "group1"
+  },
+  "group2@aws-educate.tw": {
+    "recipients": [
+      "awseducate.cloudambassador+g2@gmail.com"
+    ],
+    "sender_local_part": "group2"
+  },
+  "group3@aws-educate.tw": {
+    "recipients": [
+      "awseducate.cloudambassador+g3@gmail.com"
+    ],
+    "sender_local_part": "group3"
+  }
+}
