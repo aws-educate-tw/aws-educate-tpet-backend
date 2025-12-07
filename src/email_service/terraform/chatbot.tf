@@ -34,6 +34,17 @@ resource "aws_iam_policy" "dlq_channel_policy" {
           "cloudwatch:List*"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Sid    = "AllowCloudWatchLogsForChatbot"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "arn:aws:logs:*:*:log-group:/aws/chatbot/*"
       }
     ]
   })
@@ -62,12 +73,18 @@ resource "aws_iam_role_policy_attachment" "dlq_channel_policy_attachment" {
   policy_arn = aws_iam_policy.dlq_channel_policy.arn
 }
 
+resource "aws_iam_role_policy_attachment" "dlq_channel_q_developer_attachment" {
+  role       = aws_iam_role.dlq_channel_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonQDeveloperAccess"
+}
+
 # Slack Channel Configuration
 resource "awscc_chatbot_slack_channel_configuration" "dlq_management" {
   configuration_name = "${var.environment}-email-service-dlq-management"
   iam_role_arn       = aws_iam_role.dlq_channel_role.arn
   slack_channel_id   = var.slack_channel_id
   slack_workspace_id = var.slack_workspace_id
+  logging_level      = "INFO"  # Enable all logging levels
 
   guardrail_policies = [
     aws_iam_policy.dlq_channel_policy.arn
