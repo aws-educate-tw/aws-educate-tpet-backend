@@ -81,7 +81,7 @@ resource "awscc_chatbot_slack_channel_configuration" "dlq_management" {
   # You'll need to create these manually in the AWS Console or use CloudFormation for:
   # 1. DLQ-Message-Peek custom action
   # 2. DLQ-Message-Redrive custom action
-  # 
+  #
   # Peek command: sqs receive-message --region ${region} --queue-url ${dlq_url} --max-number-of-messages 1 --wait-time-seconds 0 --visibility-timeout 0 --query "Messages[0].Body"
   # Redrive command: sqs start-message-move-task --source-arn ${dlq_arn}
 }
