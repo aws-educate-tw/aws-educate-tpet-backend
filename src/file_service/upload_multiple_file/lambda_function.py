@@ -69,13 +69,10 @@ def process_single_file(part, uploader_id):
     file_id = uuid.uuid4().hex
 
     # Generate prefix with user_id and year/month for better organization
-    # Use UTC+8 (Taipei timezone) for year/month calculation
-    from datetime import datetime, timedelta, timezone
-
-    utc_plus_8 = timezone(timedelta(hours=8))
-    current_time = datetime.now(utc_plus_8)
-    year = current_time.strftime("%Y")
-    month = current_time.strftime("%m")
+    # Use UTC+0 for year/month calculation to maintain consistency with time_util
+    current_time = time_util.get_current_utc_time()
+    year = current_time[:4]  # Extract YYYY from "YYYY-MM-DDTHH:MM:SSZ"
+    month = current_time[5:7]  # Extract MM from "YYYY-MM-DDTHH:MM:SSZ"
     prefix = f"users/{uploader_id}/{year}/{month}/"
 
     unique_file_name = f"{prefix}{file_id}_{file_name}"
