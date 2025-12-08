@@ -183,53 +183,42 @@ def validate_template_variables(
     required_variables = extract_template_variables(template_content)
     if not required_variables:
         return
-
+    
     if recipient_source == RecipientSource.DIRECT.value:
-        missing_vars_list = []
-        for idx, recipient in enumerate(recipients or [], start=1):
+        total_errors = 0
+        for recipient in recipients or []:
             template_vars = recipient.get("template_variables", {})
             missing_vars = [
                 var for var in required_variables if var not in template_vars
             ]
             if missing_vars:
-                missing_vars_list.append({
-                    "recipient_index": idx,
-                    "email": recipient.get("email", "N/A"),
-                    "missing_variables": missing_vars
-                })
+                total_errors += 1
         
-        if missing_vars_list:
+        if total_errors > 0:
             raise ValidationError(
-                message=f"Found {len(missing_vars_list)} recipient(s) with missing template variables",
+                message=f"Found {total_errors} recipient(s) with missing template variables",
                 error_code="MISSING_TEMPLATE_VARIABLES_DIRECT",
                 details={
                     "required_variables": required_variables,
-                    "missing_count": len(missing_vars_list),
-                    "recipients_with_missing_vars": missing_vars_list[:10]  # Limit to first 10
+                    "missing_count": total_errors
                 }
             )
     else:  # SPREADSHEET mode
-        missing_vars_list = []
-        for index, row in enumerate(rows or [], start=1):
+        total_errors = 0
+        for row in rows or []:
             missing_vars = [var for var in required_variables if var not in row]
             if missing_vars:
-                missing_vars_list.append({
-                    "row": index,
-                    "email": row.get("Email", "N/A"),
-                    "missing_variables": missing_vars
-                })
+                total_errors += 1
         
-        if missing_vars_list:
+        if total_errors > 0:
             raise ValidationError(
-                message=f"Found {len(missing_vars_list)} row(s) with missing template variables",
+                message=f"Found {total_errors} row(s) with missing template variables",
                 error_code="MISSING_TEMPLATE_VARIABLES_SPREADSHEET",
                 details={
                     "required_variables": required_variables,
-                    "missing_count": len(missing_vars_list),
-                    "rows_with_missing_vars": missing_vars_list[:10]  # Limit to first 10
+                    "missing_count": total_errors
                 }
             )
-
 
 def validate_spreadsheet_mode(
     spreadsheet_file_id: str, access_token: str
