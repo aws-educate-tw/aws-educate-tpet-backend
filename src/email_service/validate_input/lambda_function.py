@@ -44,33 +44,40 @@ class ErrorResponder:
         self._request_id = request_id
 
     def create_error_response(
-        self, 
-        status_code: int, 
+        self,
+        status_code: int,
         message: str,
         error_code: str | None = None,
-        details: dict[str, Any] | None = None
+        details: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Creates a standardized error response."""
         error_body = {
             "message": f"{message}, Request ID: {self._request_id}",
             "request_id": self._request_id,
         }
-        
+
         if error_code:
             error_body["error_code"] = error_code
-        
+
         if details:
             error_body["details"] = details
-        
+
         return {
             "statusCode": status_code,
             "body": json.dumps(error_body),
             "headers": {"Content-Type": "application/json"},
         }
 
+
 class ValidationError(Exception):
     """Custom exception for validation errors."""
-    def __init__(self, message: str, error_code: str = "VALIDATION_ERROR", details: dict[str, Any] | None = None):
+
+    def __init__(
+        self,
+        message: str,
+        error_code: str = "VALIDATION_ERROR",
+        details: dict[str, Any] | None = None,
+    ):
         self.message = message
         self.error_code = error_code
         self.details = details
@@ -156,10 +163,7 @@ def validate_run_type(run_type: str) -> None:
         raise ValidationError(
             message=f"Invalid run_type: {run_type}",
             error_code="INVALID_RUN_TYPE",
-            details={
-                "provided": run_type,
-                "valid_types": valid_run_types.split(", ")
-            }
+            details={"provided": run_type, "valid_types": valid_run_types.split(", ")},
         )
 
 
@@ -183,7 +187,7 @@ def validate_template_variables(
     required_variables = extract_template_variables(template_content)
     if not required_variables:
         return
-    
+
     if recipient_source == RecipientSource.DIRECT.value:
         total_errors = 0
         for recipient in recipients or []:
@@ -193,15 +197,15 @@ def validate_template_variables(
             ]
             if missing_vars:
                 total_errors += 1
-        
+
         if total_errors > 0:
             raise ValidationError(
                 message=f"Found {total_errors} recipient(s) with missing template variables",
                 error_code="MISSING_TEMPLATE_VARIABLES_DIRECT",
                 details={
                     "required_variables": required_variables,
-                    "missing_count": total_errors
-                }
+                    "missing_count": total_errors,
+                },
             )
     else:  # SPREADSHEET mode
         total_errors = 0
@@ -209,16 +213,17 @@ def validate_template_variables(
             missing_vars = [var for var in required_variables if var not in row]
             if missing_vars:
                 total_errors += 1
-        
+
         if total_errors > 0:
             raise ValidationError(
                 message=f"Found {total_errors} row(s) with missing template variables",
                 error_code="MISSING_TEMPLATE_VARIABLES_SPREADSHEET",
                 details={
                     "required_variables": required_variables,
-                    "missing_count": total_errors
-                }
+                    "missing_count": total_errors,
+                },
             )
+
 
 def validate_spreadsheet_mode(
     spreadsheet_file_id: str, access_token: str
@@ -227,7 +232,7 @@ def validate_spreadsheet_mode(
     if not spreadsheet_file_id:
         raise ValidationError(
             message="Spreadsheet file ID is required for SPREADSHEET recipient source",
-            error_code="MISSING_SPREADSHEET_FILE_ID"
+            error_code="MISSING_SPREADSHEET_FILE_ID",
         )
 
     spreadsheet_info = get_file_info(spreadsheet_file_id, access_token)
@@ -238,28 +243,28 @@ def validate_spreadsheet_mode(
         logger.error(f"Failed to read spreadsheet: {e}")
         raise ValidationError(
             message="Failed to read spreadsheet file. It may be empty or corrupted.",
-            error_code="INVALID_SPREADSHEET_FILE"
+            error_code="INVALID_SPREADSHEET_FILE",
         )
 
     # Check if spreadsheet is empty (no rows)
     if not rows or len(rows) == 0:
         raise ValidationError(
             message="Spreadsheet is empty. Please add at least one recipient.",
-            error_code="EMPTY_SPREADSHEET"
+            error_code="EMPTY_SPREADSHEET",
         )
-    
+
     # Check if spreadsheet has no columns (no headers)
     if not columns or len(columns) == 0:
         raise ValidationError(
             message="Spreadsheet has no headers. Please add column headers (at least 'Email').",
-            error_code="MISSING_SPREADSHEET_HEADERS"
+            error_code="MISSING_SPREADSHEET_HEADERS",
         )
 
     # Check if spreadsheet is empty
     if not rows:
         raise ValidationError(
             message="Spreadsheet is empty. Please add at least one recipient.",
-            error_code="EMPTY_SPREADSHEET"
+            error_code="EMPTY_SPREADSHEET",
         )
 
     # Validate email format
@@ -267,17 +272,13 @@ def validate_spreadsheet_mode(
     for index, row in enumerate(rows, start=1):
         email = row.get("Email")
         if not email:
-            invalid_emails.append({
-                "row": index,
-                "email": None,
-                "reason": "Email is missing"
-            })
+            invalid_emails.append(
+                {"row": index, "email": None, "reason": "Email is missing"}
+            )
         elif not re.match(EMAIL_PATTERN, email):
-            invalid_emails.append({
-                "row": index,
-                "email": email,
-                "reason": "Invalid email format"
-            })
+            invalid_emails.append(
+                {"row": index, "email": email, "reason": "Invalid email format"}
+            )
 
     if invalid_emails:
         raise ValidationError(
@@ -285,8 +286,8 @@ def validate_spreadsheet_mode(
             error_code="INVALID_EMAIL_FORMAT_SPREADSHEET",
             details={
                 "invalid_count": len(invalid_emails),
-                "invalid_emails": invalid_emails[:10]  # Limit to first 10
-            }
+                "invalid_emails": invalid_emails[:10],  # Limit to first 10
+            },
         )
 
     expected_email_send_count = len([row for row in rows if row.get("Email")])
@@ -298,7 +299,7 @@ def validate_direct_mode(recipients: list[dict[str, Any]]) -> int:
     if not recipients:
         raise ValidationError(
             message="Recipients list cannot be empty",
-            error_code="EMPTY_RECIPIENTS_LIST"
+            error_code="EMPTY_RECIPIENTS_LIST",
         )
 
     # Validate email format
@@ -307,15 +308,15 @@ def validate_direct_mode(recipients: list[dict[str, Any]]) -> int:
         for idx, recipient in enumerate(recipients, start=1)
         if not re.match(EMAIL_PATTERN, recipient.get("email", ""))
     ]
-    
+
     if invalid_recipients:
         raise ValidationError(
             message=f"Found {len(invalid_recipients)} invalid email(s) in recipients list",
             error_code="INVALID_RECIPIENT_EMAIL_FORMAT",
             details={
                 "invalid_count": len(invalid_recipients),
-                "invalid_emails": invalid_recipients[:10]  # Limit to first 10
-            }
+                "invalid_emails": invalid_recipients[:10],  # Limit to first 10
+            },
         )
 
     return len(recipients)
@@ -332,7 +333,7 @@ def validate_certificate_requirements(
         return
 
     required_fields = ["Name", "Certificate Text"]
-    
+
     if recipient_source == RecipientSource.DIRECT.value:
         missing_fields_list = []
         for idx, recipient in enumerate(recipients, start=1):
@@ -341,12 +342,14 @@ def validate_certificate_requirements(
                 field for field in required_fields if field not in template_vars
             ]
             if missing_fields:
-                missing_fields_list.append({
-                    "recipient_index": idx,
-                    "email": recipient.get("email", "N/A"),
-                    "missing_fields": missing_fields
-                })
-        
+                missing_fields_list.append(
+                    {
+                        "recipient_index": idx,
+                        "email": recipient.get("email", "N/A"),
+                        "missing_fields": missing_fields,
+                    }
+                )
+
         if missing_fields_list:
             raise ValidationError(
                 message=f"Found {len(missing_fields_list)} recipient(s) missing required certificate fields",
@@ -354,8 +357,8 @@ def validate_certificate_requirements(
                 details={
                     "required_fields": required_fields,
                     "missing_count": len(missing_fields_list),
-                    "recipients_with_missing_fields": missing_fields_list[:10]
-                }
+                    "recipients_with_missing_fields": missing_fields_list[:10],
+                },
             )
     else:
         missing_required_columns = [
@@ -363,13 +366,13 @@ def validate_certificate_requirements(
         ]
         if missing_required_columns:
             raise ValidationError(
-                message=f"Spreadsheet is missing required columns for certificate generation",
+                message="Spreadsheet is missing required columns for certificate generation",
                 error_code="MISSING_CERTIFICATE_COLUMNS_SPREADSHEET",
                 details={
                     "required_columns": required_fields,
                     "missing_columns": missing_required_columns,
-                    "available_columns": columns
-                }
+                    "available_columns": columns,
+                },
             )
 
 
@@ -379,26 +382,26 @@ def validate_email_addresses(cc: list[str], bcc: list[str], reply_to: str) -> No
     invalid_cc = [email for email in cc if not re.match(EMAIL_PATTERN, email)]
     if invalid_cc:
         raise ValidationError(
-            message=f"Invalid email format in CC list",
+            message="Invalid email format in CC list",
             error_code="INVALID_CC_EMAIL_FORMAT",
-            details={"invalid_emails": invalid_cc}
+            details={"invalid_emails": invalid_cc},
         )
-    
+
     # Validate BCC emails
     invalid_bcc = [email for email in bcc if not re.match(EMAIL_PATTERN, email)]
     if invalid_bcc:
         raise ValidationError(
-            message=f"Invalid email format in BCC list",
+            message="Invalid email format in BCC list",
             error_code="INVALID_BCC_EMAIL_FORMAT",
-            details={"invalid_emails": invalid_bcc}
+            details={"invalid_emails": invalid_bcc},
         )
-    
+
     # Validate reply_to
     if not re.match(EMAIL_PATTERN, reply_to):
         raise ValidationError(
-            message=f"Invalid reply_to email format",
+            message="Invalid reply_to email format",
             error_code="INVALID_REPLY_TO_FORMAT",
-            details={"email": reply_to}
+            details={"email": reply_to},
         )
 
 
@@ -480,14 +483,17 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             if not run_id:
                 raise ValidationError(
                     message="run_id is required for WEBHOOK run_type",
-                    error_code="MISSING_RUN_ID_WEBHOOK"
+                    error_code="MISSING_RUN_ID_WEBHOOK",
                 )
             if recipient_source != RecipientSource.DIRECT.value:
                 return error_responder.create_error_response(
-                    400, 
+                    400,
                     "WEBHOOK run_type only supports DIRECT recipient source",
                     "INVALID_RECIPIENT_SOURCE_WEBHOOK",
-                    {"provided": recipient_source, "required": RecipientSource.DIRECT.value}
+                    {
+                        "provided": recipient_source,
+                        "required": RecipientSource.DIRECT.value,
+                    },
                 )
 
             # For webhook append mode, validation is based on the request body,
@@ -497,12 +503,12 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 if not subject:
                     raise ValidationError(
                         message="Email subject is required",
-                        error_code="MISSING_SUBJECT"
+                        error_code="MISSING_SUBJECT",
                     )
                 if not template_file_id:
                     raise ValidationError(
                         message="Template file ID is required",
-                        error_code="MISSING_TEMPLATE_FILE_ID"
+                        error_code="MISSING_TEMPLATE_FILE_ID",
                     )
 
                 # Reuse existing validation functions
@@ -528,9 +534,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     "WEBHOOK validation failed - run_id: %s, recipient_count: %s, error: %s",
                     run_id,
                     len(recipients),
-                    str(e)
+                    str(e),
                 )
-                raise 
+                raise
 
             # Prepare message body for SQS using data from the request body
             current_user_info = current_user_util.get_current_user_info()
@@ -584,19 +590,18 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             # Validate required inputs
             if not subject:
                 raise ValidationError(
-                    message="Email subject is required",
-                    error_code="MISSING_SUBJECT"
+                    message="Email subject is required", error_code="MISSING_SUBJECT"
                 )
             if not template_file_id:
                 raise ValidationError(
                     message="Template file ID is required",
-                    error_code="MISSING_TEMPLATE_FILE_ID"
+                    error_code="MISSING_TEMPLATE_FILE_ID",
                 )
             if run_id:
                 raise ValidationError(
                     message="run_id should not be provided for non-WEBHOOK run_type",
                     error_code="UNEXPECTED_RUN_ID",
-                    details={"run_type": run_type}
+                    details={"run_type": run_type},
                 )
 
             # Generate a new run_id
@@ -636,8 +641,10 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 logger.error(
                     "EMAIL validation failed - recipient_source: %s, recipient_count: %s, error: %s",
                     recipient_source,
-                    len(recipients) if recipient_source == RecipientSource.DIRECT.value else len(rows),
-                    str(e)
+                    len(recipients)
+                    if recipient_source == RecipientSource.DIRECT.value
+                    else len(rows),
+                    str(e),
                 )
                 raise
 
@@ -706,40 +713,33 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             aws_request_id,
             e.error_code,
             e.message,
-            e.details
+            e.details,
         )
         return error_responder.create_error_response(
-            400, 
-            e.message, 
-            e.error_code, 
-            e.details
+            400, e.message, e.error_code, e.details
         )
-    
+
     except RequestException as e:
         logger.error("External API error: %s", str(e))
         return error_responder.create_error_response(
-            502, 
-            "Failed to communicate with external service", 
-            "EXTERNAL_API_ERROR"
+            502, "Failed to communicate with external service", "EXTERNAL_API_ERROR"
         )
-    
+
     except ClientError as e:
         logger.error("AWS service error: %s", str(e))
         return error_responder.create_error_response(
-            500, 
-            "Failed to queue email request", 
-            "SQS_QUEUE_ERROR"
+            500, "Failed to queue email request", "SQS_QUEUE_ERROR"
         )
-    
+
     except Exception as e:
         logger.error(
-            "Request ID: %s, Unexpected error: %s", 
-            aws_request_id, 
-            str(e), 
-            exc_info=True
+            "Request ID: %s, Unexpected error: %s",
+            aws_request_id,
+            str(e),
+            exc_info=True,
         )
         return error_responder.create_error_response(
-            500, 
+            500,
             "An unexpected error occurred. Please try again later or contact support",
-            "INTERNAL_SERVER_ERROR"
+            "INTERNAL_SERVER_ERROR",
         )
