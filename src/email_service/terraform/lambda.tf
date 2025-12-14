@@ -28,7 +28,7 @@ locals {
   files_exclude                                      = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
   files                                              = sort(setsubtract(local.files_include, local.files_exclude))
   dir_sha                                            = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
-  
+
   # Individual directory hashes for each Lambda
   health_check_dir_sha       = sha1(join("", [for f in fileset("${local.source_path}/health_check", "**") : filesha1("${local.source_path}/health_check/${f}")]))
   validate_input_dir_sha     = sha1(join("", [for f in fileset("${local.source_path}/validate_input", "**") : filesha1("${local.source_path}/validate_input/${f}")]))
