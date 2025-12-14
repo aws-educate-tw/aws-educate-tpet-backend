@@ -55,3 +55,15 @@ variable "rds_engine_version" {
   description = "RDS Aurora PostgreSQL engine version"
   type        = string
 }
+
+variable "bucket_name" {
+  description = "S3 bucket name for TPET (without environment prefix)"
+  type        = string
+  default     = "aws-educate-tpet-bucket"
+}
+
+variable "private_bucket_name" {
+  description = "S3 private bucket name for TPET (without environment prefix)"
+  type        = string
+  default     = "aws-educate-tpet-private-bucket"
+}
