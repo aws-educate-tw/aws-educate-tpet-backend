@@ -63,7 +63,7 @@ resource "aws_s3_bucket_cors_configuration" "aws_educate_tpet_storage_cors" {
 ####################################
 ####################################
 
-resource "aws_s3_bucket" "aws_educate_tpet_private_storage" {
+resource "aws_s3_bucket" "aws_educate_tpet_private_bucket" {
   bucket = local.private_bucket_name
 
   tags = {
