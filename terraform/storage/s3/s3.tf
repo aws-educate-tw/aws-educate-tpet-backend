@@ -7,8 +7,8 @@
 ####################################
 
 locals {
-  public_bucket_name  = "${var.environment}-aws-educate-tpet-storage"
-  private_bucket_name = "${var.environment}-aws-educate-tpet-private-storage"
+  public_bucket_name  = "${var.environment}-aws-educate-tpet-bucket"
+  private_bucket_name = "${var.environment}-aws-educate-tpet-private-bucket"
 }
 
 resource "aws_s3_bucket" "aws_educate_tpet_storage" {
