@@ -28,18 +28,6 @@ locals {
   files_exclude                                      = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
   files                                              = sort(setsubtract(local.files_include, local.files_exclude))
   dir_sha                                            = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
-  
-  # Individual directory hashes for each Lambda
-  health_check_dir_sha       = sha1(join("", [for f in fileset("${local.source_path}/health_check", "**") : filesha1("${local.source_path}/health_check/${f}")]))
-  validate_input_dir_sha     = sha1(join("", [for f in fileset("${local.source_path}/validate_input", "**") : filesha1("${local.source_path}/validate_input/${f}")]))
-  auto_resume_dir_sha        = sha1(join("", [for f in fileset("${local.source_path}/auto_resume", "**") : filesha1("${local.source_path}/auto_resume/${f}")]))
-  upsert_run_dir_sha         = sha1(join("", [for f in fileset("${local.source_path}/upsert_run", "**") : filesha1("${local.source_path}/upsert_run/${f}")]))
-  create_run_dir_sha         = sha1(join("", [for f in fileset("${local.source_path}/create_run", "**") : filesha1("${local.source_path}/create_run/${f}")]))
-  create_email_dir_sha       = sha1(join("", [for f in fileset("${local.source_path}/create_email", "**") : filesha1("${local.source_path}/create_email/${f}")]))
-  send_email_dir_sha         = sha1(join("", [for f in fileset("${local.source_path}/send_email", "**") : filesha1("${local.source_path}/send_email/${f}")]))
-  list_runs_dir_sha          = sha1(join("", [for f in fileset("${local.source_path}/list_runs", "**") : filesha1("${local.source_path}/list_runs/${f}")]))
-  get_run_dir_sha            = sha1(join("", [for f in fileset("${local.source_path}/get_run", "**") : filesha1("${local.source_path}/get_run/${f}")]))
-  list_emails_dir_sha        = sha1(join("", [for f in fileset("${local.source_path}/list_emails", "**") : filesha1("${local.source_path}/list_emails/${f}")]))
 }
 
 provider "docker" {
