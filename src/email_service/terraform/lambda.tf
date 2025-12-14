@@ -146,7 +146,7 @@ module "health_check_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/health_check/" # Remember to change
   triggers = {
-    dir_sha = local.health_check_dir_sha
+    dir_sha = local.dir_sha
   }
 
 }
@@ -292,7 +292,7 @@ module "validate_input_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/validate_input/" # Remember to change
   triggers = {
-    dir_sha = local.validate_input_dir_sha
+    dir_sha = local.dir_sha
   }
 
 }
@@ -454,7 +454,7 @@ module "auto_resume_aurora_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/auto_resume/" # Remember to change
   triggers = {
-    dir_sha = local.auto_resume_dir_sha
+    dir_sha = local.dir_sha
   }
 
 }
@@ -616,7 +616,7 @@ module "upsert_run_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/upsert_run/" # Remember to change
   triggers = {
-    dir_sha = local.upsert_run_dir_sha
+    dir_sha = local.dir_sha
   }
 
 }
@@ -777,7 +777,7 @@ module "create_email_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/create_email/" # Remember to change
   triggers = {
-    dir_sha = local.create_email_dir_sha
+    dir_sha = local.dir_sha
   }
 
 }
@@ -943,7 +943,7 @@ module "send_email_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/send_email/" # Remember to change
   triggers = {
-    dir_sha = local.send_email_dir_sha
+    dir_sha = local.dir_sha
   }
 
 }
@@ -1078,7 +1078,7 @@ module "list_runs_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/list_runs/" # Remember to change
   triggers = {
-    dir_sha = local.list_runs_dir_sha
+    dir_sha = local.dir_sha
   }
 
 }
@@ -1223,7 +1223,7 @@ module "create_run_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/create_run/" # Remember to change
   triggers = {
-    dir_sha = local.create_run_dir_sha
+    dir_sha = local.dir_sha
   }
 
 }
@@ -1357,7 +1357,7 @@ module "get_run_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/get_run/" # Remember to change
   triggers = {
-    dir_sha = local.get_run_dir_sha
+    dir_sha = local.dir_sha
   }
 
 }
@@ -1492,7 +1492,7 @@ module "list_emails_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/list_emails/" # Remember to change
   triggers = {
-    dir_sha = local.list_emails_dir_sha
+    dir_sha = local.dir_sha
   }
 
 }
