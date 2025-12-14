@@ -28,6 +28,18 @@ locals {
   files_exclude                                      = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
   files                                              = sort(setsubtract(local.files_include, local.files_exclude))
   dir_sha                                            = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
+  
+  # Individual directory hashes for each Lambda
+  health_check_dir_sha       = sha1(join("", [for f in fileset("${local.source_path}/health_check", "**") : filesha1("${local.source_path}/health_check/${f}")]))
+  validate_input_dir_sha     = sha1(join("", [for f in fileset("${local.source_path}/validate_input", "**") : filesha1("${local.source_path}/validate_input/${f}")]))
+  auto_resume_dir_sha        = sha1(join("", [for f in fileset("${local.source_path}/auto_resume", "**") : filesha1("${local.source_path}/auto_resume/${f}")]))
+  upsert_run_dir_sha         = sha1(join("", [for f in fileset("${local.source_path}/upsert_run", "**") : filesha1("${local.source_path}/upsert_run/${f}")]))
+  create_run_dir_sha         = sha1(join("", [for f in fileset("${local.source_path}/create_run", "**") : filesha1("${local.source_path}/create_run/${f}")]))
+  create_email_dir_sha       = sha1(join("", [for f in fileset("${local.source_path}/create_email", "**") : filesha1("${local.source_path}/create_email/${f}")]))
+  send_email_dir_sha         = sha1(join("", [for f in fileset("${local.source_path}/send_email", "**") : filesha1("${local.source_path}/send_email/${f}")]))
+  list_runs_dir_sha          = sha1(join("", [for f in fileset("${local.source_path}/list_runs", "**") : filesha1("${local.source_path}/list_runs/${f}")]))
+  get_run_dir_sha            = sha1(join("", [for f in fileset("${local.source_path}/get_run", "**") : filesha1("${local.source_path}/get_run/${f}")]))
+  list_emails_dir_sha        = sha1(join("", [for f in fileset("${local.source_path}/list_emails", "**") : filesha1("${local.source_path}/list_emails/${f}")]))
 }
 
 provider "docker" {
@@ -146,7 +158,7 @@ module "health_check_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/health_check/" # Remember to change
   triggers = {
-    dir_sha = local.dir_sha
+    dir_sha = local.health_check_dir_sha
   }
 
 }
@@ -182,7 +194,7 @@ module "validate_input_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
+    "BUCKET_NAME"                        = var.bucket_name
     "AUTO_RESUMER_SQS_QUEUE_URL"         = module.auto_resumer_sqs.queue_url
     "UPSERT_RUN_SQS_QUEUE_URL"           = module.upsert_run_sqs.queue_url
     "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
@@ -247,8 +259,8 @@ module "validate_input_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
+        "arn:aws:s3:::${var.bucket_name}",
+        "arn:aws:s3:::${var.bucket_name}/*"
       ]
     },
     sqs_send_message = {
@@ -292,7 +304,7 @@ module "validate_input_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/validate_input/" # Remember to change
   triggers = {
-    dir_sha = local.dir_sha
+    dir_sha = local.validate_input_dir_sha
   }
 
 }
@@ -332,7 +344,7 @@ module "auto_resume_aurora_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
+    "BUCKET_NAME"                        = var.bucket_name
     "AUTO_RESUMER_SQS_QUEUE_URL"         = module.auto_resumer_sqs.queue_url
     "UPSERT_RUN_SQS_QUEUE_URL"           = module.upsert_run_sqs.queue_url
     "DATABASE_NAME"                      = var.database_name
@@ -409,8 +421,8 @@ module "auto_resume_aurora_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
+        "arn:aws:s3:::${var.bucket_name}",
+        "arn:aws:s3:::${var.bucket_name}/*"
       ]
     },
     sqs_send_message = {
@@ -454,7 +466,7 @@ module "auto_resume_aurora_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/auto_resume/" # Remember to change
   triggers = {
-    dir_sha = local.dir_sha
+    dir_sha = local.auto_resume_dir_sha
   }
 
 }
@@ -494,7 +506,7 @@ module "upsert_run_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
+    "BUCKET_NAME"                        = var.bucket_name
     "UPSERT_RUN_SQS_QUEUE_URL"           = module.upsert_run_sqs.queue_url
     "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
     "DOMAIN_NAME"                        = var.domain_name
@@ -571,8 +583,8 @@ module "upsert_run_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
+        "arn:aws:s3:::${var.bucket_name}",
+        "arn:aws:s3:::${var.bucket_name}/*"
       ]
     },
     sqs_send_message = {
@@ -616,7 +628,7 @@ module "upsert_run_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/upsert_run/" # Remember to change
   triggers = {
-    dir_sha = local.dir_sha
+    dir_sha = local.upsert_run_dir_sha
   }
 
 }
@@ -656,7 +668,7 @@ module "create_email_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
+    "BUCKET_NAME"                        = var.bucket_name
     "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
     "SEND_EMAIL_SQS_QUEUE_URL"           = module.send_email_sqs.queue_url
     "DATABASE_NAME"                      = var.database_name
@@ -732,8 +744,8 @@ module "create_email_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
+        "arn:aws:s3:::${var.bucket_name}",
+        "arn:aws:s3:::${var.bucket_name}/*"
       ]
     },
     sqs_send_message = {
@@ -777,7 +789,7 @@ module "create_email_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/create_email/" # Remember to change
   triggers = {
-    dir_sha = local.dir_sha
+    dir_sha = local.create_email_dir_sha
   }
 
 }
@@ -818,8 +830,8 @@ module "send_email_lambda" {
     "ENVIRONMENT"                        = var.environment,
     "SERVICE"                            = var.service_underscore,
     "DOMAIN_NAME"                        = var.domain_name,
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket",
-    "PRIVATE_BUCKET_NAME"                = "${var.environment}-aws-educate-tpet-private-bucket",
+    "BUCKET_NAME"                        = var.bucket_name,
+    "PRIVATE_BUCKET_NAME"                = var.private_bucket_name,
     "SEND_EMAIL_SQS_QUEUE_URL"           = module.send_email_sqs.queue_url
     "DATABASE_NAME"                      = var.database_name,
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn,
@@ -905,10 +917,10 @@ module "send_email_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-private-bucket",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-private-bucket/*"
+        "arn:aws:s3:::${var.bucket_name}",
+        "arn:aws:s3:::${var.bucket_name}/*",
+        "arn:aws:s3:::${var.private_bucket_name}",
+        "arn:aws:s3:::${var.private_bucket_name}/*"
       ]
     }
   }
@@ -943,7 +955,7 @@ module "send_email_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/send_email/" # Remember to change
   triggers = {
-    dir_sha = local.dir_sha
+    dir_sha = local.send_email_dir_sha
   }
 
 }
@@ -979,7 +991,7 @@ module "list_runs_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
+    "BUCKET_NAME"                        = var.bucket_name
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
@@ -1042,8 +1054,8 @@ module "list_runs_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
+        "arn:aws:s3:::${var.bucket_name}",
+        "arn:aws:s3:::${var.bucket_name}/*"
       ]
     }
   }
@@ -1078,7 +1090,7 @@ module "list_runs_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/list_runs/" # Remember to change
   triggers = {
-    dir_sha = local.dir_sha
+    dir_sha = local.list_runs_dir_sha
   }
 
 }
@@ -1114,7 +1126,7 @@ module "create_run_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
+    "BUCKET_NAME"                        = var.bucket_name
     "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
@@ -1178,8 +1190,8 @@ module "create_run_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
+        "arn:aws:s3:::${var.bucket_name}",
+        "arn:aws:s3:::${var.bucket_name}/*"
       ]
     },
     sqs_send_message = {
@@ -1223,7 +1235,7 @@ module "create_run_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/create_run/" # Remember to change
   triggers = {
-    dir_sha = local.dir_sha
+    dir_sha = local.create_run_dir_sha
   }
 
 }
@@ -1258,7 +1270,7 @@ module "get_run_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
+    "BUCKET_NAME"                        = "var.bucket_name"
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
@@ -1321,8 +1333,8 @@ module "get_run_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
+        "arn:aws:s3:::${var.bucket_name}",
+        "arn:aws:s3:::${var.bucket_name}/*"
       ]
     }
   }
@@ -1357,7 +1369,7 @@ module "get_run_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/get_run/" # Remember to change
   triggers = {
-    dir_sha = local.dir_sha
+    dir_sha = local.get_run_dir_sha
   }
 
 }
@@ -1394,7 +1406,7 @@ module "list_emails_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "${var.environment}-aws-educate-tpet-bucket"
+    "BUCKET_NAME"                        = var.bucket_name
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
@@ -1456,8 +1468,8 @@ module "list_emails_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket",
-        "arn:aws:s3:::${var.environment}-aws-educate-tpet-bucket/*"
+        "arn:aws:s3:::${var.bucket_name}",
+        "arn:aws:s3:::${var.bucket_name}/*"
       ]
     }
   }
@@ -1492,7 +1504,7 @@ module "list_emails_docker_image" {
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/list_emails/" # Remember to change
   triggers = {
-    dir_sha = local.dir_sha
+    dir_sha = local.list_emails_dir_sha
   }
 
 }

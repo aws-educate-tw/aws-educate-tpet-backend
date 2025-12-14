@@ -18,3 +18,9 @@ variable "cors_allowed_origins" {
   description = "Allowed origins for CORS"
   type        = list(string)
 }
+
+variable "tpet_private_bucket_name" {
+  description = "S3 private bucket name for TPET"
+  type        = string
+  default     = "${var.environment}-aws-educate-tpet-private-bucket"
+}
