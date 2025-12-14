@@ -57,13 +57,13 @@ variable "rds_engine_version" {
 }
 
 variable "bucket_name" {
-  description = "S3 bucket name for TPET"
+  description = "S3 bucket name for TPET (without environment prefix)"
   type        = string
-  default     = "${var.environment}-aws-educate-tpet-bucket"
+  default     = "aws-educate-tpet-bucket"
 }
 
 variable "private_bucket_name" {
-  description = "S3 private bucket name for TPET"
+  description = "S3 private bucket name for TPET (without environment prefix)"
   type        = string
-  default     = "${var.environment}-aws-educate-tpet-private-bucket"
+  default     = "aws-educate-tpet-private-bucket"
 }

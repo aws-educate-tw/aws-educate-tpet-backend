@@ -22,5 +22,5 @@ variable "cors_allowed_origins" {
 variable "tpet_private_bucket_name" {
   description = "S3 private bucket name for TPET"
   type        = string
-  default     = "${var.environment}-aws-educate-tpet-private-bucket"
+  default     = "aws-educate-tpet-private-bucket"
 }

@@ -23,6 +23,7 @@ locals {
   files_exclude                                          = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
   files                                                  = sort(setsubtract(local.files_include, local.files_exclude))
   dir_sha                                                = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
+  bucket_name                                            = "${var.environment}-${local.bucket_name}"
 }
 
 provider "docker" {
@@ -145,7 +146,7 @@ module "upload_multiple_file_lambda" {
     "ENVIRONMENT"    = var.environment,
     "SERVICE"        = var.service_underscore
     "DYNAMODB_TABLE" = var.dynamodb_table
-    "BUCKET_NAME"    = "${var.bucket_name}"
+    "BUCKET_NAME"    = "${local.bucket_name}"
   }
 
   allowed_triggers = {
@@ -198,8 +199,8 @@ module "upload_multiple_file_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.bucket_name}",
-        "arn:aws:s3:::${var.bucket_name}/*"
+        "arn:aws:s3:::${local.bucket_name}",
+        "arn:aws:s3:::${local.bucket_name}/*"
       ]
     }
   }
@@ -271,7 +272,7 @@ module "list_files_lambda" {
     "ENVIRONMENT"    = var.environment,
     "SERVICE"        = var.service_underscore
     "DYNAMODB_TABLE" = var.dynamodb_table
-    "BUCKET_NAME"    = "${var.bucket_name}"
+    "BUCKET_NAME"    = "${local.bucket_name}"
   }
 
   allowed_triggers = {
@@ -326,8 +327,8 @@ module "list_files_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.bucket_name}",
-        "arn:aws:s3:::${var.bucket_name}/*"
+        "arn:aws:s3:::${local.bucket_name}",
+        "arn:aws:s3:::${local.bucket_name}/*"
       ]
     }
   }
@@ -399,7 +400,7 @@ module "get_file_lambda" {
     "ENVIRONMENT"    = var.environment,
     "SERVICE"        = var.service_underscore
     "DYNAMODB_TABLE" = var.dynamodb_table
-    "BUCKET_NAME"    = "${var.bucket_name}"
+    "BUCKET_NAME"    = "${local.bucket_name}"
   }
 
   allowed_triggers = {
@@ -452,8 +453,8 @@ module "get_file_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.bucket_name}",
-        "arn:aws:s3:::${var.bucket_name}/*"
+        "arn:aws:s3:::${local.bucket_name}",
+        "arn:aws:s3:::${local.bucket_name}/*"
       ]
     }
   }
@@ -523,7 +524,7 @@ module "get_template_variables_lambda" {
     "ENVIRONMENT"    = var.environment,
     "SERVICE"        = var.service_underscore
     "DYNAMODB_TABLE" = var.dynamodb_table
-    "S3_BUCKET_NAME" = "${var.bucket_name}"
+    "S3_BUCKET_NAME" = "${local.bucket_name}"
   }
 
   allowed_triggers = {
@@ -570,8 +571,8 @@ module "get_template_variables_lambda" {
         "s3:GetObject"
       ],
       resources = [
-        "arn:aws:s3:::${var.bucket_name}",
-        "arn:aws:s3:::${var.bucket_name}/*"
+        "arn:aws:s3:::${local.bucket_name}",
+        "arn:aws:s3:::${local.bucket_name}/*"
       ]
     }
   }
