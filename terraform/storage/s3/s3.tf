@@ -6,11 +6,16 @@
 ####################################
 ####################################
 
+locals {
+  public_bucket_name  = "${var.environment}-aws-educate-tpet-bucket"
+  private_bucket_name = "${var.environment}-aws-educate-tpet-private-bucket"
+}
+
 resource "aws_s3_bucket" "aws_educate_tpet_bucket" {
-  bucket = "${var.environment}-aws-educate-tpet-bucket"
+  bucket = local.public_bucket_name
 
   tags = {
-    Name        = "${var.environment}-aws-educate-tpet-bucket"
+    Name        = local.public_bucket_name
     Environment = var.environment
   }
 }
@@ -59,10 +64,10 @@ resource "aws_s3_bucket_cors_configuration" "aws_educate_tpet_bucket_cors" {
 ####################################
 
 resource "aws_s3_bucket" "aws_educate_tpet_private_bucket" {
-  bucket = "${var.environment}-aws-educate-tpet-private-bucket"
+  bucket = local.private_bucket_name
 
   tags = {
-    Name        = "${var.environment}-aws-educate-tpet-private-bucket"
+    Name        = local.private_bucket_name
     Environment = var.environment
   }
 }
