@@ -22,10 +22,10 @@ locals {
   list_runs_function_name_and_ecr_repo_name          = "${var.environment}-${var.service_underscore}-list_runs-${random_string.this.result}"
   get_run_function_name_and_ecr_repo_name            = "${var.environment}-${var.service_underscore}-get_run-${random_string.this.result}"
   list_emails_function_name_and_ecr_repo_name        = "${var.environment}-${var.service_underscore}-list_emails-${random_string.this.result}"
-  
+
   bucket_name                                        = "${var.environment}-${var.bucket_name}"
   private_bucket_name                                = "${var.environment}-${var.private_bucket_name}"
-  
+
   path_include                                       = ["**"]
   path_exclude                                       = ["**/__pycache__/**"]
   files_include                                      = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
