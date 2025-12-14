@@ -65,5 +65,5 @@ variable "slack_workspace_id" {
 variable "slack_channel_id" {
   description = "Slack Channel ID for DLQ management notifications"
   type        = string
-  default     = "C0A2VT2GZK2"
+  default     = "C0A1LLE15F1"
 }
