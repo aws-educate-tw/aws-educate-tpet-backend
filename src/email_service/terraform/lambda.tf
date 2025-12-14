@@ -186,7 +186,7 @@ module "validate_input_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = var.bucket_name
+    "BUCKET_NAME"                        = local.bucket_name
     "AUTO_RESUMER_SQS_QUEUE_URL"         = module.auto_resumer_sqs.queue_url
     "UPSERT_RUN_SQS_QUEUE_URL"           = module.upsert_run_sqs.queue_url
     "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
@@ -251,8 +251,8 @@ module "validate_input_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.bucket_name}",
-        "arn:aws:s3:::${var.bucket_name}/*"
+        "arn:aws:s3:::${local.bucket_name}",
+        "arn:aws:s3:::${local.bucket_name}/*"
       ]
     },
     sqs_send_message = {
@@ -336,7 +336,7 @@ module "auto_resume_aurora_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = var.bucket_name
+    "BUCKET_NAME"                        = local.bucket_name
     "AUTO_RESUMER_SQS_QUEUE_URL"         = module.auto_resumer_sqs.queue_url
     "UPSERT_RUN_SQS_QUEUE_URL"           = module.upsert_run_sqs.queue_url
     "DATABASE_NAME"                      = var.database_name
@@ -660,7 +660,7 @@ module "create_email_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = var.bucket_name
+    "BUCKET_NAME"                        = local.bucket_name
     "CREATE_EMAIL_SQS_QUEUE_URL"         = module.create_email_sqs.queue_url
     "SEND_EMAIL_SQS_QUEUE_URL"           = module.send_email_sqs.queue_url
     "DATABASE_NAME"                      = var.database_name
@@ -983,7 +983,7 @@ module "list_runs_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = var.bucket_name
+    "BUCKET_NAME"                        = local.bucket_name
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
@@ -1262,7 +1262,7 @@ module "get_run_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = "var.bucket_name"
+    "BUCKET_NAME"                        = local.bucket_name
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
@@ -1325,8 +1325,8 @@ module "get_run_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.bucket_name}",
-        "arn:aws:s3:::${var.bucket_name}/*"
+        "arn:aws:s3:::${local.bucket_name}",
+        "arn:aws:s3:::${local.bucket_name}/*"
       ]
     }
   }
@@ -1398,7 +1398,7 @@ module "list_emails_lambda" {
   environment_variables = {
     "ENVIRONMENT"                        = var.environment
     "SERVICE"                            = var.service_underscore
-    "BUCKET_NAME"                        = var.bucket_name
+    "BUCKET_NAME"                        = local.bucket_name
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
@@ -1460,8 +1460,8 @@ module "list_emails_lambda" {
         "s3:AbortMultipartUpload"
       ],
       resources = [
-        "arn:aws:s3:::${var.bucket_name}",
-        "arn:aws:s3:::${var.bucket_name}/*"
+        "arn:aws:s3:::${local.bucket_name}",
+        "arn:aws:s3:::${local.bucket_name}/*"
       ]
     }
   }
