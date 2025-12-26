@@ -1,0 +1,35 @@
+{
+	"info": {
+		"_postman_id": "25e21fc2-4872-4710-85cb-3760cd8f642b",
+		"name": "Ariel Onboard TPET API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36968695",
+		"_collection_link": "https://aws-educate-tw.postman.co/workspace/TPET-API-Development-Workspace~b6915213-64a3-408d-b297-45f472fa0a6b/collection/36968695-25e21fc2-4872-4710-85cb-3760cd8f642b?action=share&source=collection_link&creator=36968695"
+	},
+	"item": [
+		{
+			"name": "Onboarding Self Introduction",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:5000/onboarding/ariel",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "5000",
+					"path": [
+						"onboarding",
+						"ariel"
+					]
+				},
+				"description": "Method: GET  \nEndpoint: /onboarding/ariel  \nExample URL: [https://api.tpet.com/onboarding/Ariel](https://api.tpet.com/onboarding/Ariel)\n\nPath Parameter: ariel (string, required)\n\nHeaders:  \nContent-Type: application/json  \nAuthorization: Bearer (optional)\n\nBody: none\n\nResponse Format: JSON  \nResponse Example:  \n{  \n\"name\": \"Ariel\",  \n\"self_intro\": \"Hi! I'm Ariel, part of the 8th Tech cohort, and I will be joining the TPET team as a backend developer. I enjoy listening to K-pop and playing the piano. Looking forward to working with everyone!\"  \n}"
+			},
+			"response": []
+		}
+	]
+}
