@@ -42,3 +42,5 @@ resource "aws_api_gateway_stage" "dev" {
   deployment_id = aws_api_gateway_deployment.this.id
   stage_name    = var.environment
 }
+
+# trigger report
