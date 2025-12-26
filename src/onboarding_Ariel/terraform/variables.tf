@@ -24,4 +24,3 @@ variable "image_uri" {
   description = "ECR image URI for Lambda"
   type        = string
 }
-

@@ -42,4 +42,3 @@ module "onboarding_docker_image" {
   source_path     = "${local.source_path}/get_intro/"
   triggers        = { dir_sha = local.dir_sha }
 }
-
