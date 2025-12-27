@@ -1,0 +1,55 @@
+{
+	"info": {
+		"_postman_id": "720f0341-d0f9-42a1-8845-def5824184f5",
+		"name": "Vincent Onboard Task",
+		"description": "API Design First spec for onboarding self-introduction API.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36968695",
+		"_collection_link": "https://aws-educate-tw.postman.co/workspace/TPET-API-Development-Workspace~b6915213-64a3-408d-b297-45f472fa0a6b/collection/36968695-720f0341-d0f9-42a1-8845-def5824184f5?action=share&source=collection_link&creator=36968695"
+	},
+	"item": [
+		{
+			"name": "Introduction",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "/onboarding/{{name}}",
+					"path": [
+						"onboarding",
+						"{{name}}"
+					]
+				},
+				"description": "### Get Onboarding Introduction\n\n取得新進成員的自我介紹資訊。\n\n#### Endpoint\n\nGET /onboarding/{newbie_name}\n\n#### Path Parameters\n\n- `newbie_name` (string, required)  \n    新進成員名稱，例如 `vincent`\n    \n\n#### Response\n\n- 200 OK：成功回傳自我介紹內容\n    \n- 404 Not Found：查無此成員"
+			},
+			"response": [
+				{
+					"name": "Introduction",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/onboarding/{{name}}",
+							"path": [
+								"onboarding",
+								"{{name}}"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "",
+					"header": [],
+					"cookie": [
+						{
+							"expires": "Invalid Date",
+							"domain": "",
+							"path": ""
+						}
+					],
+					"body": "{\n  \"name\": \"Vincent\",\n  \"introduction\": \"Hi, I'm Vincent. Nice to meet you\",\n}\n"
+				}
+			]
+		}
+	]
+}
