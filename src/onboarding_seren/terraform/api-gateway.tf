@@ -1,5 +1,5 @@
 resource "aws_apigatewayv2_api" "onboarding" {
-  name          = "onboarding-api"
+  name          = "onboarding-seren-api"
   protocol_type = "HTTP"
 }
 

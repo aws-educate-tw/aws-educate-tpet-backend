@@ -8,6 +8,6 @@ def lambda_handler(event, context):
         },
         "body": json.dumps({
             "name": "Seren",
-            "introduction": "Hi, I'm Seren. Nice to meet you"
+            "introduction": "Hello! I'm Seren! Nice to meet you all!"
         })
     }

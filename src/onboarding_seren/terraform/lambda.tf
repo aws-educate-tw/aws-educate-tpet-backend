@@ -3,7 +3,7 @@ data "aws_ecr_authorization_token" "token" {}
 data "aws_caller_identity" "this" {}
 
 locals {
-  source_path  = "${path.module}/.."
+  source_path   = "${path.module}/.."
   function_name = "onboarding-seren"
   ecr_repo_name = "onboarding-seren"
   path_include  = ["**"]
@@ -27,7 +27,7 @@ module "onboarding_lambda" {
   version = "7.7.0"
 
   function_name  = local.function_name
-  description = "AWS Educate TPET onboarding-seren in ${var.environment}: GET /onboarding/seren"
+  description    = "AWS Educate TPET onboarding-seren in ${var.environment}: GET /onboarding/seren"
   create_package = false
   timeout        = 10
 
@@ -50,7 +50,7 @@ module "onboarding_lambda" {
   tags = {
     "Terraform"   = "true"
     "Environment" = var.environment
-    "Service" = "onboarding-seren"
+    "Service"     = "onboarding-seren"
   }
 }
 
