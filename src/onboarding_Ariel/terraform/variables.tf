@@ -1,11 +1,11 @@
 variable "aws_region" {
   type    = string
-  default = "us-west-2" # 根據你的 .tfvars 設定
+  default = "us-west-2" 
 }
 
 variable "environment" {
   type    = string
-  default = "local-dev" # 根據你的 .tfvars 設定
+  default = "local-dev" 
 }
 
 variable "service_underscore" {

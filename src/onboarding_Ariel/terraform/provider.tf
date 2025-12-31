@@ -10,7 +10,6 @@ provider "aws" {
 }
 
 provider "docker" {
-  # 修正重點：Windows 專用的四斜線路徑格式
   #host = "npipe:////./pipe/docker_engine"
 
   registry_auth {

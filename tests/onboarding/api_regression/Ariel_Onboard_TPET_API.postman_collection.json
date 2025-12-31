@@ -27,7 +27,7 @@
 						"ariel"
 					]
 				},
-				"description": "Method: GET  \nEndpoint: /onboarding/ariel  \nExample URL: [https://api.tpet.com/onboarding/Ariel](https://api.tpet.com/onboarding/Ariel)\n\nPath Parameter: ariel (string, required)\n\nHeaders:  \nContent-Type: application/json  \nAuthorization: Bearer (optional)\n\nBody: none\n\nResponse Format: JSON  \nResponse Example:  \n{  \n\"name\": \"Ariel\",  \n\"self_intro\": \"Hi! I'm Ariel, part of the 8th Tech cohort, and I will be joining the TPET team as a backend developer. I enjoy listening to K-pop and playing the piano. Looking forward to working with everyone!\"  \n}"
+				"description": "Method: GET  \nEndpoint: /onboarding/ariel  \nExample URL:\n\n[https://kyaijofl1c.execute-api.us-west-2.amazonaws.com/preview/onboarding_ariel](https://kyaijofl1c.execute-api.us-west-2.amazonaws.com/preview/onboarding_ariel)\n\nPath Parameter: ariel (string, required)\n\nHeaders:  \nContent-Type: application/json  \nAuthorization: Bearer (optional)\n\nBody: none\n\nResponse Format: JSON  \nResponse Example:  \n{  \n\"name\": \"Ariel\",  \n\"self_intro\": \"Hi! I'm Ariel, part of the 8th Tech cohort, and I will be joining the TPET team as a backend developer. I enjoy listening to K-pop and playing the piano. Looking forward to working with everyone!\"  \n}"
 			},
 			"response": [
 				{
@@ -104,6 +104,36 @@
 					"body": "{\n    \"name\": \"Ariel\",\n    \"self_intro\": \"Hi! I'm Ariel, part of the 8th Tech cohort, and I will be joining the TPET team as a backend developer. I enjoy listening to K-pop and playing the piano. Looking forward to working with everyone!\"\n}"
 				}
 			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": ""
 		}
 	]
 }

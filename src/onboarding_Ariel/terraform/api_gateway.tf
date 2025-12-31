@@ -5,7 +5,7 @@ resource "aws_api_gateway_rest_api" "onboarding_api" {
 resource "aws_api_gateway_resource" "onboarding_ariel" {
   rest_api_id = aws_api_gateway_rest_api.onboarding_api.id
   parent_id   = aws_api_gateway_rest_api.onboarding_api.root_resource_id
-  path_part   = "onboarding_ariel" # 網址路徑改為 /onboarding_ariel
+  path_part   = "onboarding_ariel" 
 }
 
 resource "aws_api_gateway_method" "onboarding_ariel" {
