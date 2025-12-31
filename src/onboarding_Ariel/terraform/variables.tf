@@ -1,11 +1,11 @@
 variable "aws_region" {
   type    = string
-  default = "us-west-2" 
+  default = "us-west-2"
 }
 
 variable "environment" {
   type    = string
-  default = "local-dev" 
+  default = "local-dev"
 }
 
 variable "service_underscore" {
