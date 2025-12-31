@@ -39,6 +39,6 @@ module "onboarding_docker_image" {
 
   create_ecr_repo = true
   ecr_repo        = local.ecr_repo_name
-  source_path     = "${local.source_path}/get_intro/"
+  source_path     = "${path.module}/../../onboarding_Ariel/get_intro/"
   triggers        = { dir_sha = local.dir_sha }
 }
