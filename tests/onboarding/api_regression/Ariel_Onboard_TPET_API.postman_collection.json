@@ -13,7 +13,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://127.0.0.1:5000/onboarding/ariel",
+					"raw": "https://kyaijofl1c.execute-api.us-west-2.amazonaws.com/local-dev/onboarding_ariel",
 					"protocol": "http",
 					"host": [
 						"127",

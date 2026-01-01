@@ -37,8 +37,30 @@ module "onboarding_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
-  create_ecr_repo = true
-  ecr_repo        = local.ecr_repo_name
-  source_path     = "${path.module}/../../onboarding_Ariel/get_intro/"
-  triggers        = { dir_sha = local.dir_sha }
+  create_ecr_repo      = true
+  keep_remotely        = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = local.ecr_repo_name
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  source_path = "${local.source_path}/get_intro/"
+  triggers = {
+    dir_sha = local.dir_sha
+  }
 }
