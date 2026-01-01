@@ -19,15 +19,21 @@
             "packages": {},
             "requests": {}
           }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [""],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
         }
       ],
       "request": {
         "method": "GET",
         "header": [],
-        "url": {
-          "raw": "/onboarding/seren",
-          "path": ["onboarding", "seren"]
-        },
+        "url": { "raw": "{{base_url}}/local-dev/onboarding/{{name}}" },
         "description": "### Get Onboarding Introduction\n\nThis API returns a self-introduction quiz result for a TPET onboarding member.\n\n#### Endpoint\n\nGET /onboarding/seren\n\n#### Response\n\n- 200 OK：StartFragment正常成功"
       },
       "response": [
@@ -37,8 +43,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "/onboarding/seren",
-              "path": ["onboarding", "seren"]
+              "raw": "{{base_url}}/local-dev/onboarding/{{name}}",
+              "host": ["{{base_url}}"],
+              "path": ["local-dev", "onboarding", "{{name}}"]
             }
           },
           "status": "OK",
@@ -101,7 +108,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/onboarding/seren",
+          "raw": "{{base_url}}/local-dev/onboarding/{{name}}",
           "protocol": "https",
           "host": [
             "9ipjozpruh",

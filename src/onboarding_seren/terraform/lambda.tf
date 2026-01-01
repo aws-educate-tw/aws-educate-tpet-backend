@@ -14,14 +14,6 @@ locals {
   dir_sha       = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
 }
 
-provider "docker" {
-  registry_auth {
-    address  = format("%v.dkr.ecr.%v.amazonaws.com", data.aws_caller_identity.this.account_id, var.aws_region)
-    username = data.aws_ecr_authorization_token.token.user_name
-    password = data.aws_ecr_authorization_token.token.password
-  }
-}
-
 module "onboarding_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
@@ -43,7 +35,7 @@ module "onboarding_lambda" {
   allowed_triggers = {
     AllowExecutionFromAPIGateway = {
       service    = "apigateway"
-      source_arn = "${aws_apigatewayv2_api.onboarding.execution_arn}/*/*"
+      source_arn = "${module.api_gateway.stage_execution_arn}/*/*"
     }
   }
 

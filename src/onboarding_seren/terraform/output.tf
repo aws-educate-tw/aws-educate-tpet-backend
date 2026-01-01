@@ -1,3 +1,3 @@
 output "api_url" {
-  value = aws_apigatewayv2_api.onboarding.api_endpoint
+  value = module.api_gateway.stage_invoke_url
 }
