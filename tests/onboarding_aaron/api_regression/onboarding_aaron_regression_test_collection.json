@@ -1,0 +1,224 @@
+{
+	"info": {
+		"_postman_id": "9f5dcd3f-f2d9-44c1-8c9d-3e22dc928486",
+		"name": "Aaron Onboard TPET API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "36968695",
+		"_collection_link": "https://aws-educate-tw.postman.co/workspace/b6915213-64a3-408d-b297-45f472fa0a6b/collection/36968695-9f5dcd3f-f2d9-44c1-8c9d-3e22dc928486?action=share&source=collection_link&creator=36968695"
+	},
+	"item": [
+		{
+			"name": "Get info",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Parse the JSON response body into a variable",
+							"const jsonData = pm.response.json();",
+							"",
+							"// ---------------------------------------------------",
+							"// 1. Basic Status & Performance Checks",
+							"// ---------------------------------------------------",
+							"",
+							"// Check if the HTTP status code is 200 OK",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Check if the response time is acceptable (e.g., under 2000ms)",
+							"pm.test(\"Response time is less than 2000ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+							"});",
+							"",
+							"// Check if the response Content-Type is JSON",
+							"pm.test(\"Content-Type is application/json\", function () {",
+							"    pm.response.to.be.json;",
+							"});",
+							"",
+							"// ---------------------------------------------------",
+							"// 2. Data Validation (Based on Example Response)",
+							"// ---------------------------------------------------",
+							"",
+							"// Verify that specific fields exist and contain the expected values",
+							"pm.test(\"Validate Aaron's Profile Information\", function () {",
+							"    // Note: Using bracket notation because keys have spaces (e.g., \"first name\")",
+							"    ",
+							"    // Check First Name",
+							"    pm.expect(jsonData[\"first name\"]).to.eql(\"Aaron\");",
+							"    ",
+							"    // Check Last Name",
+							"    pm.expect(jsonData[\"last name\"]).to.eql(\"Chen\");",
+							"    ",
+							"    // Check College",
+							"    pm.expect(jsonData[\"college\"]).to.eql(\"NCU\");",
+							"    ",
+							"    // Check Year",
+							"    pm.expect(jsonData[\"year\"]).to.eql(\"junior\");",
+							"    ",
+							"    // Check Position",
+							"    pm.expect(jsonData[\"position\"]).to.eql(\"backend\");",
+							"});",
+							"",
+							"// ---------------------------------------------------",
+							"// 3. Schema/Data Type Validation",
+							"// ---------------------------------------------------",
+							"",
+							"// Verify that the data types are correct (Strings)",
+							"pm.test(\"Validate Data Types\", function () {",
+							"    pm.expect(jsonData[\"first name\"]).to.be.a(\"string\");",
+							"    pm.expect(jsonData[\"last name\"]).to.be.a(\"string\");",
+							"    pm.expect(jsonData[\"college\"]).to.be.a(\"string\");",
+							"    pm.expect(jsonData[\"year\"]).to.be.a(\"string\");",
+							"    pm.expect(jsonData[\"position\"]).to.be.a(\"string\");",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/{{environment}}/onboarding/aaron",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"{{environment}}",
+						"onboarding",
+						"aaron"
+					]
+				},
+				"description": "### GET Onboarding introduction\n\nGet the introduction of Aaron.\n\n### Example URL\n\n`https://api.tpet.aws-educate.tw/dev/onboarding/aaron`\n\n### Response\n\n- `200 OK`: Get the information of Aaron.\n    \n- `404 Not Found`: Can't find the information."
+			},
+			"response": [
+				{
+					"name": "Get info",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{environment}}/onboarding/aaron",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"{{environment}}",
+								"onboarding",
+								"aaron"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "103"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 01 Jan 2026 19:28:30 GMT"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "WhSiwhfUPHcESsg="
+						},
+						{
+							"key": "X-Cache",
+							"value": "Miss from cloudfront"
+						},
+						{
+							"key": "Via",
+							"value": "1.1 f2725810374c2e9d69509930f31f6916.cloudfront.net (CloudFront)"
+						},
+						{
+							"key": "X-Amz-Cf-Pop",
+							"value": "TPE53-P1"
+						},
+						{
+							"key": "X-Amz-Cf-Id",
+							"value": "X9lIayD2xaXdj8m1Uj86pcY7EXpnT194I4UjKjz9UdPQerur2yaDxw=="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"first name\": \"Aaron\",\n    \"last name\": \"Chen\",\n    \"college\": \"NCU\",\n    \"year\": \"junior\",\n    \"position\": \"backend\"\n}"
+				},
+				{
+					"name": "Get info",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{environment}}/onboarding/aaron",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"{{environment}}",
+								"onboarding",
+								"aaron"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "103"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 01 Jan 2026 19:31:13 GMT"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "WhS8Xh2-PHcEPkA="
+						},
+						{
+							"key": "X-Cache",
+							"value": "Miss from cloudfront"
+						},
+						{
+							"key": "Via",
+							"value": "1.1 89dc048c3d690281ccecfbb46ef91cbe.cloudfront.net (CloudFront)"
+						},
+						{
+							"key": "X-Amz-Cf-Pop",
+							"value": "TPE53-P1"
+						},
+						{
+							"key": "X-Amz-Cf-Id",
+							"value": "7nbrx5J6AcpyKc3jfuOD-Xn6Dk5iPe0qnZbv5vTUHpzulV3b7E2L5Q=="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"first name\": \"Aaron\",\n    \"last name\": \"Chen\",\n    \"college\": \"NCU\",\n    \"year\": \"junior\",\n    \"position\": \"backend\"\n}"
+				}
+			]
+		}
+	]
+}
