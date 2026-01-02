@@ -13,7 +13,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "https://kyaijofl1c.execute-api.us-west-2.amazonaws.com/local-dev/onboarding_ariel",
+					"raw": "http://127.0.0.1:5000/onboarding/ariel",
 					"protocol": "http",
 					"host": [
 						"127",
@@ -102,6 +102,74 @@
 					],
 					"cookie": [],
 					"body": "{\n    \"name\": \"Ariel\",\n    \"self_intro\": \"Hi! I'm Ariel, part of the 8th Tech cohort, and I will be joining the TPET team as a backend developer. I enjoy listening to K-pop and playing the piano. Looking forward to working with everyone!\"\n}"
+				},
+				{
+					"name": "Onboarding Self Introduction",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/{{environment}}/onboarding_ariel",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"{{environment}}",
+								"onboarding_ariel"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "272"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 01 Jan 2026 13:23:41 GMT"
+						},
+						{
+							"key": "X-Amzn-Trace-Id",
+							"value": "Root=1-6956755d-77a0ab2e3739a0d3591e0ff7;Parent=101c530945b302f6;Sampled=0;Lineage=1:83920257:0"
+						},
+						{
+							"key": "x-amzn-RequestId",
+							"value": "422e1d17-6eb6-46e1-b2ff-99e55d4e0f74"
+						},
+						{
+							"key": "x-amz-apigw-id",
+							"value": "WgdGnGvKvHcEFNg="
+						},
+						{
+							"key": "X-Cache",
+							"value": "Miss from cloudfront"
+						},
+						{
+							"key": "Via",
+							"value": "1.1 5a2fcd84022e21631288f4f6aca5d7ec.cloudfront.net (CloudFront)"
+						},
+						{
+							"key": "X-Amz-Cf-Pop",
+							"value": "TPE53-P1"
+						},
+						{
+							"key": "X-Amz-Cf-Id",
+							"value": "0mMrZlRtCA8tSCgViESEtazUk-iqQX1t99-Gd0dm9qT9VVFS52ykjA=="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"name\": \"Ariel\",\n    \"introduction\": \"Hi! I'm Ariel, part of the 8th Tech cohort, and I will be joining the TPET team as a backend developer. I enjoy listening to K-pop and playing the piano. Looking forward to working with everyone!\",\n    \"onboarding_path\": \"/onboarding_ariel\"\n}"
 				}
 			]
 		}
