@@ -1,0 +1,5 @@
+aws_region         = "us-west-2"
+environment        = "preview"
+service_underscore = "onboarding_ariel"
+service_hyphen     = "onboarding-ariel"
+# dynamodb_table   = "onboarding"
