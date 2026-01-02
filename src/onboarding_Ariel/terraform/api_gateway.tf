@@ -2,22 +2,28 @@ resource "aws_api_gateway_rest_api" "onboarding_api" {
   name = "onboarding-ariel-api"
 }
 
-resource "aws_api_gateway_resource" "onboarding_ariel" {
+resource "aws_api_gateway_resource" "onboarding" {
   rest_api_id = aws_api_gateway_rest_api.onboarding_api.id
   parent_id   = aws_api_gateway_rest_api.onboarding_api.root_resource_id
-  path_part   = "onboarding_ariel"
+  path_part   = "onboarding"
+}
+
+resource "aws_api_gateway_resource" "newbie_name" {
+  rest_api_id = aws_api_gateway_rest_api.onboarding_api.id
+  parent_id   = aws_api_gateway_resource.onboarding.id
+  path_part   = "{newbie_name}"
 }
 
 resource "aws_api_gateway_method" "onboarding_ariel" {
   rest_api_id   = aws_api_gateway_rest_api.onboarding_api.id
-  resource_id   = aws_api_gateway_resource.onboarding_ariel.id
+  resource_id   = aws_api_gateway_resource.newbie_name.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "onboarding_ariel" {
   rest_api_id = aws_api_gateway_rest_api.onboarding_api.id
-  resource_id = aws_api_gateway_resource.onboarding_ariel.id
+  resource_id = aws_api_gateway_resource.newbie_name.id
   http_method = aws_api_gateway_method.onboarding_ariel.http_method
 
   integration_http_method = "POST"
@@ -29,7 +35,7 @@ resource "aws_api_gateway_deployment" "this" {
   rest_api_id = aws_api_gateway_rest_api.onboarding_api.id
 
   triggers = {
-    redeploy = sha1(jsonencode(aws_api_gateway_resource.onboarding_ariel))
+    redeploy = sha1(jsonencode(aws_api_gateway_resource.newbie_name))
   }
 
   depends_on = [
@@ -42,5 +48,3 @@ resource "aws_api_gateway_stage" "dev" {
   deployment_id = aws_api_gateway_deployment.this.id
   stage_name    = var.environment
 }
-
-# trigger report

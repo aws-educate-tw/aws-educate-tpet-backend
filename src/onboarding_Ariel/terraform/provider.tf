@@ -10,7 +10,6 @@ provider "aws" {
 }
 
 provider "docker" {
-  host = "npipe:////./pipe/docker_engine"
 
   registry_auth {
     address  = data.aws_ecr_authorization_token.token.proxy_endpoint
