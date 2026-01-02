@@ -1,50 +1,76 @@
-resource "aws_api_gateway_rest_api" "onboarding_api" {
-  name = "onboarding-ariel-api"
-}
+################################################################################
+# API Gateway Module (v2 HTTP API)
+################################################################################
 
-resource "aws_api_gateway_resource" "onboarding" {
-  rest_api_id = aws_api_gateway_rest_api.onboarding_api.id
-  parent_id   = aws_api_gateway_rest_api.onboarding_api.root_resource_id
-  path_part   = "onboarding"
-}
+module "api_gateway" {
+  source  = "terraform-aws-modules/apigateway-v2/aws"
+  version = "5.0.0"
 
-resource "aws_api_gateway_resource" "newbie_name" {
-  rest_api_id = aws_api_gateway_rest_api.onboarding_api.id
-  parent_id   = aws_api_gateway_resource.onboarding.id
-  path_part   = "{newbie_name}"
-}
+  name        = "onboarding-ariel-api"
+  description = "Ariel Onboarding API to lambda container image"
+  stage_name  = var.environment
 
-resource "aws_api_gateway_method" "onboarding_ariel" {
-  rest_api_id   = aws_api_gateway_rest_api.onboarding_api.id
-  resource_id   = aws_api_gateway_resource.newbie_name.id
-  http_method   = "GET"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_integration" "onboarding_ariel" {
-  rest_api_id = aws_api_gateway_rest_api.onboarding_api.id
-  resource_id = aws_api_gateway_resource.newbie_name.id
-  http_method = aws_api_gateway_method.onboarding_ariel.http_method
-
-  integration_http_method = "POST"
-  type                    = "AWS_PROXY"
-  uri                     = module.onboarding_lambda.lambda_function_invoke_arn
-}
-
-resource "aws_api_gateway_deployment" "this" {
-  rest_api_id = aws_api_gateway_rest_api.onboarding_api.id
-
-  triggers = {
-    redeploy = sha1(jsonencode(aws_api_gateway_resource.newbie_name))
+  cors_configuration = {
+    allow_headers     = ["content-type", "x-amz-date", "authorization", "x-api-key", "x-amz-security-token", "x-amz-user-agent"]
+    allow_methods     = ["*"]
+    allow_origins     = ["*"]
+    allow_credentials = true
   }
 
-  depends_on = [
-    aws_api_gateway_integration.onboarding_ariel
-  ]
-}
+  fail_on_warnings = false
 
-resource "aws_api_gateway_stage" "dev" {
-  rest_api_id   = aws_api_gateway_rest_api.onboarding_api.id
-  deployment_id = aws_api_gateway_deployment.this.id
-  stage_name    = var.environment
+  # Routes & Integration(s)
+  routes = {
+    "GET /onboarding/{newbie_name}" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 100
+      throttling_burst_limit   = 100
+      integration = {
+        uri                    = module.onboarding_lambda.lambda_function_arn
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
+  }
+
+  # Stage Access Log Settings
+  stage_access_log_settings = {
+    create_log_group            = true
+    log_group_retention_in_days = 7
+    format = jsonencode({
+      context = {
+        domainName              = "$context.domainName"
+        integrationErrorMessage = "$context.integrationErrorMessage"
+        protocol                = "$context.protocol"
+        requestId               = "$context.requestId"
+        requestTime             = "$context.requestTime"
+        responseLength          = "$context.responseLength"
+        routeKey                = "$context.routeKey"
+        stage                   = "$context.stage"
+        status                  = "$context.status"
+        error = {
+          message      = "$context.error.message"
+          responseType = "$context.error.responseType"
+        }
+        identity = {
+          sourceIP = "$context.identity.sourceIp"
+        }
+        integration = {
+          error             = "$context.integration.error"
+          integrationStatus = "$context.integration.integrationStatus"
+        }
+      }
+    })
+  }
+
+  stage_default_route_settings = {
+    detailed_metrics_enabled = true
+    throttling_burst_limit   = 100
+    throttling_rate_limit    = 100
+  }
+
+  tags = {
+    Environment = var.environment
+  }
 }
