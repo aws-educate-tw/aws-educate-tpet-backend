@@ -2,7 +2,7 @@ import json
 
 
 def lambda_handler(event, context):
-    newbie_name = event.get('pathParameters', {}).get('newbie_name', 'Ariel')
+    newbie_name = event.get("pathParameters", {}).get("newbie_name", "Ariel")
 
     response_body = {
         "name": newbie_name,
