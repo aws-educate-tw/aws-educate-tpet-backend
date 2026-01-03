@@ -1,4 +1,3 @@
-
 data "aws_ecr_authorization_token" "token" {}
 data "aws_caller_identity" "this" {}
 
@@ -27,7 +26,7 @@ module "onboarding_lambda" {
   allowed_triggers = {
     AllowExecutionFromAPIGateway = {
       service    = "apigateway"
-      source_arn = "${aws_api_gateway_rest_api.onboarding_api.execution_arn}/*/*"
+      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
     }
   }
 }
@@ -37,11 +36,11 @@ module "onboarding_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
-  create_ecr_repo      = true
-  keep_remotely        = true
-  use_image_tag        = false
+  create_ecr_repo       = true
+  keep_remotely         = true
+  use_image_tag         = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = local.ecr_repo_name
+  ecr_repo               = local.ecr_repo_name
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {

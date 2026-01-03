@@ -1,4 +1,4 @@
-data "aws_route53_zone" "awseducate_systems" {
+data "aws_route53_zone" "primary_domain_zone" {
   name         = var.domain_name
   private_zone = false
 }
@@ -9,7 +9,7 @@ module "acm" {
   version = "~> 5.0.0"
 
   domain_name = "*.${var.domain_name}"
-  zone_id     = data.aws_route53_zone.awseducate_systems.zone_id
+  zone_id     = data.aws_route53_zone.primary_domain_zone.zone_id
 
   validation_method = "DNS"
 

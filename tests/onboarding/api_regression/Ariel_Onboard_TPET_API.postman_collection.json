@@ -9,22 +9,68 @@
 	"item": [
 		{
 			"name": "Onboarding Self Introduction",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// 1. Check if the status code is 200 OK\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"// 2. Validate response time (Should be under 1000ms for Lambda cold starts)\r",
+							"pm.test(\"Response time is less than 1000ms\", function () {\r",
+							"    pm.expect(pm.response.responseTime).to.be.below(1000);\r",
+							"});\r",
+							"\r",
+							"// 3. Ensure the response body is in JSON format\r",
+							"pm.test(\"Response should be JSON\", function () {\r",
+							"    pm.response.to.be.withBody;\r",
+							"    pm.response.to.be.json;\r",
+							"});\r",
+							"\r",
+							"// 4. Validate the response schema and content\r",
+							"pm.test(\"Response body matches the expected schema and content\", function () {\r",
+							"    const jsonData = pm.response.json();\r",
+							"    \r",
+							"    // Check if required fields exist\r",
+							"    pm.expect(jsonData).to.have.property('name');\r",
+							"    pm.expect(jsonData).to.have.property('introduction');\r",
+							"    pm.expect(jsonData).to.have.property('onboarding_path');\r",
+							"\r",
+							"    // Validate field values\r",
+							"    pm.expect(jsonData.name).to.be.a('string');\r",
+							"    pm.expect(jsonData.introduction).to.include(\"Hi, I am Ariel\");\r",
+							"    pm.expect(jsonData.onboarding_path).to.equal(\"/onboarding_ariel\");\r",
+							"});\r",
+							"\r",
+							"// 5. Check Content-Type header\r",
+							"pm.test(\"Content-Type is application/json\", function () {\r",
+							"    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
 			"request": {
+				"auth": {
+					"type": "noauth"
+				},
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "https://kyaijofl1c.execute-api.us-west-2.amazonaws.com/local-dev/onboarding_ariel",
-					"protocol": "http",
+					"raw": "{{base_url}}/{{environment}}/onboarding/{{name}}",
 					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
+						"{{base_url}}"
 					],
-					"port": "5000",
 					"path": [
+						"{{environment}}",
 						"onboarding",
-						"ariel"
+						"{{name}}"
 					]
 				},
 				"description": "Method: GET  \nEndpoint: /onboarding/ariel  \nExample URL:\n\n[https://kyaijofl1c.execute-api.us-west-2.amazonaws.com/preview/onboarding_ariel](https://kyaijofl1c.execute-api.us-west-2.amazonaws.com/preview/onboarding_ariel)\n\nPath Parameter: ariel (string, required)\n\nHeaders:  \nContent-Type: application/json  \nAuthorization: Bearer (optional)\n\nBody: none\n\nResponse Format: JSON  \nResponse Example:  \n{  \n\"name\": \"Ariel\",  \n\"self_intro\": \"Hi! I'm Ariel, part of the 8th Tech cohort, and I will be joining the TPET team as a backend developer. I enjoy listening to K-pop and playing the piano. Looking forward to working with everyone!\"  \n}"
@@ -36,18 +82,14 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "https://kyaijofl1c.execute-api.us-west-2.amazonaws.com/local-dev/onboarding_ariel",
-							"protocol": "https",
+							"raw": "{{base_url}}/{{environment}}/onboarding/{{name}}",
 							"host": [
-								"kyaijofl1c",
-								"execute-api",
-								"us-west-2",
-								"amazonaws",
-								"com"
+								"{{base_url}}"
 							],
 							"path": [
-								"local-dev",
-								"onboarding_ariel"
+								"{{environment}}",
+								"onboarding",
+								"{{name}}"
 							]
 						}
 					},
@@ -61,7 +103,7 @@
 						},
 						{
 							"key": "Content-Length",
-							"value": "230"
+							"value": "272"
 						},
 						{
 							"key": "Connection",
@@ -69,19 +111,19 @@
 						},
 						{
 							"key": "Date",
-							"value": "Fri, 26 Dec 2025 08:11:43 GMT"
+							"value": "Fri, 02 Jan 2026 10:19:22 GMT"
 						},
 						{
 							"key": "X-Amzn-Trace-Id",
-							"value": "Root=1-694e433f-15e094492cbc49f7483f546a;Parent=17b2f7c9db500827;Sampled=0;Lineage=1:83920257:0"
+							"value": "Root=1-69579baa-119f035224dc03a646a7a2ba;Parent=006d0f406ec68d13;Sampled=0;Lineage=1:83920257:0"
 						},
 						{
 							"key": "x-amzn-RequestId",
-							"value": "aba17381-ccb9-4f92-a900-925d2a790983"
+							"value": "cd7d6706-89a6-4bcb-8dd0-4802c6789edb"
 						},
 						{
 							"key": "x-amz-apigw-id",
-							"value": "WL9x9FOkvHcEHlw="
+							"value": "WjVCsEI9vHcEo-w="
 						},
 						{
 							"key": "X-Cache",
@@ -89,19 +131,19 @@
 						},
 						{
 							"key": "Via",
-							"value": "1.1 df9968cda2d912930286f20d46e4ae02.cloudfront.net (CloudFront)"
+							"value": "1.1 edc390011f8716d55b88232ec26b5094.cloudfront.net (CloudFront)"
 						},
 						{
 							"key": "X-Amz-Cf-Pop",
-							"value": "TPE53-P1"
+							"value": "TPE54-P2"
 						},
 						{
 							"key": "X-Amz-Cf-Id",
-							"value": "Cyy-v7c5r1QsaU0YZJYfwXyFEkNKYOucC04wuYN0dHcweUcmBRLPRA=="
+							"value": "guUsjc30g78AYqXDZPlUlt6OEWP4vajem_Fz00We3bgDQDM89Q1Rzg=="
 						}
 					],
 					"cookie": [],
-					"body": "{\n    \"name\": \"Ariel\",\n    \"self_intro\": \"Hi! I'm Ariel, part of the 8th Tech cohort, and I will be joining the TPET team as a backend developer. I enjoy listening to K-pop and playing the piano. Looking forward to working with everyone!\"\n}"
+					"body": "{\n    \"name\": \"ariel\",\n    \"introduction\": \"Hi! I'm Ariel, part of the 8th Tech cohort, and I will be joining the TPET team as a backend developer. I enjoy listening to K-pop and playing the piano. Looking forward to working with everyone!\",\n    \"onboarding_path\": \"/onboarding/ariel\"\n}"
 				}
 			]
 		}

@@ -37,3 +37,9 @@ variable "lambda_architecture" {
   type    = string
   default = "x86_64"
 }
+
+variable "bucket_name" {
+  description = "S3 bucket name for TPET"
+  type        = string
+  default     = "aws-educate-tpet-bucket"
+}
