@@ -1,4 +1,4 @@
 bucket = "tpet-terraform-state-20250401155336893000000001"
 region = "us-west-2"
-key    = "chatbot-alert-beautifier/dev/terraform.tfstate"
+key    = "alert-system/dev/terraform.tfstate"
 dynamodb_table = "terraform-locks"
