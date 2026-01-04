@@ -55,15 +55,3 @@ variable "rds_engine_version" {
   description = "RDS Aurora PostgreSQL engine version"
   type        = string
 }
-
-variable "slack_workspace_id" {
-  description = "Slack Workspace ID for AWS Chatbot (must be linked to Amazon Q Developer in Chat Applications first)"
-  type        = string
-  default     = "T072MQUJ3D5"
-}
-
-variable "slack_channel_id" {
-  description = "Slack Channel ID for DLQ management notifications"
-  type        = string
-  default     = "C0A1LLE15F1"
-}
