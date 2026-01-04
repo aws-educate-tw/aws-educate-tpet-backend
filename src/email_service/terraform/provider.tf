@@ -8,4 +8,3 @@ provider "aws" {
     }
   }
 }
-
