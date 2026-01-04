@@ -25,18 +25,25 @@ def post_incident_message(slack_client, channel, alarm_name, incident_state, blo
         message_text = f"[{incident_state}] {alarm_name}"
         
         if chart_data:
-            # Post message with chart image
-            result = slack_client.files_upload_v2(
+            # First, post a message with blocks and color
+            result = slack_client.chat_postMessage(
                 channel=channel,
+                text=message_text,
+                attachments=[{"color": color, "blocks": blocks}]
+            )
+            slack_ts = result["ts"]
+            logger.info(f"Posted incident message for {alarm_name}")
+            
+            # Then upload the chart image to the same thread
+            slack_client.files_upload_v2(
+                channel=channel,
+                thread_ts=slack_ts,
                 file=chart_data["data"],
                 filename=chart_data["filename"],
                 title=chart_data["title"],
-                initial_comment=message_text,
                 request_file_info=False
             )
-            # Get the message timestamp from the file upload
-            slack_ts = result["file"]["shares"]["public"][channel][0]["ts"]
-            logger.info(f"Posted incident message with chart for {alarm_name}")
+            logger.info(f"Uploaded chart to thread for {alarm_name}")
         else:
             # Post message without chart
             result = slack_client.chat_postMessage(
@@ -46,15 +53,6 @@ def post_incident_message(slack_client, channel, alarm_name, incident_state, blo
             )
             slack_ts = result["ts"]
             logger.info(f"Posted incident message for {alarm_name}")
-        
-        # Update the message with blocks (if chart was uploaded, add the blocks now)
-        if chart_data:
-            slack_client.chat_update(
-                channel=channel,
-                ts=slack_ts,
-                text=message_text,
-                attachments=[{"color": color, "blocks": blocks}]
-            )
         
         return slack_ts
         
