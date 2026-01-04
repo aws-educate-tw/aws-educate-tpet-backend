@@ -5,7 +5,9 @@ provider "aws" {
     tags = {
       "Terraform"   = "true",
       "Environment" = var.environment,
-      "Project"     = "AWS Educate TPET"
+      "Project"     = "AWS Educate TPET",
+      "Service"     = "alert_system",
+      "Repository" = "aws-educate-tw/aws-educate-tpet-backend"
     }
   }
 }
