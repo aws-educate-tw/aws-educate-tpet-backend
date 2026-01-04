@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
@@ -120,17 +121,25 @@ def get_metric_chart(trigger_info):
             logger.error(f"CloudWatch API error [{error_code}]: {error_msg}")
 
             if error_code == "InvalidParameterValue":
-                raise CloudWatchError(f"Invalid metric parameters: {error_msg}", status_code=400) from e
+                raise CloudWatchError(
+                    f"Invalid metric parameters: {error_msg}", status_code=400
+                ) from e
             elif error_code == "ResourceNotFoundException":
-                raise CloudWatchError(f"Metric not found: {error_msg}", status_code=404) from e
+                raise CloudWatchError(
+                    f"Metric not found: {error_msg}", status_code=404
+                ) from e
             elif error_code == "Throttling":
-                raise CloudWatchError(f"API rate limit exceeded: {error_msg}", status_code=429) from e
+                raise CloudWatchError(
+                    f"API rate limit exceeded: {error_msg}", status_code=429
+                ) from e
             else:
-                raise CloudWatchError(f"CloudWatch API error: {error_msg}", status_code=500) from e
+                raise CloudWatchError(
+                    f"CloudWatch API error: {error_msg}", status_code=500
+                ) from e
         except BotoCoreError as e:
             logger.error(f"AWS SDK error: {e}")
             raise CloudWatchError(f"AWS SDK error: {str(e)}", status_code=500) from e
-        
+
         # Validate response
         if "MetricWidgetImage" not in response:
             raise CloudWatchError(
@@ -152,7 +161,7 @@ def get_metric_chart(trigger_info):
             "filename": f"{metric_name}_chart.png",
             "title": f"CloudWatch Metric: {metric_name}",
         }
-        
+
     except CloudWatchError:
         # Re-raise CloudWatchError as-is
         raise
