@@ -13,10 +13,10 @@ resource "random_string" "this" {
 locals {
   source_path_alert = "${path.module}/slack_alert/"
   source_path_handler  = "${path.module}/slack_interaction_handler/"
-  
+
   slack_alert_function_name_and_ecr_name     = "${var.environment}-slack-alert-${random_string.this.result}"
   slack_handler_function_name_and_ecr_name      = "${var.environment}-slack-interaction-handler-${random_string.this.result}"
-  
+
   path_include = ["**"]
   path_exclude = [
     "**/__pycache__/**",
@@ -27,19 +27,19 @@ locals {
     "**/.terraform.lock.hcl",
     "**/*.tfvars"
   ]
-  
+
   # Calculate hash for alert
   files_include_alert = setunion([for f in local.path_include : fileset(local.source_path_alert, f)]...)
   files_exclude_alert = setunion([for f in local.path_exclude : fileset(local.source_path_alert, f)]...)
   files_alert         = sort(setsubtract(local.files_include_alert, local.files_exclude_alert))
   dir_sha_alert       = sha1(join("", [for f in local.files_alert : filesha1("${local.source_path_alert}/${f}")]))
-  
+
   # Calculate hash for handler
   files_include_handler = setunion([for f in local.path_include : fileset(local.source_path_handler, f)]...)
   files_exclude_handler = setunion([for f in local.path_exclude : fileset(local.source_path_handler, f)]...)
   files_handler         = sort(setsubtract(local.files_include_handler, local.files_exclude_handler))
   dir_sha_handler       = sha1(join("", [for f in local.files_handler : filesha1("${local.source_path_handler}/${f}")]))
-  
+
   # Calculate hash for auto re-enable
   source_path_reenable       = "${path.module}/auto_reenable/"
   files_include_reenable     = setunion([for f in local.path_include : fileset(local.source_path_reenable, f)]...)
@@ -47,7 +47,7 @@ locals {
   files_reenable             = sort(setsubtract(local.files_include_reenable, local.files_exclude_reenable))
   dir_sha_reenable           = sha1(join("", [for f in local.files_reenable : filesha1("${local.source_path_reenable}/${f}")]))
   auto_reenable_function_name = "${var.environment}-auto-reenable-${random_string.this.result}"
-  
+
 }
 
 provider "docker" {
@@ -142,7 +142,7 @@ module "slack_alert_docker_image" {
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
   ecr_repo             = local.slack_alert_function_name_and_ecr_name
-  
+
   ecr_repo_lifecycle_policy = jsonencode({
     rules = [
       {
@@ -243,7 +243,7 @@ module "slack_interaction_handler_docker_image" {
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
   ecr_repo             = local.slack_handler_function_name_and_ecr_name
-  
+
   ecr_repo_lifecycle_policy = jsonencode({
     rules = [
       {
@@ -335,7 +335,7 @@ module "auto_reenable_docker_image" {
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
   ecr_repo             = local.auto_reenable_function_name
-  
+
   ecr_repo_lifecycle_policy = jsonencode({
     rules = [
       {

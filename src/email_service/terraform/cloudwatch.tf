@@ -10,7 +10,7 @@ data "aws_region" "current" {}
 resource "aws_cloudwatch_metric_alarm" "email_service_dlq_message_count_gt_0" {
   # Title: [Severity][Service] - {condition}
   alarm_name          = "[P2][Email-Service] - DLQ Message Count > 0"
-  
+
   # Description format: Simplified to single line per field
   alarm_description   = <<EOT
 Level: P2
@@ -27,7 +27,7 @@ EOT
   period              = 60
   statistic           = "Maximum"
   threshold           = 0
-  
+
   dimensions = {
     QueueName = module.auto_resumer_sqs.dead_letter_queue_name
   }
