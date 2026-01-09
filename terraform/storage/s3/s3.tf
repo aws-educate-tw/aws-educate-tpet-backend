@@ -6,25 +6,30 @@
 ####################################
 ####################################
 
-resource "aws_s3_bucket" "aws_educate_tpet_storage" {
-  bucket = "${var.environment}-aws-educate-tpet-storage"
+locals {
+  public_bucket_name  = "${var.environment}-aws-educate-tpet-bucket"
+  private_bucket_name = "${var.environment}-aws-educate-tpet-private-bucket"
+}
+
+resource "aws_s3_bucket" "aws_educate_tpet_bucket" {
+  bucket = local.public_bucket_name
 
   tags = {
-    Name        = "${var.environment}-aws-educate-tpet-storage"
+    Name        = local.public_bucket_name
     Environment = var.environment
   }
 }
 
 resource "aws_s3_bucket_public_access_block" "public_access_block" {
-  bucket = aws_s3_bucket.aws_educate_tpet_storage.bucket
+  bucket = aws_s3_bucket.aws_educate_tpet_bucket.bucket
 
   block_public_acls       = false
   block_public_policy     = false
   ignore_public_acls      = false
   restrict_public_buckets = false
 }
-resource "aws_s3_bucket_policy" "aws_educate_tpet_storage_policy" {
-  bucket = aws_s3_bucket.aws_educate_tpet_storage.id
+resource "aws_s3_bucket_policy" "aws_educate_tpet_bucket_policy" {
+  bucket = aws_s3_bucket.aws_educate_tpet_bucket.id
 
   policy = jsonencode({
     Version = "2012-10-17",
@@ -33,13 +38,13 @@ resource "aws_s3_bucket_policy" "aws_educate_tpet_storage_policy" {
         Effect    = "Allow",
         Principal = "*",
         Action    = "s3:GetObject",
-        Resource  = "${aws_s3_bucket.aws_educate_tpet_storage.arn}/*"
+        Resource  = "${aws_s3_bucket.aws_educate_tpet_bucket.arn}/*"
       }
     ]
   })
 }
-resource "aws_s3_bucket_cors_configuration" "aws_educate_tpet_storage_cors" {
-  bucket = aws_s3_bucket.aws_educate_tpet_storage.id
+resource "aws_s3_bucket_cors_configuration" "aws_educate_tpet_bucket_cors" {
+  bucket = aws_s3_bucket.aws_educate_tpet_bucket.id
 
   cors_rule {
     allowed_headers = ["*"]
@@ -58,11 +63,11 @@ resource "aws_s3_bucket_cors_configuration" "aws_educate_tpet_storage_cors" {
 ####################################
 ####################################
 
-resource "aws_s3_bucket" "aws_educate_tpet_private_storage" {
-  bucket = "${var.environment}-aws-educate-tpet-private-storage"
+resource "aws_s3_bucket" "aws_educate_tpet_private_bucket" {
+  bucket = local.private_bucket_name
 
   tags = {
-    Name        = "${var.environment}-aws-educate-tpet-private-storage"
+    Name        = local.private_bucket_name
     Environment = var.environment
   }
 }
