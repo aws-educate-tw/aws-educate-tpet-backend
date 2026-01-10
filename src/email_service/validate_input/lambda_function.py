@@ -84,6 +84,41 @@ class ValidationError(Exception):
         super().__init__(self.message)
 
 
+class ValidationErrorCollector:
+    """Collects multiple validation errors before raising them all at once."""
+
+    def __init__(self):
+        self.errors: list[dict[str, Any]] = []
+
+    def add_error(
+        self,
+        message: str,
+        error_code: str = "VALIDATION_ERROR",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        """Add a validation error to the collection."""
+        error_entry = {
+            "message": message,
+            "error_code": error_code,
+        }
+        if details:
+            error_entry["details"] = details
+        self.errors.append(error_entry)
+
+    def has_errors(self) -> bool:
+        """Check if any errors have been collected."""
+        return len(self.errors) > 0
+
+    def raise_if_has_errors(self) -> None:
+        """Raise a ValidationError if any errors have been collected."""
+        if self.has_errors():
+            raise ValidationError(
+                message=f"Found {len(self.errors)} validation error(s)",
+                error_code="VALIDATION_ERRORS",
+                details={"errors": self.errors, "error_count": len(self.errors)},
+            )
+
+
 def validate_auth_header(headers: dict[str, str]) -> str | None:
     """Validate authorization header and return access token."""
     authorization_header = headers.get("authorization")
@@ -157,10 +192,11 @@ def extract_template_variables(template_content: str) -> list[str]:
         raise
 
 
-def validate_run_type(run_type: str) -> None:
+def validate_run_type(run_type: str, error_collector: ValidationErrorCollector) -> None:
+    """Validate run_type."""
     if not RunType.has_value(run_type):
         valid_run_types = ", ".join([item.value for item in RunType])
-        raise ValidationError(
+        error_collector.add_error(
             message=f"Invalid run_type: {run_type}",
             error_code="INVALID_RUN_TYPE",
             details={"provided": run_type, "valid_types": valid_run_types.split(", ")},
@@ -170,6 +206,7 @@ def validate_run_type(run_type: str) -> None:
 def validate_template_variables(
     template_content: str,
     recipient_source: str,
+    error_collector: ValidationErrorCollector,
     recipients: list[dict[str, Any]] | None = None,
     rows: list[dict[str, Any]] | None = None,
 ) -> None:
@@ -178,11 +215,9 @@ def validate_template_variables(
     Args:
         template_content: The content of template file.
         recipient_source: The source of recipients (SPREADSHEET or DIRECT).
+        error_collector: Error collector to accumulate errors.
         recipients: List of recipients with their template variables (for DIRECT mode).
         rows: List of spreadsheet rows (for SPREADSHEET mode).
-
-    Raises:
-        ValidationError: If any recipient is missing required template variables.
     """
     required_variables = extract_template_variables(template_content)
     if not required_variables:
@@ -199,7 +234,7 @@ def validate_template_variables(
                 total_errors += 1
 
         if total_errors > 0:
-            raise ValidationError(
+            error_collector.add_error(
                 message=f"Found {total_errors} recipient(s) with missing template variables",
                 error_code="MISSING_TEMPLATE_VARIABLES_DIRECT",
                 details={
@@ -215,7 +250,7 @@ def validate_template_variables(
                 total_errors += 1
 
         if total_errors > 0:
-            raise ValidationError(
+            error_collector.add_error(
                 message=f"Found {total_errors} row(s) with missing template variables",
                 error_code="MISSING_TEMPLATE_VARIABLES_SPREADSHEET",
                 details={
@@ -226,45 +261,51 @@ def validate_template_variables(
 
 
 def validate_spreadsheet_mode(
-    spreadsheet_file_id: str, access_token: str
-) -> tuple[dict[str, Any], list[dict[str, Any]], list[str], int]:
+    spreadsheet_file_id: str,
+    access_token: str,
+    error_collector: ValidationErrorCollector,
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]], list[str], int]:
     """Validate spreadsheet mode specific requirements."""
     if not spreadsheet_file_id:
-        raise ValidationError(
+        error_collector.add_error(
             message="Spreadsheet file ID is required for SPREADSHEET recipient source",
             error_code="MISSING_SPREADSHEET_FILE_ID",
         )
+        return None, [], [], 0
 
-    spreadsheet_info = get_file_info(spreadsheet_file_id, access_token)
-    spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
+    try:
+        spreadsheet_info = get_file_info(spreadsheet_file_id, access_token)
+        spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
+    except Exception as e:
+        logger.error(f"Failed to get spreadsheet info: {e}")
+        error_collector.add_error(
+            message="Failed to retrieve spreadsheet file information",
+            error_code="SPREADSHEET_INFO_ERROR",
+        )
+        return None, [], [], 0
+
     try:
         rows, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
     except Exception as e:
         logger.error(f"Failed to read spreadsheet: {e}")
-        raise ValidationError(
+        error_collector.add_error(
             message="Failed to read spreadsheet file. It may be empty or corrupted.",
             error_code="INVALID_SPREADSHEET_FILE",
         )
+        return None, [], [], 0
 
     # Check if spreadsheet is empty (no rows)
     if not rows or len(rows) == 0:
-        raise ValidationError(
+        error_collector.add_error(
             message="Spreadsheet is empty. Please add at least one recipient.",
             error_code="EMPTY_SPREADSHEET",
         )
 
     # Check if spreadsheet has no columns (no headers)
     if not columns or len(columns) == 0:
-        raise ValidationError(
+        error_collector.add_error(
             message="Spreadsheet has no headers. Please add column headers (at least 'Email').",
             error_code="MISSING_SPREADSHEET_HEADERS",
-        )
-
-    # Check if spreadsheet is empty
-    if not rows:
-        raise ValidationError(
-            message="Spreadsheet is empty. Please add at least one recipient.",
-            error_code="EMPTY_SPREADSHEET",
         )
 
     # Validate email format
@@ -281,7 +322,7 @@ def validate_spreadsheet_mode(
             )
 
     if invalid_emails:
-        raise ValidationError(
+        error_collector.add_error(
             message=f"Found {len(invalid_emails)} invalid or missing email(s) in spreadsheet",
             error_code="INVALID_EMAIL_FORMAT_SPREADSHEET",
             details={
@@ -294,13 +335,16 @@ def validate_spreadsheet_mode(
     return spreadsheet_info, rows, columns, expected_email_send_count
 
 
-def validate_direct_mode(recipients: list[dict[str, Any]]) -> int:
+def validate_direct_mode(
+    recipients: list[dict[str, Any]], error_collector: ValidationErrorCollector
+) -> int:
     """Validate direct mode specific requirements."""
     if not recipients:
-        raise ValidationError(
+        error_collector.add_error(
             message="Recipients list cannot be empty",
             error_code="EMPTY_RECIPIENTS_LIST",
         )
+        return 0
 
     # Validate email format
     invalid_recipients = [
@@ -310,7 +354,7 @@ def validate_direct_mode(recipients: list[dict[str, Any]]) -> int:
     ]
 
     if invalid_recipients:
-        raise ValidationError(
+        error_collector.add_error(
             message=f"Found {len(invalid_recipients)} invalid email(s) in recipients list",
             error_code="INVALID_RECIPIENT_EMAIL_FORMAT",
             details={
@@ -327,6 +371,7 @@ def validate_certificate_requirements(
     recipient_source: str,
     recipients: list[dict[str, Any]],
     columns: list[str],
+    error_collector: ValidationErrorCollector,
 ) -> None:
     """Validate certificate generation requirements."""
     if not is_generate_certificate:
@@ -351,7 +396,7 @@ def validate_certificate_requirements(
                 )
 
         if missing_fields_list:
-            raise ValidationError(
+            error_collector.add_error(
                 message=f"Found {len(missing_fields_list)} recipient(s) missing required certificate fields",
                 error_code="MISSING_CERTIFICATE_FIELDS_DIRECT",
                 details={
@@ -365,23 +410,25 @@ def validate_certificate_requirements(
             col for col in required_fields if col not in columns
         ]
         if missing_required_columns:
-            raise ValidationError(
+            error_collector.add_error(
                 message="Spreadsheet is missing required columns for certificate generation",
                 error_code="MISSING_CERTIFICATE_COLUMNS_SPREADSHEET",
                 details={
                     "required_columns": required_fields,
                     "missing_columns": missing_required_columns,
-                    "available_columns": columns,
+                    "spreadsheet_columns": columns,
                 },
             )
 
 
-def validate_email_addresses(cc: list[str], bcc: list[str], reply_to: str) -> None:
+def validate_email_addresses(
+    cc: list[str], bcc: list[str], reply_to: str, error_collector: ValidationErrorCollector
+) -> None:
     """Validate email formats for cc, bcc, and reply_to."""
     # Validate CC emails
     invalid_cc = [email for email in cc if not re.match(EMAIL_PATTERN, email)]
     if invalid_cc:
-        raise ValidationError(
+        error_collector.add_error(
             message="Invalid email format in CC list",
             error_code="INVALID_CC_EMAIL_FORMAT",
             details={"invalid_emails": invalid_cc},
@@ -390,7 +437,7 @@ def validate_email_addresses(cc: list[str], bcc: list[str], reply_to: str) -> No
     # Validate BCC emails
     invalid_bcc = [email for email in bcc if not re.match(EMAIL_PATTERN, email)]
     if invalid_bcc:
-        raise ValidationError(
+        error_collector.add_error(
             message="Invalid email format in BCC list",
             error_code="INVALID_BCC_EMAIL_FORMAT",
             details={"invalid_emails": invalid_bcc},
@@ -398,7 +445,7 @@ def validate_email_addresses(cc: list[str], bcc: list[str], reply_to: str) -> No
 
     # Validate reply_to
     if not re.match(EMAIL_PATTERN, reply_to):
-        raise ValidationError(
+        error_collector.add_error(
             message="Invalid reply_to email format",
             error_code="INVALID_REPLY_TO_FORMAT",
             details={"email": reply_to},
@@ -458,7 +505,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         body = json.loads(event.get("body", "{}"))
         recipient_source = body.get("recipient_source", DEFAULT_RECIPIENT_SOURCE)
         run_type = body.get("run_type", DEFAULT_RUN_TYPE)
-        validate_run_type(run_type)
         template_file_id = body.get("template_file_id")
         spreadsheet_file_id = body.get("spreadsheet_file_id")
         recipients = body.get("recipients", [])
@@ -472,6 +518,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         cc = body.get("cc", [])
         bcc = body.get("bcc", [])
 
+        # Initialize error collector
+        error_collector = ValidationErrorCollector()
+
         # --- Webhook specific logic ---
         if run_type == RunType.WEBHOOK.value:
             logger.info(
@@ -479,66 +528,81 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 run_id,
                 recipients,
             )
-            # Validate WEBHOOK run_type
+            
+            # Validate WEBHOOK run_type requirements
             if not run_id:
-                raise ValidationError(
+                error_collector.add_error(
                     message="run_id is required for WEBHOOK run_type",
                     error_code="MISSING_RUN_ID_WEBHOOK",
                 )
+            
             if recipient_source != RecipientSource.DIRECT.value:
-                return error_responder.create_error_response(
-                    400,
-                    "WEBHOOK run_type only supports DIRECT recipient source",
-                    "INVALID_RECIPIENT_SOURCE_WEBHOOK",
-                    {
+                error_collector.add_error(
+                    message="WEBHOOK run_type only supports DIRECT recipient source",
+                    error_code="INVALID_RECIPIENT_SOURCE_WEBHOOK",
+                    details={
                         "provided": recipient_source,
                         "required": RecipientSource.DIRECT.value,
                     },
                 )
 
-            # For webhook append mode, validation is based on the request body,
-            # not the parent run. The run_id is only for grouping.
-            try:
-                # Validate required inputs from the body
-                if not subject:
-                    raise ValidationError(
-                        message="Email subject is required",
-                        error_code="MISSING_SUBJECT",
-                    )
-                if not template_file_id:
-                    raise ValidationError(
-                        message="Template file ID is required",
-                        error_code="MISSING_TEMPLATE_FILE_ID",
+            # Validate required inputs
+            if not subject:
+                error_collector.add_error(
+                    message="Email subject is required",
+                    error_code="MISSING_SUBJECT",
+                )
+            if not template_file_id:
+                error_collector.add_error(
+                    message="Template file ID is required",
+                    error_code="MISSING_TEMPLATE_FILE_ID",
+                )
+
+            # Validate run_type
+            validate_run_type(run_type, error_collector)
+
+            # Get template info and content if template_file_id is provided
+            template_info = None
+            template_content = None
+            if template_file_id:
+                try:
+                    template_info = get_file_info(template_file_id, access_token)
+                    template_content = get_template(template_info["s3_object_key"])
+                except Exception as e:
+                    logger.error(f"Failed to get template: {e}")
+                    error_collector.add_error(
+                        message="Failed to retrieve template file",
+                        error_code="TEMPLATE_RETRIEVAL_ERROR",
                     )
 
-                # Reuse existing validation functions
-                validate_direct_mode(recipients)
-                template_info = get_file_info(template_file_id, access_token)
-                template_content = get_template(template_info["s3_object_key"])
+            # Validate recipients
+            validate_direct_mode(recipients, error_collector)
+
+            # Validate template variables if we have the template
+            if template_content:
                 validate_template_variables(
                     template_content,
                     RecipientSource.DIRECT.value,
+                    error_collector,
                     recipients=recipients,
                 )
-                validate_certificate_requirements(
-                    is_generate_certificate,
-                    RecipientSource.DIRECT.value,
-                    recipients=recipients,
-                    columns=[],
-                )
-                validate_email_addresses(cc, bcc, reply_to)
 
-            except (ValidationError, RequestException) as e:
-                # Log webhook related error
-                logger.error(
-                    "WEBHOOK validation failed - run_id: %s, recipient_count: %s, error: %s",
-                    run_id,
-                    len(recipients),
-                    str(e),
-                )
-                raise
+            # Validate certificate requirements
+            validate_certificate_requirements(
+                is_generate_certificate,
+                RecipientSource.DIRECT.value,
+                recipients,
+                [],
+                error_collector,
+            )
 
-            # Prepare message body for SQS using data from the request body
+            # Validate email addresses
+            validate_email_addresses(cc, bcc, reply_to, error_collector)
+
+            # Raise all errors if any were collected
+            error_collector.raise_if_has_errors()
+
+            # Prepare message body for SQS
             current_user_info = current_user_util.get_current_user_info()
             sender_id = current_user_info.get("user_id")
 
@@ -589,64 +653,72 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         else:
             # Validate required inputs
             if not subject:
-                raise ValidationError(
-                    message="Email subject is required", error_code="MISSING_SUBJECT"
+                error_collector.add_error(
+                    message="Email subject is required", 
+                    error_code="MISSING_SUBJECT"
                 )
             if not template_file_id:
-                raise ValidationError(
+                error_collector.add_error(
                     message="Template file ID is required",
                     error_code="MISSING_TEMPLATE_FILE_ID",
                 )
             if run_id:
-                raise ValidationError(
+                error_collector.add_error(
                     message="run_id should not be provided for non-WEBHOOK run_type",
                     error_code="UNEXPECTED_RUN_ID",
                     details={"run_type": run_type},
                 )
 
+            # Validate run_type
+            validate_run_type(run_type, error_collector)
+
             # Generate a new run_id
             run_id = uuid.uuid4().hex
 
             # Get template information
-            template_info = get_file_info(template_file_id, access_token)
-            template_content = get_template(template_info["s3_object_key"])
+            template_info = None
+            template_content = None
+            if template_file_id:
+                try:
+                    template_info = get_file_info(template_file_id, access_token)
+                    template_content = get_template(template_info["s3_object_key"])
+                except Exception as e:
+                    logger.error(f"Failed to get template: {e}")
+                    error_collector.add_error(
+                        message="Failed to retrieve template file",
+                        error_code="TEMPLATE_RETRIEVAL_ERROR",
+                    )
 
             # Process based on recipient source
-            try:
-                spreadsheet_info = None
-                rows, columns = [], []
-                if recipient_source == RecipientSource.SPREADSHEET.value:
-                    spreadsheet_info, rows, columns, expected_email_send_count = (
-                        validate_spreadsheet_mode(spreadsheet_file_id, access_token)
-                    )
-                    validate_template_variables(
-                        template_content, recipient_source, rows=rows
-                    )
-                else:  # DIRECT mode
-                    expected_email_send_count = validate_direct_mode(recipients)
-                    validate_template_variables(
-                        template_content, recipient_source, recipients=recipients
-                    )
+            spreadsheet_info = None
+            rows, columns = [], []
+            expected_email_send_count = 0
 
-                # Validate certificate requirements
-                validate_certificate_requirements(
-                    is_generate_certificate, recipient_source, recipients, columns
+            if recipient_source == RecipientSource.SPREADSHEET.value:
+                spreadsheet_info, rows, columns, expected_email_send_count = (
+                    validate_spreadsheet_mode(spreadsheet_file_id, access_token, error_collector)
                 )
+                if template_content:
+                    validate_template_variables(
+                        template_content, recipient_source, error_collector, rows=rows
+                    )
+            else:  # DIRECT mode
+                expected_email_send_count = validate_direct_mode(recipients, error_collector)
+                if template_content:
+                    validate_template_variables(
+                        template_content, recipient_source, error_collector, recipients=recipients
+                    )
 
-                # Validate email addresses
-                validate_email_addresses(cc, bcc, reply_to)
+            # Validate certificate requirements
+            validate_certificate_requirements(
+                is_generate_certificate, recipient_source, recipients, columns, error_collector
+            )
 
-            except (ValidationError, RequestException) as e:
-                # Log non-webhook related error
-                logger.error(
-                    "EMAIL validation failed - recipient_source: %s, recipient_count: %s, error: %s",
-                    recipient_source,
-                    len(recipients)
-                    if recipient_source == RecipientSource.DIRECT.value
-                    else len(rows),
-                    str(e),
-                )
-                raise
+            # Validate email addresses
+            validate_email_addresses(cc, bcc, reply_to, error_collector)
+
+            # Raise all errors if any were collected
+            error_collector.raise_if_has_errors()
 
         # Get current user info
         current_user_info = current_user_util.get_current_user_info()
