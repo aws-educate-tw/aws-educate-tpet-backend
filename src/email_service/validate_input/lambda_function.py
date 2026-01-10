@@ -422,7 +422,10 @@ def validate_certificate_requirements(
 
 
 def validate_email_addresses(
-    cc: list[str], bcc: list[str], reply_to: str, error_collector: ValidationErrorCollector
+    cc: list[str],
+    bcc: list[str],
+    reply_to: str,
+    error_collector: ValidationErrorCollector,
 ) -> None:
     """Validate email formats for cc, bcc, and reply_to."""
     # Validate CC emails
@@ -528,14 +531,14 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 run_id,
                 recipients,
             )
-            
+
             # Validate WEBHOOK run_type requirements
             if not run_id:
                 error_collector.add_error(
                     message="run_id is required for WEBHOOK run_type",
                     error_code="MISSING_RUN_ID_WEBHOOK",
                 )
-            
+
             if recipient_source != RecipientSource.DIRECT.value:
                 error_collector.add_error(
                     message="WEBHOOK run_type only supports DIRECT recipient source",
@@ -654,8 +657,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             # Validate required inputs
             if not subject:
                 error_collector.add_error(
-                    message="Email subject is required", 
-                    error_code="MISSING_SUBJECT"
+                    message="Email subject is required", error_code="MISSING_SUBJECT"
                 )
             if not template_file_id:
                 error_collector.add_error(
@@ -696,22 +698,33 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
             if recipient_source == RecipientSource.SPREADSHEET.value:
                 spreadsheet_info, rows, columns, expected_email_send_count = (
-                    validate_spreadsheet_mode(spreadsheet_file_id, access_token, error_collector)
+                    validate_spreadsheet_mode(
+                        spreadsheet_file_id, access_token, error_collector
+                    )
                 )
                 if template_content:
                     validate_template_variables(
                         template_content, recipient_source, error_collector, rows=rows
                     )
             else:  # DIRECT mode
-                expected_email_send_count = validate_direct_mode(recipients, error_collector)
+                expected_email_send_count = validate_direct_mode(
+                    recipients, error_collector
+                )
                 if template_content:
                     validate_template_variables(
-                        template_content, recipient_source, error_collector, recipients=recipients
+                        template_content,
+                        recipient_source,
+                        error_collector,
+                        recipients=recipients,
                     )
 
             # Validate certificate requirements
             validate_certificate_requirements(
-                is_generate_certificate, recipient_source, recipients, columns, error_collector
+                is_generate_certificate,
+                recipient_source,
+                recipients,
+                columns,
+                error_collector,
             )
 
             # Validate email addresses
