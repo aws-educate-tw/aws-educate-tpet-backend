@@ -23,7 +23,7 @@ locals {
   files_exclude                                          = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
   files                                                  = sort(setsubtract(local.files_include, local.files_exclude))
   dir_sha                                                = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
-  bucket_name                                            = "${var.environment}-${local.bucket_name}"
+  bucket_name                                            = "${var.environment}-${var.bucket_name}"
 }
 
 provider "docker" {
