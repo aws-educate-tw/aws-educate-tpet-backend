@@ -10,4 +10,4 @@ enable_deletion_protection_for_dynamodb_table = false
 lambda_architecture                           = "arm64"
 database_name                                 = "email_service_db"
 domain_name                                   = "aws-educate.tw"
-rds_engine_version                            = "16.6"
+rds_engine_version                            = "16.8"
