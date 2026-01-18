@@ -12,11 +12,13 @@ import requests
 from botocore.exceptions import ClientError
 from current_user_util import current_user_util
 from data_util import convert_float_to_decimal
+from error_code_enum import SystemErrorCode, ValidationErrorCode
 from recipient_source_enum import RecipientSource
 from requests.exceptions import RequestException
 from run_type_enum import RunType
 from sqs import send_message_to_queue
 from time_util import get_current_utc_time
+from validation_exceptions import ValidationError, ValidationErrorCollector
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -47,7 +49,7 @@ class ErrorResponder:
         self,
         status_code: int,
         message: str,
-        error_code: str | None = None,
+        error_code: str | SystemErrorCode | ValidationErrorCode | None = None,
         details: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Creates a standardized error response."""
@@ -57,7 +59,9 @@ class ErrorResponder:
         }
 
         if error_code:
-            error_body["error_code"] = error_code
+            # Convert enum to string if needed
+            error_code_str = error_code.value if isinstance(error_code, (SystemErrorCode, ValidationErrorCode)) else error_code
+            error_body["error_code"] = error_code_str
 
         if details:
             error_body["details"] = details
@@ -67,56 +71,6 @@ class ErrorResponder:
             "body": json.dumps(error_body),
             "headers": {"Content-Type": "application/json"},
         }
-
-
-class ValidationError(Exception):
-    """Custom exception for validation errors."""
-
-    def __init__(
-        self,
-        message: str,
-        error_code: str = "VALIDATION_ERROR",
-        details: dict[str, Any] | None = None,
-    ):
-        self.message = message
-        self.error_code = error_code
-        self.details = details
-        super().__init__(self.message)
-
-
-class ValidationErrorCollector:
-    """Collects multiple validation errors before raising them all at once."""
-
-    def __init__(self):
-        self.errors: list[dict[str, Any]] = []
-
-    def add_error(
-        self,
-        message: str,
-        error_code: str = "VALIDATION_ERROR",
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        """Add a validation error to the collection."""
-        error_entry = {
-            "message": message,
-            "error_code": error_code,
-        }
-        if details:
-            error_entry["details"] = details
-        self.errors.append(error_entry)
-
-    def has_errors(self) -> bool:
-        """Check if any errors have been collected."""
-        return len(self.errors) > 0
-
-    def raise_if_has_errors(self) -> None:
-        """Raise a ValidationError if any errors have been collected."""
-        if self.has_errors():
-            raise ValidationError(
-                message=f"Found {len(self.errors)} validation error(s)",
-                error_code="VALIDATION_ERRORS",
-                details={"errors": self.errors, "error_count": len(self.errors)},
-            )
 
 
 def validate_auth_header(headers: dict[str, str]) -> str | None:
@@ -198,7 +152,7 @@ def validate_run_type(run_type: str, error_collector: ValidationErrorCollector) 
         valid_run_types = ", ".join([item.value for item in RunType])
         error_collector.add_error(
             message=f"Invalid run_type: {run_type}",
-            error_code="INVALID_RUN_TYPE",
+            error_code=ValidationErrorCode.INVALID_RUN_TYPE,
             details={"provided": run_type, "valid_types": valid_run_types.split(", ")},
         )
 
@@ -236,7 +190,7 @@ def validate_template_variables(
         if total_errors > 0:
             error_collector.add_error(
                 message=f"Found {total_errors} recipient(s) with missing template variables",
-                error_code="MISSING_TEMPLATE_VARIABLES_DIRECT",
+                error_code=ValidationErrorCode.MISSING_TEMPLATE_VARIABLES_DIRECT,
                 details={
                     "required_variables": required_variables,
                     "missing_count": total_errors,
@@ -252,7 +206,7 @@ def validate_template_variables(
         if total_errors > 0:
             error_collector.add_error(
                 message=f"Found {total_errors} row(s) with missing template variables",
-                error_code="MISSING_TEMPLATE_VARIABLES_SPREADSHEET",
+                error_code=ValidationErrorCode.MISSING_TEMPLATE_VARIABLES_SPREADSHEET,
                 details={
                     "required_variables": required_variables,
                     "missing_count": total_errors,
@@ -269,7 +223,7 @@ def validate_spreadsheet_mode(
     if not spreadsheet_file_id:
         error_collector.add_error(
             message="Spreadsheet file ID is required for SPREADSHEET recipient source",
-            error_code="MISSING_SPREADSHEET_FILE_ID",
+            error_code=ValidationErrorCode.MISSING_SPREADSHEET_FILE_ID,
         )
         return None, [], [], 0
 
@@ -280,7 +234,7 @@ def validate_spreadsheet_mode(
         logger.error("Failed to get spreadsheet info: %s", e)
         error_collector.add_error(
             message="Failed to retrieve spreadsheet file information",
-            error_code="SPREADSHEET_INFO_ERROR",
+            error_code=ValidationErrorCode.SPREADSHEET_INFO_ERROR,
         )
         return None, [], [], 0
 
@@ -290,7 +244,7 @@ def validate_spreadsheet_mode(
         logger.error("Failed to read spreadshhet: %s", e)
         error_collector.add_error(
             message="Failed to read spreadsheet file. It may be empty or corrupted.",
-            error_code="INVALID_SPREADSHEET_FILE",
+            error_code=ValidationErrorCode.INVALID_SPREADSHEET_FILE,
         )
         return None, [], [], 0
 
@@ -298,14 +252,14 @@ def validate_spreadsheet_mode(
     if not rows or len(rows) == 0:
         error_collector.add_error(
             message="Spreadsheet is empty. Please add at least one recipient.",
-            error_code="EMPTY_SPREADSHEET",
+            error_code=ValidationErrorCode.EMPTY_SPREADSHEET,
         )
 
     # Check if spreadsheet has no columns (no headers)
     if not columns or len(columns) == 0:
         error_collector.add_error(
             message="Spreadsheet has no headers. Please add column headers (at least 'Email').",
-            error_code="MISSING_SPREADSHEET_HEADERS",
+            error_code=ValidationErrorCode.MISSING_SPREADSHEET_HEADERS,
         )
 
     # Validate email format
@@ -324,7 +278,7 @@ def validate_spreadsheet_mode(
     if invalid_emails:
         error_collector.add_error(
             message=f"Found {len(invalid_emails)} invalid or missing email(s) in spreadsheet",
-            error_code="INVALID_EMAIL_FORMAT_SPREADSHEET",
+            error_code=ValidationErrorCode.INVALID_EMAIL_FORMAT_SPREADSHEET,
             details={
                 "invalid_count": len(invalid_emails),
                 "invalid_emails": invalid_emails[:10],  # Limit to first 10
@@ -342,7 +296,7 @@ def validate_direct_mode(
     if not recipients:
         error_collector.add_error(
             message="Recipients list cannot be empty",
-            error_code="EMPTY_RECIPIENTS_LIST",
+            error_code=ValidationErrorCode.EMPTY_RECIPIENTS_LIST,
         )
         return 0
 
@@ -356,7 +310,7 @@ def validate_direct_mode(
     if invalid_recipients:
         error_collector.add_error(
             message=f"Found {len(invalid_recipients)} invalid email(s) in recipients list",
-            error_code="INVALID_RECIPIENT_EMAIL_FORMAT",
+            error_code=ValidationErrorCode.INVALID_RECIPIENT_EMAIL_FORMAT,
             details={
                 "invalid_count": len(invalid_recipients),
                 "invalid_emails": invalid_recipients[:10],  # Limit to first 10
@@ -398,7 +352,7 @@ def validate_certificate_requirements(
         if missing_fields_list:
             error_collector.add_error(
                 message=f"Found {len(missing_fields_list)} recipient(s) missing required certificate fields",
-                error_code="MISSING_CERTIFICATE_FIELDS_DIRECT",
+                error_code=ValidationErrorCode.MISSING_CERTIFICATE_FIELDS_DIRECT,
                 details={
                     "required_fields": required_fields,
                     "missing_count": len(missing_fields_list),
@@ -412,7 +366,7 @@ def validate_certificate_requirements(
         if missing_required_columns:
             error_collector.add_error(
                 message="Spreadsheet is missing required columns for certificate generation",
-                error_code="MISSING_CERTIFICATE_COLUMNS_SPREADSHEET",
+                error_code=ValidationErrorCode.MISSING_CERTIFICATE_COLUMNS_SPREADSHEET,
                 details={
                     "required_columns": required_fields,
                     "missing_columns": missing_required_columns,
@@ -433,7 +387,7 @@ def validate_email_addresses(
     if invalid_cc:
         error_collector.add_error(
             message="Invalid email format in CC list",
-            error_code="INVALID_CC_EMAIL_FORMAT",
+            error_code=ValidationErrorCode.INVALID_CC_EMAIL_FORMAT,
             details={"invalid_emails": invalid_cc},
         )
 
@@ -442,7 +396,7 @@ def validate_email_addresses(
     if invalid_bcc:
         error_collector.add_error(
             message="Invalid email format in BCC list",
-            error_code="INVALID_BCC_EMAIL_FORMAT",
+            error_code=ValidationErrorCode.INVALID_BCC_EMAIL_FORMAT,
             details={"invalid_emails": invalid_bcc},
         )
 
@@ -450,7 +404,7 @@ def validate_email_addresses(
     if not re.match(EMAIL_PATTERN, reply_to):
         error_collector.add_error(
             message="Invalid reply_to email format",
-            error_code="INVALID_REPLY_TO_FORMAT",
+            error_code=ValidationErrorCode.INVALID_REPLY_TO_FORMAT,
             details={"email": reply_to},
         )
 
@@ -536,13 +490,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             if not run_id:
                 error_collector.add_error(
                     message="run_id is required for WEBHOOK run_type",
-                    error_code="MISSING_RUN_ID_WEBHOOK",
+                    error_code=ValidationErrorCode.MISSING_RUN_ID_WEBHOOK,
                 )
 
             if recipient_source != RecipientSource.DIRECT.value:
                 error_collector.add_error(
                     message="WEBHOOK run_type only supports DIRECT recipient source",
-                    error_code="INVALID_RECIPIENT_SOURCE_WEBHOOK",
+                    error_code=ValidationErrorCode.INVALID_RECIPIENT_SOURCE_WEBHOOK,
                     details={
                         "provided": recipient_source,
                         "required": RecipientSource.DIRECT.value,
@@ -553,12 +507,12 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             if not subject:
                 error_collector.add_error(
                     message="Email subject is required",
-                    error_code="MISSING_SUBJECT",
+                    error_code=ValidationErrorCode.MISSING_SUBJECT,
                 )
             if not template_file_id:
                 error_collector.add_error(
                     message="Template file ID is required",
-                    error_code="MISSING_TEMPLATE_FILE_ID",
+                    error_code=ValidationErrorCode.MISSING_TEMPLATE_FILE_ID,
                 )
 
             # Validate run_type
@@ -575,7 +529,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     logger.error("Failed to get template: %s", e)
                     error_collector.add_error(
                         message="Failed to retrieve template file",
-                        error_code="TEMPLATE_RETRIEVAL_ERROR",
+                        error_code=ValidationErrorCode.TEMPLATE_RETRIEVAL_ERROR,
                     )
 
             # Validate recipients
@@ -657,17 +611,18 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             # Validate required inputs
             if not subject:
                 error_collector.add_error(
-                    message="Email subject is required", error_code="MISSING_SUBJECT"
+                    message="Email subject is required",
+                    error_code=ValidationErrorCode.MISSING_SUBJECT,
                 )
             if not template_file_id:
                 error_collector.add_error(
                     message="Template file ID is required",
-                    error_code="MISSING_TEMPLATE_FILE_ID",
+                    error_code=ValidationErrorCode.MISSING_TEMPLATE_FILE_ID,
                 )
             if run_id:
                 error_collector.add_error(
                     message="run_id should not be provided for non-WEBHOOK run_type",
-                    error_code="UNEXPECTED_RUN_ID",
+                    error_code=ValidationErrorCode.UNEXPECTED_RUN_ID,
                     details={"run_type": run_type},
                 )
 
@@ -688,7 +643,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     logger.error("Failed to get template: %s", e)
                     error_collector.add_error(
                         message="Failed to retrieve template file",
-                        error_code="TEMPLATE_RETRIEVAL_ERROR",
+                        error_code=ValidationErrorCode.TEMPLATE_RETRIEVAL_ERROR,
                     )
 
             # Process based on recipient source
@@ -776,7 +731,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         except (ClientError, ValueError) as e:
             logger.error("Failed to send message to SQS: %s", e)
             return error_responder.create_error_response(
-                500, "Failed to queue email request"
+                500,
+                "Failed to queue email request",
+                SystemErrorCode.SQS_QUEUE_ERROR,
             )
 
         # Prepare success response
@@ -807,13 +764,17 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     except RequestException as e:
         logger.error("External API error: %s", str(e))
         return error_responder.create_error_response(
-            502, "Failed to communicate with external service", "EXTERNAL_API_ERROR"
+            502,
+            "Failed to communicate with external service",
+            SystemErrorCode.EXTERNAL_API_ERROR,
         )
 
     except ClientError as e:
         logger.error("AWS service error: %s", str(e))
         return error_responder.create_error_response(
-            500, "Failed to queue email request", "SQS_QUEUE_ERROR"
+            500,
+            "Failed to queue email request",
+            SystemErrorCode.SQS_QUEUE_ERROR,
         )
 
     except Exception as e:
@@ -826,5 +787,5 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return error_responder.create_error_response(
             500,
             "An unexpected error occurred. Please try again later or contact support",
-            "INTERNAL_SERVER_ERROR",
+            SystemErrorCode.INTERNAL_SERVER_ERROR,
         )
