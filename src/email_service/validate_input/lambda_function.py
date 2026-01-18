@@ -277,7 +277,7 @@ def validate_spreadsheet_mode(
         spreadsheet_info = get_file_info(spreadsheet_file_id, access_token)
         spreadsheet_s3_key = spreadsheet_info["s3_object_key"]
     except Exception as e:
-        logger.error(f"Failed to get spreadsheet info: {e}")
+        logger.error("Failed to get spreadsheet info: %s", e)
         error_collector.add_error(
             message="Failed to retrieve spreadsheet file information",
             error_code="SPREADSHEET_INFO_ERROR",
@@ -287,7 +287,7 @@ def validate_spreadsheet_mode(
     try:
         rows, columns = read_sheet_data_from_s3(spreadsheet_s3_key)
     except Exception as e:
-        logger.error(f"Failed to read spreadsheet: {e}")
+        logger.error("Failed to read spreadshhet: %s", e)
         error_collector.add_error(
             message="Failed to read spreadsheet file. It may be empty or corrupted.",
             error_code="INVALID_SPREADSHEET_FILE",
@@ -572,7 +572,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     template_info = get_file_info(template_file_id, access_token)
                     template_content = get_template(template_info["s3_object_key"])
                 except Exception as e:
-                    logger.error(f"Failed to get template: {e}")
+                    logger.error("Failed to get template: %s", e)
                     error_collector.add_error(
                         message="Failed to retrieve template file",
                         error_code="TEMPLATE_RETRIEVAL_ERROR",
@@ -685,7 +685,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     template_info = get_file_info(template_file_id, access_token)
                     template_content = get_template(template_info["s3_object_key"])
                 except Exception as e:
-                    logger.error(f"Failed to get template: {e}")
+                    logger.error("Failed to get template: %s", e)
                     error_collector.add_error(
                         message="Failed to retrieve template file",
                         error_code="TEMPLATE_RETRIEVAL_ERROR",
