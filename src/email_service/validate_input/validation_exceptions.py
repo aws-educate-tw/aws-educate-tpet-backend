@@ -15,7 +15,11 @@ class ValidationError(Exception):
         details: dict[str, Any] | None = None,
     ):
         self.message = message
-        self.error_code = error_code.value if isinstance(error_code, ValidationErrorCode) else error_code
+        self.error_code = (
+            error_code.value
+            if isinstance(error_code, ValidationErrorCode)
+            else error_code
+        )
         self.details = details
         super().__init__(self.message)
 
@@ -35,7 +39,9 @@ class ValidationErrorCollector:
         """Add a validation error to the collection."""
         error_entry = {
             "message": message,
-            "error_code": error_code.value if isinstance(error_code, ValidationErrorCode) else error_code,
+            "error_code": error_code.value
+            if isinstance(error_code, ValidationErrorCode)
+            else error_code,
         }
         if details:
             error_entry["details"] = details
