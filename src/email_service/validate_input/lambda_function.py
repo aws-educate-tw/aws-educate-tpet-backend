@@ -62,7 +62,7 @@ class ErrorResponder:
             # Convert enum to string if needed
             error_code_str = (
                 error_code.value
-                if isinstance(error_code, (SystemErrorCode, ValidationErrorCode))
+                if isinstance(error_code, SystemErrorCode | ValidationErrorCode)
                 else error_code
             )
             error_body["error_code"] = error_code_str
