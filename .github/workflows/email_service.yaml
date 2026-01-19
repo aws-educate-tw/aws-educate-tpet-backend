@@ -351,7 +351,7 @@ jobs:
       - name: Terraform Apply
         id: apply
         run: |
-          terraform apply -var-file='${{ env.TF_VARS_FILE }}' -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
+          terraform apply -var-file='${{ env.TF_VARS_FILE }}' -parallelism=1 -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
