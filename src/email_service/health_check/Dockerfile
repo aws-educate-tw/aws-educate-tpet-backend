@@ -1,4 +1,4 @@
-FROM public.ecr.aws/lambda/python:3.11
+FROM public.ecr.aws/lambda/python:3.11.2023.11.18.02
 
 # Copy function code
 COPY . /var/task/
