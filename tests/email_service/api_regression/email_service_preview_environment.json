@@ -1,6 +1,6 @@
 {
-	"id": "a38ce9ff-75f1-4d4d-a1f4-7ac3e74c0ee6",
-	"name": "Shiun-preview",
+	"id": "60488e24-2434-41d7-81da-2ba7b0816b15",
+	"name": "Email Service Preview Environment",
 	"values": [
 		{
 			"key": "base_url",
@@ -76,9 +76,15 @@
 			"value": "",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "run_id_from_send_email_api",
+			"value": "",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2025-01-23T05:06:52.408Z",
-	"_postman_exported_using": "Postman/11.22.0"
+	"_postman_exported_at": "2026-02-01T13:23:32.449Z",
+	"_postman_exported_using": "Postman/11.54.2"
 }
