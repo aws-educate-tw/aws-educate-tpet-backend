@@ -90,8 +90,48 @@ jobs:
             echo "::notice::No migration changes detected."
           fi
 
-      - name: Request Migration Approval
+      - name: Check for Existing Approval Issue
         if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        id: check-existing-issue
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueTitle = `🔐 Database Migration Approval Required - PR #${{ env.PULL_REQUEST_NUMBER }}`;
+
+            // Search for existing open issues with the same title
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'manual-approval',
+              per_page: 100
+            });
+
+            const existingIssue = issues.find(issue => issue.title === issueTitle);
+
+            if (existingIssue) {
+              console.log(`Found existing approval issue #${existingIssue.number}`);
+              core.setOutput('issue_exists', 'true');
+              core.setOutput('issue_number', existingIssue.number);
+
+              // Check if already approved (issue closed)
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number
+              });
+
+              const approved = comments.some(c => c.body.includes('/approve'));
+              core.setOutput('already_approved', approved ? 'true' : 'false');
+            } else {
+              console.log('No existing approval issue found');
+              core.setOutput('issue_exists', 'false');
+              core.setOutput('already_approved', 'false');
+            }
+
+      - name: Request Migration Approval
+        if: steps.check-migrations.outputs.has_migration_changes == 'true' && steps.check-existing-issue.outputs.issue_exists != 'true'
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.TOKEN }}
@@ -119,6 +159,22 @@ jobs:
             **To approve:** Comment with `/approve`
             **To reject:** Comment with `/deny`
           exclude-workflow-initiator-as-approver: false
+
+      - name: Wait for Existing Approval
+        if: steps.check-migrations.outputs.has_migration_changes == 'true' && steps.check-existing-issue.outputs.issue_exists == 'true' && steps.check-existing-issue.outputs.already_approved != 'true'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: ${{ github.actor }}
+          minimum-approvals: 1
+          issue-title: "🔐 Database Migration Approval Required - PR #${{ env.PULL_REQUEST_NUMBER }}"
+          issue-body: "Waiting for existing approval..."
+          exclude-workflow-initiator-as-approver: false
+
+      - name: Skip Approval (Already Approved)
+        if: steps.check-migrations.outputs.has_migration_changes == 'true' && steps.check-existing-issue.outputs.already_approved == 'true'
+        run: |
+          echo "::notice::Migration was already approved in issue #${{ steps.check-existing-issue.outputs.issue_number }}. Proceeding with migration."
 
       - name: Setup Python with uv
         if: steps.check-migrations.outputs.has_migration_changes == 'true'
