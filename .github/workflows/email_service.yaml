@@ -239,7 +239,7 @@ jobs:
         id: run-migration
         run: |
           echo "::group::Running Database Migration"
-          uv run src/email_service/db/run_migration_via_rds_data_api.py
+          uv run src/email_service/db/run_migration_via_rds_data_api.py upgrade
           echo "::endgroup::"
         env:
           AWS_REGION: us-west-1
@@ -632,7 +632,7 @@ jobs:
         id: run-migration
         run: |
           echo "::group::Running Database Migration for ${{ env.ENVIRONMENT }}"
-          uv run src/email_service/db/run_migration_via_rds_data_api.py
+          uv run src/email_service/db/run_migration_via_rds_data_api.py upgrade
           echo "::endgroup::"
         env:
           AWS_REGION: ${{ env.AWS_REGION }}

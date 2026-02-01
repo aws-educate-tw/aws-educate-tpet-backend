@@ -15,7 +15,26 @@ This script runs Alembic migrations through the RDS Data API using the
 sqlalchemy-aurora-data-api dialect, which tunnels SQL over HTTP.
 
 Usage:
-    uv run src/email_service/db/run_migration_via_rds_data_api.py
+    # Upgrade to latest version
+    uv run src/email_service/db/run_migration_via_rds_data_api.py upgrade
+
+    # Upgrade to specific revision
+    uv run src/email_service/db/run_migration_via_rds_data_api.py upgrade abc123
+
+    # Downgrade by one revision
+    uv run src/email_service/db/run_migration_via_rds_data_api.py downgrade -1
+
+    # Downgrade to specific revision
+    uv run src/email_service/db/run_migration_via_rds_data_api.py downgrade abc123
+
+    # Downgrade to base (undo all migrations)
+    uv run src/email_service/db/run_migration_via_rds_data_api.py downgrade base
+
+    # Show current version
+    uv run src/email_service/db/run_migration_via_rds_data_api.py current
+
+    # Show migration history
+    uv run src/email_service/db/run_migration_via_rds_data_api.py history
 
 Environment Variables Required:
     - AWS_REGION: AWS region (e.g., us-east-1)
@@ -24,6 +43,7 @@ Environment Variables Required:
     - DB_NAME: Database name (default: email_service_db)
 """
 
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -38,8 +58,40 @@ def get_required_env(var_name: str, default: str | None = None) -> str:
     return value
 
 
+def parse_args() -> argparse.Namespace:
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Run Alembic database migrations using AWS RDS Data API.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s upgrade              # Upgrade to latest version (head)
+  %(prog)s upgrade abc123       # Upgrade to specific revision
+  %(prog)s downgrade -1         # Downgrade by one revision
+  %(prog)s downgrade abc123     # Downgrade to specific revision
+  %(prog)s downgrade base       # Downgrade to base (undo all migrations)
+  %(prog)s current              # Show current version
+  %(prog)s history              # Show migration history
+        """,
+    )
+    parser.add_argument(
+        "action",
+        choices=["upgrade", "downgrade", "current", "history"],
+        help="Migration action to perform",
+    )
+    parser.add_argument(
+        "revision",
+        nargs="?",
+        default=None,
+        help="Target revision (default: 'head' for upgrade, '-1' for downgrade)",
+    )
+    return parser.parse_args()
+
+
 def main():
     """Main execution function."""
+    args = parse_args()
+
     print("=" * 80)
     print("Alembic Migration via RDS Data API")
     print("=" * 80)
@@ -55,6 +107,9 @@ def main():
     print(f"  Cluster ARN: {cluster_arn}")
     print(f"  Secret ARN: {secret_arn}")
     print(f"  Database: {database}")
+    print(f"  Action: {args.action}")
+    if args.revision:
+        print(f"  Revision: {args.revision}")
     print()
 
     # Set environment variables for aurora_data_api
@@ -95,25 +150,41 @@ def main():
     os.environ["DATABASE_URL"] = database_url
 
     try:
-        # Step 1: Show current version
-        print("Step 1: Checking current migration version...")
+        # Show current version first
+        print("Current migration version:")
         try:
             command.current(alembic_cfg, verbose=True)
         except Exception as e:
             print(f"  (No version table yet or error: {e})")
         print()
 
-        # Step 2: Run upgrade to head
-        print("Step 2: Running migrations (upgrade to head)...")
-        command.upgrade(alembic_cfg, "head")
-        print()
+        # Execute the requested action
+        if args.action == "current":
+            # Already shown above, nothing more to do
+            pass
 
-        # Step 3: Show new version
-        print("Step 3: Verifying migration version...")
-        command.current(alembic_cfg, verbose=True)
+        elif args.action == "history":
+            print("Migration history:")
+            command.history(alembic_cfg, verbose=True)
+
+        elif args.action == "upgrade":
+            revision = args.revision or "head"
+            print(f"Running upgrade to: {revision}")
+            command.upgrade(alembic_cfg, revision)
+            print()
+            print("New migration version:")
+            command.current(alembic_cfg, verbose=True)
+
+        elif args.action == "downgrade":
+            revision = args.revision or "-1"
+            print(f"Running downgrade to: {revision}")
+            command.downgrade(alembic_cfg, revision)
+            print()
+            print("New migration version:")
+            command.current(alembic_cfg, verbose=True)
 
         print("\n" + "=" * 80)
-        print("Migration completed successfully!")
+        print(f"Action '{args.action}' completed successfully!")
         print("=" * 80)
 
     except Exception as e:

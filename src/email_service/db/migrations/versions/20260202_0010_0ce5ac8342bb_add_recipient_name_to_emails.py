@@ -1,8 +1,8 @@
-"""add recipient_name to emails table
+"""add_recipient_name_to_emails
 
-Revision ID: 001
+Revision ID: 0ce5ac8342bb
 Revises:
-Create Date: 2026-01-25 17:07:00.000000
+Create Date: 2026-02-02 00:10:00.204648
 
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "001"
+revision = "0ce5ac8342bb"
 down_revision = None
 branch_labels = None
 depends_on = None
