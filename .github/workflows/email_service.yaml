@@ -86,6 +86,125 @@ jobs:
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
 
+      # Database Migration Steps
+      - name: Check for Migration Changes
+        id: check-migrations
+        run: |
+          # Check if migrations directory has changes
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }} ${{ github.sha }} | grep "src/email_service/db/migrations" || true)
+
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "has_migration_changes=true" >> $GITHUB_OUTPUT
+            echo "::notice::Database migration files have changed. Manual approval required."
+          else
+            echo "has_migration_changes=false" >> $GITHUB_OUTPUT
+            echo "::notice::No migration changes detected."
+          fi
+
+      - name: Request Migration Approval
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: ${{ github.actor }}
+          minimum-approvals: 1
+          issue-title: "🔐 Database Migration Approval Required - PR #${{ env.PULL_REQUEST_NUMBER }}"
+          issue-body: |
+            ## Database Migration Approval Required
+
+            **Pull Request:** #${{ env.PULL_REQUEST_NUMBER }}
+            **Environment:** Preview
+            **Triggered by:** @${{ github.actor }}
+            **Commit:** ${{ env.COMMIT_SHA }}
+
+            ### Changed Migration Files:
+            ```
+            $(git diff --name-only origin/${{ github.base_ref }} ${{ github.sha }} | grep "src/email_service/db/migrations")
+            ```
+
+            ### ⚠️ Important
+            - Review the migration files carefully before approving
+            - Ensure you have tested the migration in a dev environment
+            - Approval will trigger the migration execution
+
+            **To approve:** Comment with `/approve`
+            **To reject:** Comment with `/deny`
+          exclude-workflow-initiator-as-approver: false
+
+      - name: Setup Python with uv
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Configure AWS credentials for Migration
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1 # Preview environment uses us-west-1
+
+      - name: Get DB Credentials from RDS
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        id: get-db-creds
+        run: |
+          # Get DB cluster ARN and master user secret ARN from RDS
+          # The secret is managed by RDS (manage_master_user_password = true)
+          DB_CLUSTER_ID="preview-email-service-tpet-aurora-postgresql-v2"
+
+          DB_CLUSTER_ARN=$(aws rds describe-db-clusters \
+            --db-cluster-identifier "$DB_CLUSTER_ID" \
+            --query 'DBClusters[0].DBClusterArn' --output text)
+
+          DB_SECRET_ARN=$(aws rds describe-db-clusters \
+            --db-cluster-identifier "$DB_CLUSTER_ID" \
+            --query 'DBClusters[0].MasterUserSecret.SecretArn' --output text)
+
+          echo "::add-mask::$DB_CLUSTER_ARN"
+          echo "::add-mask::$DB_SECRET_ARN"
+
+          echo "DB_CLUSTER_ARN=$DB_CLUSTER_ARN" >> $GITHUB_ENV
+          echo "DB_SECRET_ARN=$DB_SECRET_ARN" >> $GITHUB_ENV
+
+      - name: Wake Up Aurora Serverless (Health Check)
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        run: |
+          chmod +x ./scripts/wait_for_aurora_serverless.sh
+          ./scripts/wait_for_aurora_serverless.sh \
+            "https://preview-email-service-internal-api-tpet.aws-educate.tw/preview/email-service/health" \
+            30 \
+            10
+
+      - name: Run Database Migration
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        id: run-migration
+        run: |
+          echo "::group::Running Database Migration"
+          uv run src/email_service/db/run_migration_via_rds_data_api.py
+          echo "::endgroup::"
+        env:
+          AWS_REGION: us-west-1
+          DB_CLUSTER_ARN: ${{ env.DB_CLUSTER_ARN }}
+          DB_SECRET_ARN: ${{ env.DB_SECRET_ARN }}
+          DB_NAME: email_service_db
+
+      - name: Check Migration Result
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        run: |
+          if [[ "${{ steps.run-migration.outcome }}" != "success" ]]; then
+            echo "::error::Database migration failed. Deployment aborted."
+            exit 1
+          else
+            echo "::notice::Database migration completed successfully."
+          fi
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -321,9 +440,11 @@ jobs:
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "ENVIRONMENT=prod" >> $GITHUB_ENV
             echo "TF_VARS_FILE=prod.tfvars" >> $GITHUB_ENV
+            echo "AWS_REGION=ap-northeast-1" >> $GITHUB_ENV  # Tokyo for prod
           elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
             echo "ENVIRONMENT=dev" >> $GITHUB_ENV
             echo "TF_VARS_FILE=dev.tfvars" >> $GITHUB_ENV
+            echo "AWS_REGION=us-east-1" >> $GITHUB_ENV  # N. Virginia for dev
           else
             echo "Unsupported branch: ${{ github.ref }}"
             exit 1
@@ -354,6 +475,133 @@ jobs:
           terraform apply -var-file='${{ env.TF_VARS_FILE }}' -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
+
+      # Database Migration Steps for Dev/Prod
+      - name: Check for Migration Changes
+        id: check-migrations
+        run: |
+          # Check if migrations directory has changes in the last commit
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep "src/email_service/db/migrations" || true)
+
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "has_migration_changes=true" >> $GITHUB_OUTPUT
+            echo "::notice::Database migration files have changed. Manual approval required."
+          else
+            echo "has_migration_changes=false" >> $GITHUB_OUTPUT
+            echo "::notice::No migration changes detected."
+          fi
+
+      - name: Request Migration Approval
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: ${{ github.actor }}
+          minimum-approvals: 1
+          issue-title: "Database Migration Approval Required - ${{ env.ENVIRONMENT }} Environment"
+          issue-body: |
+            ## Database Migration Approval Required
+
+            **Environment:** ${{ env.ENVIRONMENT }}
+            **Branch:** ${{ github.ref }}
+            **Triggered by:** @${{ github.actor }}
+            **Commit:** ${{ github.sha }}
+
+            ### Changed Migration Files:
+            ```
+            $(git diff --name-only HEAD~1 HEAD | grep "src/email_service/db/migrations")
+            ```
+
+            ### Important
+            - Review the migration files carefully before approving
+            - This is a **${{ env.ENVIRONMENT }}** environment deployment
+            - Approval will trigger the migration execution
+
+            **To approve:** Comment with `/approve`
+            **To reject:** Comment with `/deny`
+          exclude-workflow-initiator-as-approver: false
+
+      - name: Setup Python with uv
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Configure AWS credentials for Migration
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get DB Credentials from RDS
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        id: get-db-creds
+        run: |
+          # Get DB cluster ARN and master user secret ARN from RDS
+          # The secret is managed by RDS (manage_master_user_password = true)
+          DB_CLUSTER_ID="${{ env.ENVIRONMENT }}-email-service-tpet-aurora-postgresql-v2"
+
+          DB_CLUSTER_ARN=$(aws rds describe-db-clusters \
+            --db-cluster-identifier "$DB_CLUSTER_ID" \
+            --query 'DBClusters[0].DBClusterArn' --output text)
+
+          DB_SECRET_ARN=$(aws rds describe-db-clusters \
+            --db-cluster-identifier "$DB_CLUSTER_ID" \
+            --query 'DBClusters[0].MasterUserSecret.SecretArn' --output text)
+
+          echo "::add-mask::$DB_CLUSTER_ARN"
+          echo "::add-mask::$DB_SECRET_ARN"
+
+          echo "DB_CLUSTER_ARN=$DB_CLUSTER_ARN" >> $GITHUB_ENV
+          echo "DB_SECRET_ARN=$DB_SECRET_ARN" >> $GITHUB_ENV
+
+      - name: Set Health Check URL
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        run: |
+          # Set health check URL based on environment
+          if [[ "${{ env.ENVIRONMENT }}" == "prod" ]]; then
+            HEALTH_CHECK_URL="https://email-service-internal-api-tpet.aws-educate.tw/prod/email-service/health"
+          else
+            HEALTH_CHECK_URL="https://dev-email-service-internal-api-tpet.aws-educate.tw/dev/email-service/health"
+          fi
+          echo "HEALTH_CHECK_URL=$HEALTH_CHECK_URL" >> $GITHUB_ENV
+
+      - name: Wake Up Aurora Serverless (Health Check)
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        run: |
+          chmod +x ./scripts/wait_for_aurora_serverless.sh
+          ./scripts/wait_for_aurora_serverless.sh "${{ env.HEALTH_CHECK_URL }}" 30 10
+
+      - name: Run Database Migration
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        id: run-migration
+        run: |
+          echo "::group::Running Database Migration for ${{ env.ENVIRONMENT }}"
+          uv run src/email_service/db/run_migration_via_rds_data_api.py
+          echo "::endgroup::"
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          DB_CLUSTER_ARN: ${{ env.DB_CLUSTER_ARN }}
+          DB_SECRET_ARN: ${{ env.DB_SECRET_ARN }}
+          DB_NAME: email_service_db
+
+      - name: Check Migration Result
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        run: |
+          if [[ "${{ steps.run-migration.outcome }}" != "success" ]]; then
+            echo "::error::Database migration failed for ${{ env.ENVIRONMENT }}. Deployment aborted."
+            exit 1
+          else
+            echo "::notice::Database migration completed successfully for ${{ env.ENVIRONMENT }}."
+          fi
 
       - name: Slack Notification
         uses: 8398a7/action-slack@v3
