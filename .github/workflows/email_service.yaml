@@ -122,7 +122,9 @@ jobs:
                 issue_number: existingIssue.number
               });
 
-              const approved = comments.some(c => c.body.includes('/approve'));
+              const approved = comments.some(c =>
+                c.body.toLowerCase().match(/^(approved|approve|lgtm|yes)$/m)
+              );
               core.setOutput('already_approved', approved ? 'true' : 'false');
             } else {
               console.log('No existing approval issue found');
@@ -156,8 +158,8 @@ jobs:
             - Ensure you have tested the migration in a dev environment
             - Approval will trigger the migration execution
 
-            **To approve:** Comment with `/approve`
-            **To reject:** Comment with `/deny`
+            **To approve:** Comment with `approved`, `approve`, `lgtm`, or `yes`
+            **To reject:** Comment with `denied`, `deny`, or `no`
           exclude-workflow-initiator-as-approver: false
 
       - name: Wait for Existing Approval
@@ -556,8 +558,8 @@ jobs:
             - This is a **${{ env.ENVIRONMENT }}** environment deployment
             - Approval will trigger the migration execution
 
-            **To approve:** Comment with `/approve`
-            **To reject:** Comment with `/deny`
+            **To approve:** Comment with `approved`, `approve`, `lgtm`, or `yes`
+            **To reject:** Comment with `denied`, `deny`, or `no`
           exclude-workflow-initiator-as-approver: false
 
       - name: Setup Python with uv
