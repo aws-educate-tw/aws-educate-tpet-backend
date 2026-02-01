@@ -12,6 +12,8 @@ on:
       - src/email_service/**
 
 env:
+  SERVICE_NAME: Email Service
+  SERVICE_LABEL: service/email
   TF_LOG: INFO
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -97,14 +99,14 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const issueTitle = `🔐 Database Migration Approval Required - PR #${{ env.PULL_REQUEST_NUMBER }}`;
+            const issueTitle = `🔐 [${{ env.SERVICE_NAME }}] Database Migration Approval Required - Preview - PR #${{ env.PULL_REQUEST_NUMBER }}`;
 
-            // Search for existing open issues with the same title
+            // Search for ALL issues (open or closed) with the same title
             const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              state: 'open',
-              labels: 'manual-approval',
+              state: 'all',
+              labels: `${{ env.SERVICE_LABEL }},env/preview,kind/db-migration`,
               per_page: 100
             });
 
@@ -139,10 +141,11 @@ jobs:
           secret: ${{ github.TOKEN }}
           approvers: ${{ github.actor }}
           minimum-approvals: 1
-          issue-title: "🔐 Database Migration Approval Required - PR #${{ env.PULL_REQUEST_NUMBER }}"
+          issue-title: "🔐 [${{ env.SERVICE_NAME }}] Database Migration Approval Required - Preview - PR #${{ env.PULL_REQUEST_NUMBER }}"
           issue-body: |
             ## Database Migration Approval Required
 
+            **Service:** ${{ env.SERVICE_NAME }}
             **Pull Request:** #${{ env.PULL_REQUEST_NUMBER }}
             **Environment:** Preview
             **Triggered by:** @${{ github.actor }}
@@ -161,6 +164,8 @@ jobs:
             **To approve:** Comment with `approved`, `approve`, `lgtm`, or `yes`
             **To reject:** Comment with `denied`, `deny`, or `no`
           exclude-workflow-initiator-as-approver: false
+          additional-approved-words: ""
+          additional-denied-words: ""
 
       - name: Wait for Existing Approval
         if: steps.check-migrations.outputs.has_migration_changes == 'true' && steps.check-existing-issue.outputs.issue_exists == 'true' && steps.check-existing-issue.outputs.already_approved != 'true'
@@ -169,7 +174,7 @@ jobs:
           secret: ${{ github.TOKEN }}
           approvers: ${{ github.actor }}
           minimum-approvals: 1
-          issue-title: "🔐 Database Migration Approval Required - PR #${{ env.PULL_REQUEST_NUMBER }}"
+          issue-title: "🔐 [${{ env.SERVICE_NAME }}] Database Migration Approval Required - Preview - PR #${{ env.PULL_REQUEST_NUMBER }}"
           issue-body: "Waiting for existing approval..."
           exclude-workflow-initiator-as-approver: false
 
@@ -413,7 +418,7 @@ jobs:
 
             const botComment = comments.find(comment => {
               return comment.user.type === 'Bot' &&
-                      comment.body.includes('[Email Service]') &&
+                      comment.body.includes('[${{ env.SERVICE_NAME }}]') &&
                       (comment.body.includes('Deployment Status') ||
                       comment.body.includes('Test Results'));
             });
@@ -427,10 +432,10 @@ jobs:
             // Combine artifact URL
             const artifactUrl = `${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${process.env.ARTIFACT_ID}`;
 
-            let output = `### [Email Service] Preview Deployment Status\n\n`;
+            let output = `### [${{ env.SERVICE_NAME }}] Preview Deployment Status\n\n`;
             output += `| Service | Environment | Commit | Status | Details |\n`;
             output += `|:--------|:------------|:-------|:-------|:--------|\n`;
-            output += `| Email Service | Preview | \`${shortSHA}\` | ${tfExitCode === 0 ? '✅' : '❌'} | ${
+            output += `| ${{ env.SERVICE_NAME }} | Preview | \`${shortSHA}\` | ${tfExitCode === 0 ? '✅' : '❌'} | ${
               tfExitCode === 0
                 ? 'Successfully deployed'
                 : `[Check deployment logs](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
@@ -467,7 +472,7 @@ jobs:
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
-          author_name: "[Email Service] Preview environment deployment"
+          author_name: "[${{ env.SERVICE_NAME }}] Preview environment deployment"
           job_name: Deploy Preview Environment
           fields: repo,message,commit,author,action,eventName,ref,workflow,job,took,pullRequest
         env:
@@ -539,10 +544,11 @@ jobs:
           secret: ${{ github.TOKEN }}
           approvers: ${{ github.actor }}
           minimum-approvals: 1
-          issue-title: "Database Migration Approval Required - ${{ env.ENVIRONMENT }} Environment"
+          issue-title: "🔐 [${{ env.SERVICE_NAME }}] Database Migration Approval Required - ${{ env.ENVIRONMENT }} - ${{ github.ref_name }}"
           issue-body: |
             ## Database Migration Approval Required
 
+            **Service:** ${{ env.SERVICE_NAME }}
             **Environment:** ${{ env.ENVIRONMENT }}
             **Branch:** ${{ github.ref }}
             **Triggered by:** @${{ github.actor }}
@@ -553,7 +559,7 @@ jobs:
             $(git diff --name-only HEAD~1 HEAD | grep "src/email_service/db/migrations")
             ```
 
-            ### Important
+            ### ⚠️ Important
             - Review the migration files carefully before approving
             - This is a **${{ env.ENVIRONMENT }}** environment deployment
             - Approval will trigger the migration execution
@@ -670,7 +676,7 @@ jobs:
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
-          author_name: "[Email Service] ${{ env.ENVIRONMENT }} environment deployment"
+          author_name: "[${{ env.SERVICE_NAME }}] ${{ env.ENVIRONMENT }} environment deployment"
           job_name: Deploy to Target Environment
           fields: repo,message,commit,author,action,eventName,ref,workflow,job,took,pullRequest
         env:
