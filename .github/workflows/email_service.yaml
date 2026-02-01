@@ -63,6 +63,9 @@ jobs:
           echo "TF_LOG=" >> $GITHUB_ENV
 
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history for git diff
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.3
