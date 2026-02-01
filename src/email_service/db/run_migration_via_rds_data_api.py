@@ -2,10 +2,10 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "alembic>=1.13.0",
-#     "sqlalchemy>=2.0.0",
-#     "sqlalchemy-aurora-data-api>=0.5.0",
-#     "boto3>=1.34.0",
+#     "alembic==1.18.3",
+#     "sqlalchemy==2.0.46",
+#     "sqlalchemy-aurora-data-api==0.5.0",
+#     "boto3==1.42.39",
 # ]
 # ///
 """
