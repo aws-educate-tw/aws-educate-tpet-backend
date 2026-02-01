@@ -696,6 +696,19 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         current_user_info = current_user_util.get_current_user_info()
         sender_id = current_user_info.get("user_id")
 
+        # Extract template variables from the email template (e.g., ["Email", "Name", "Date"]).
+        # This list is included in the SQS message and passed through the processing chain.
+        #
+        # Purpose:
+        # - create_email Lambda uses this to populate the recipient_name column
+        # - It checks if the template contains variables like "Name" or "姓名"
+        # - If found, the corresponding value from each recipient's row_data is stored in recipient_name
+        #
+        # Processing chain: validate_input -> upsert_run -> create_email
+        template_variables = (
+            extract_template_variables(template_content) if template_content else []
+        )
+
         # Prepare common data
         common_data = {
             "recipient_source": recipient_source,
@@ -721,6 +734,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             ),
             "success_email_count": 0,
             "expected_email_send_count": expected_email_send_count,
+            "template_variables": template_variables,
         }
 
         # Send message to SQS
