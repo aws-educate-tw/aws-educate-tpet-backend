@@ -99,7 +99,14 @@
 							"",
 							"pm.test(\"Run ID is present\", function () {",
 							"    pm.expect(responseData.run_id).to.not.be.null;",
-							"});"
+							"});",
+							"",
+							"// Save run_id to environment variable for subsequent API calls",
+							"if (responseData.run_id) {",
+							"    pm.environment.set(\"run_id_from_send_email_api\", responseData.run_id);",
+							"    console.log(\"Saved run_id to environment: \" + responseData.run_id);",
+							"}",
+							""
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -121,7 +128,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"recipient_source\": \"DIRECT\",\n    \"subject\": \"[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}\",\n    \"display_name\": \"GitHub Actions - PR{{pull_request_number}} - API Regression Test\",\n    \"template_file_id\": \"{{template_file_id}}\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"harry鍾\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"{{template_file_id}}\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\"\n    ]\n}",
+					"raw": "{\n    \"recipient_source\": \"DIRECT\",\n    \"subject\": \"[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}\",\n    \"display_name\": \"GitHub Actions - PR{{pull_request_number}} - API Regression Test\",\n    \"template_file_id\": \"{{template_file_id}}\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"harry鍾\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"{{template_file_id}}\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\",\n        \"dev@aws-educate.tw\"\n    ]\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -600,41 +607,42 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"responseBody = pm.response.json();",
+							"const createRunResponse = pm.response.json();",
 							"",
 							"pm.test(\"Status code is 201 Created\", function () {",
 							"    pm.response.to.have.status(201);",
 							"});",
 							"",
 							"pm.test(\"Response body values are correct\", function () {",
-							"    pm.expect(responseBody.run_type).to.eql(\"WEBHOOK\");",
-							"    pm.expect(responseBody.recipient_source).to.eql(\"DIRECT\");",
+							"    pm.expect(createRunResponse.run_type).to.eql(\"WEBHOOK\");",
+							"    pm.expect(createRunResponse.recipient_source).to.eql(\"DIRECT\");",
 							"});",
 							"",
 							"pm.test(\"Key properties exist and have correct format\", function () {",
-							"    pm.expect(responseBody).to.have.property(\"run_id\");",
-							"    pm.expect(responseBody.run_id).to.be.a('string').and.to.not.be.empty;",
+							"    pm.expect(createRunResponse).to.have.property(\"run_id\");",
+							"    pm.expect(createRunResponse.run_id).to.be.a('string').and.to.not.be.empty;",
 							"    ",
-							"    pm.expect(responseBody).to.have.property(\"created_at\");",
-							"    pm.expect(responseBody.created_at).to.be.a('string');",
+							"    pm.expect(createRunResponse).to.have.property(\"created_at\");",
+							"    pm.expect(createRunResponse.created_at).to.be.a('string');",
 							"});",
 							"",
 							"pm.test(\"Initial counts are zero\", function () {",
-							"    pm.expect(responseBody.expected_email_send_count).to.eql(0);",
-							"    pm.expect(responseBody.success_email_count).to.eql(0);",
-							"    pm.expect(responseBody.failed_email_count).to.eql(0);",
+							"    pm.expect(createRunResponse.expected_email_send_count).to.eql(0);",
+							"    pm.expect(createRunResponse.success_email_count).to.eql(0);",
+							"    pm.expect(createRunResponse.failed_email_count).to.eql(0);",
 							"});",
 							"",
 							"pm.test(\"Data types for array fields are correct\", function () {",
-							"    pm.expect(responseBody.recipients).to.be.an('array');",
-							"    pm.expect(responseBody.cc).to.be.an('array');",
-							"    pm.expect(responseBody.bcc).to.be.an('array');",
+							"    pm.expect(createRunResponse.recipients).to.be.an('array');",
+							"    pm.expect(createRunResponse.cc).to.be.an('array');",
+							"    pm.expect(createRunResponse.bcc).to.be.an('array');",
 							"});",
 							"",
-							"if (responseBody.run_id) {",
-							"    pm.environment.set(\"runId\", responseBody.run_id);",
-							"    console.log(\"已將 runId 存到環境變數: \" + responseBody.run_id);",
-							"}"
+							"if (createRunResponse.run_id) {",
+							"    pm.environment.set(\"runId\", createRunResponse.run_id);",
+							"    console.log(\"Saved runId to environment: \" + createRunResponse.run_id);",
+							"}",
+							""
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -862,7 +870,7 @@
 					}
 				},
 				"url": {
-					"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs?limit=5&page=2",
+					"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs?sort_by=created_at&limit=5&page=1",
 					"protocol": "https",
 					"host": [
 						"{{environment}}-email-service-internal-api-tpet",
@@ -877,8 +885,7 @@
 						{
 							"key": "sort_by",
 							"value": "created_at",
-							"description": "(Optional) 目前只能設定為 created_at",
-							"disabled": true
+							"description": "(Optional) 目前只能設定為 created_at"
 						},
 						{
 							"key": "sort_order",
@@ -898,7 +905,7 @@
 						},
 						{
 							"key": "page",
-							"value": "2"
+							"value": "1"
 						}
 					]
 				}
@@ -985,6 +992,215 @@
 					],
 					"cookie": [],
 					"body": "{\n  \"data\": [\n    {\n      \"run_id\": \"64e6f687536a40109bd2f8b4cf54c554\",\n      \"run_type\": \"WEBHOOK\",\n      \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n      ],\n      \"attachment_files\": [\n        {\n          \"file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n          \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d9df7cd2c6fa4fadbf82df5e0dc2612f_%5BFor%20Test%5DTPET-excel_%E9%99%AA%E8%B7%91%E8%A8%88%E7%95%AB%E8%80%83%E5%88%B0%E8%AD%89%E7%85%A7%E7%9A%84%E6%89%80%E6%9C%89%E5%90%8D%E5%96%AE_v0809.xlsx\",\n          \"file_name\": \"[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_size\": \"29866.0\",\n          \"created_at\": \"2024-08-09T18:07:26Z\",\n          \"updated_at\": \"2024-08-09T18:07:26Z\",\n          \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n          \"s3_object_key\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f_[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_extension\": \"xlsx\"\n        }\n      ],\n      \"bcc\": [],\n      \"cc\": [],\n      \"created_at\": \"2025-05-11T02:35:00Z\",\n      \"created_year\": \"2025\",\n      \"created_year_month\": \"2025-05\",\n      \"created_year_month_day\": \"2025-05-11\",\n      \"display_name\": \"參與證明\",\n      \"expected_email_send_count\": 1005,\n      \"is_generate_certificate\": true,\n      \"recipients\": [],\n      \"recipient_source\": \"SPREADSHEET\",\n      \"reply_to\": \"h830519h@yahoo.com.tw\",\n      \"sender\": {\n        \"email\": \"ptqwe20020413@gmail.com\",\n        \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"username\": \"ptshiun\",\n        \"cognito_sub\": \"9881b370-0031-7037-b42e-ef737d3aa382\"\n      },\n      \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n      \"sender_local_part\": \"event\",\n      \"spreadsheet_file\": {\n        \"file_id\": \"0046d466599b4e948afb5d728cf1b4dc\",\n        \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0046d466599b4e948afb5d728cf1b4dc_%28For%20Test%29Certificate-example-sheet%20-%20%E5%A3%93%E5%8A%9B%E6%B8%AC%E8%A9%A6%201000-1.xlsx\",\n        \"file_name\": \"(For Test)Certificate-example-sheet - 壓力測試 1000-1.xlsx\",\n        \"file_size\": \"76022.0\",\n        \"created_at\": \"2025-02-09T21:26:30Z\",\n        \"updated_at\": \"2025-02-09T21:26:30Z\",\n        \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"s3_object_key\": \"0046d466599b4e948afb5d728cf1b4dc_(For Test)Certificate-example-sheet - 壓力測試 1000-1.xlsx\",\n        \"file_extension\": \"xlsx\"\n      },\n      \"spreadsheet_file_id\": \"0046d466599b4e948afb5d728cf1b4dc\",\n      \"subject\": \"【參與證明】local-dev 06:04\",\n      \"success_email_count\": 108,\n      \"template_file\": {\n        \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n        \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n        \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n        \"file_size\": \"3164.0\",\n        \"created_at\": \"2024-08-02T03:24:16Z\",\n        \"updated_at\": \"2024-08-02T03:24:16Z\",\n        \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n        \"file_extension\": \"html\"\n      },\n      \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n      \"failed_email_count\": 0\n    },\n    {\n      \"run_id\": \"64ca66e8b41c4921a7e43c4c20d27123\",\n      \"run_type\": \"DIRECT\",\n      \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n      ],\n      \"attachment_files\": [\n        {\n          \"file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n          \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d9df7cd2c6fa4fadbf82df5e0dc2612f_%5BFor%20Test%5DTPET-excel_%E9%99%AA%E8%B7%91%E8%A8%88%E7%95%AB%E8%80%83%E5%88%B0%E8%AD%89%E7%85%A7%E7%9A%84%E6%89%80%E6%9C%89%E5%90%8D%E5%96%AE_v0809.xlsx\",\n          \"file_name\": \"[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_size\": \"29866.0\",\n          \"created_at\": \"2024-08-09T18:07:26Z\",\n          \"updated_at\": \"2024-08-09T18:07:26Z\",\n          \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n          \"s3_object_key\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f_[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_extension\": \"xlsx\"\n        }\n      ],\n      \"bcc\": [\n        \"ptqwe20020413@gmail.com\"\n      ],\n      \"cc\": [],\n      \"created_at\": \"2025-05-11T00:25:17Z\",\n      \"created_year\": \"2025\",\n      \"created_year_month\": \"2025-05\",\n      \"created_year_month_day\": \"2025-05-11\",\n      \"display_name\": \"參與證明\",\n      \"expected_email_send_count\": 1,\n      \"is_generate_certificate\": true,\n      \"recipients\": [\n        {\n          \"email\": \"h830519h@yahoo.com.tw\",\n          \"template_variables\": {\n            \"Name\": \"harry鍾\",\n            \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n          }\n        }\n      ],\n      \"recipient_source\": \"DIRECT\",\n      \"reply_to\": \"h830519h@yahoo.com.tw\",\n      \"sender\": {\n        \"email\": \"ptqwe20020413@gmail.com\",\n        \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"username\": \"ptshiun\",\n        \"cognito_sub\": \"9881b370-0031-7037-b42e-ef737d3aa382\"\n      },\n      \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n      \"sender_local_part\": \"event\",\n      \"spreadsheet_file\": null,\n      \"spreadsheet_file_id\": null,\n      \"subject\": \"【參與證明】local-dev 06:04\",\n      \"success_email_count\": 1,\n      \"template_file\": {\n        \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n        \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n        \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n        \"file_size\": \"3164.0\",\n        \"created_at\": \"2024-08-02T03:24:16Z\",\n        \"updated_at\": \"2024-08-02T03:24:16Z\",\n        \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n        \"file_extension\": \"html\"\n      },\n      \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\"\n    },\n    {\n      \"run_id\": \"1a8fea1fedf9490abe9df91627fa1259\",\n      \"run_type\": \"DIRECT\",\n      \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n      ],\n      \"attachment_files\": [\n        {\n          \"file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n          \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d9df7cd2c6fa4fadbf82df5e0dc2612f_%5BFor%20Test%5DTPET-excel_%E9%99%AA%E8%B7%91%E8%A8%88%E7%95%AB%E8%80%83%E5%88%B0%E8%AD%89%E7%85%A7%E7%9A%84%E6%89%80%E6%9C%89%E5%90%8D%E5%96%AE_v0809.xlsx\",\n          \"file_name\": \"[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_size\": \"29866.0\",\n          \"created_at\": \"2024-08-09T18:07:26Z\",\n          \"updated_at\": \"2024-08-09T18:07:26Z\",\n          \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n          \"s3_object_key\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f_[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_extension\": \"xlsx\"\n        }\n      ],\n      \"bcc\": [\n        \"ptqwe20020413@gmail.com\"\n      ],\n      \"cc\": [],\n      \"created_at\": \"2025-05-11T00:18:12Z\",\n      \"created_year\": \"2025\",\n      \"created_year_month\": \"2025-05\",\n      \"created_year_month_day\": \"2025-05-11\",\n      \"display_name\": \"參與證明\",\n      \"expected_email_send_count\": 1,\n      \"is_generate_certificate\": true,\n      \"recipients\": [\n        {\n          \"email\": \"h830519h@yahoo.com.tw\",\n          \"template_variables\": {\n            \"Name\": \"harry鍾\",\n            \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n          }\n        }\n      ],\n      \"recipient_source\": \"DIRECT\",\n      \"reply_to\": \"h830519h@yahoo.com.tw\",\n      \"sender\": {\n        \"email\": \"ptqwe20020413@gmail.com\",\n        \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"username\": \"ptshiun\",\n        \"cognito_sub\": \"9881b370-0031-7037-b42e-ef737d3aa382\"\n      },\n      \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n      \"sender_local_part\": \"event\",\n      \"spreadsheet_file\": null,\n      \"spreadsheet_file_id\": null,\n      \"subject\": \"【參與證明】local-dev 06:04\",\n      \"success_email_count\": 0,\n      \"template_file\": {\n        \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n        \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n        \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n        \"file_size\": \"3164.0\",\n        \"created_at\": \"2024-08-02T03:24:16Z\",\n        \"updated_at\": \"2024-08-02T03:24:16Z\",\n        \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n        \"file_extension\": \"html\"\n      },\n      \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\"\n    },\n    {\n      \"run_id\": \"02696bba7e844e2fba02ace1be2c1316\",\n      \"run_type\": \"DIRECT\",\n      \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n      ],\n      \"attachment_files\": [\n        {\n          \"file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n          \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d9df7cd2c6fa4fadbf82df5e0dc2612f_%5BFor%20Test%5DTPET-excel_%E9%99%AA%E8%B7%91%E8%A8%88%E7%95%AB%E8%80%83%E5%88%B0%E8%AD%89%E7%85%A7%E7%9A%84%E6%89%80%E6%9C%89%E5%90%8D%E5%96%AE_v0809.xlsx\",\n          \"file_name\": \"[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_size\": \"29866.0\",\n          \"created_at\": \"2024-08-09T18:07:26Z\",\n          \"updated_at\": \"2024-08-09T18:07:26Z\",\n          \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n          \"s3_object_key\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f_[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_extension\": \"xlsx\"\n        }\n      ],\n      \"bcc\": [\n        \"ptqwe20020413@gmail.com\"\n      ],\n      \"cc\": [],\n      \"created_at\": \"2025-05-11T00:07:00Z\",\n      \"created_year\": \"2025\",\n      \"created_year_month\": \"2025-05\",\n      \"created_year_month_day\": \"2025-05-11\",\n      \"display_name\": \"參與證明\",\n      \"expected_email_send_count\": 1,\n      \"is_generate_certificate\": true,\n      \"recipients\": [\n        {\n          \"email\": \"h830519h@yahoo.com.tw\",\n          \"template_variables\": {\n            \"Name\": \"harry鍾\",\n            \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n          }\n        }\n      ],\n      \"recipient_source\": \"DIRECT\",\n      \"reply_to\": \"h830519h@yahoo.com.tw\",\n      \"sender\": {\n        \"email\": \"ptqwe20020413@gmail.com\",\n        \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"username\": \"ptshiun\",\n        \"cognito_sub\": \"9881b370-0031-7037-b42e-ef737d3aa382\"\n      },\n      \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n      \"sender_local_part\": \"event\",\n      \"spreadsheet_file\": null,\n      \"spreadsheet_file_id\": null,\n      \"subject\": \"【參與證明】local-dev 06:04\",\n      \"success_email_count\": 0,\n      \"template_file\": {\n        \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n        \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n        \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n        \"file_size\": \"3164.0\",\n        \"created_at\": \"2024-08-02T03:24:16Z\",\n        \"updated_at\": \"2024-08-02T03:24:16Z\",\n        \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n        \"file_extension\": \"html\"\n      },\n      \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\"\n    },\n    {\n      \"run_id\": \"07babe32db304bb6b168c5f86f45c594\",\n      \"run_type\": \"DIRECT\",\n      \"attachment_file_ids\": [\n        \"d9df7cd2c6fa4fadbf82df5e0dc2612f\"\n      ],\n      \"attachment_files\": [\n        {\n          \"file_id\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f\",\n          \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/d9df7cd2c6fa4fadbf82df5e0dc2612f_%5BFor%20Test%5DTPET-excel_%E9%99%AA%E8%B7%91%E8%A8%88%E7%95%AB%E8%80%83%E5%88%B0%E8%AD%89%E7%85%A7%E7%9A%84%E6%89%80%E6%9C%89%E5%90%8D%E5%96%AE_v0809.xlsx\",\n          \"file_name\": \"[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_size\": \"29866.0\",\n          \"created_at\": \"2024-08-09T18:07:26Z\",\n          \"updated_at\": \"2024-08-09T18:07:26Z\",\n          \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n          \"s3_object_key\": \"d9df7cd2c6fa4fadbf82df5e0dc2612f_[For Test]TPET-excel_陪跑計畫考到證照的所有名單_v0809.xlsx\",\n          \"file_extension\": \"xlsx\"\n        }\n      ],\n      \"bcc\": [],\n      \"cc\": [],\n      \"created_at\": \"2025-05-11T00:06:18Z\",\n      \"created_year\": \"2025\",\n      \"created_year_month\": \"2025-05\",\n      \"created_year_month_day\": \"2025-05-11\",\n      \"display_name\": \"參與證明\",\n      \"expected_email_send_count\": 1,\n      \"is_generate_certificate\": true,\n      \"recipients\": [\n        {\n          \"email\": \"h830519h@yahoo.com.tw\",\n          \"template_variables\": {\n            \"Name\": \"harry鍾\",\n            \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n          }\n        }\n      ],\n      \"recipient_source\": \"DIRECT\",\n      \"reply_to\": \"h830519h@yahoo.com.tw\",\n      \"sender\": {\n        \"email\": \"ptqwe20020413@gmail.com\",\n        \"user_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"username\": \"ptshiun\",\n        \"cognito_sub\": \"9881b370-0031-7037-b42e-ef737d3aa382\"\n      },\n      \"sender_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n      \"sender_local_part\": \"event\",\n      \"spreadsheet_file\": null,\n      \"spreadsheet_file_id\": null,\n      \"subject\": \"【參與證明】local-dev 06:04\",\n      \"success_email_count\": 0,\n      \"template_file\": {\n        \"file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\",\n        \"file_url\": \"https://local-dev-aws-educate-tpet-storage.s3.amazonaws.com/0aeff5f3f7cb44708f3706906d5d4fff_0705-%E7%8D%8E%E5%8B%B5%E8%AA%B2%E7%A8%8B%E6%AD%A3%E5%8F%96%E9%80%9A%E7%9F%A5%E4%BF%A1%E4%BB%B6%E6%A8%A1%E6%9D%BF.html\",\n        \"file_name\": \"0705-獎勵課程正取通知信件模板.html\",\n        \"file_size\": \"3164.0\",\n        \"created_at\": \"2024-08-02T03:24:16Z\",\n        \"updated_at\": \"2024-08-02T03:24:16Z\",\n        \"uploader_id\": \"9881b370-0031-7037-b42e-ef737d3aa382\",\n        \"s3_object_key\": \"0aeff5f3f7cb44708f3706906d5d4fff_0705-獎勵課程正取通知信件模板.html\",\n        \"file_extension\": \"html\"\n      },\n      \"template_file_id\": \"0aeff5f3f7cb44708f3706906d5d4fff\"\n    }\n  ],\n  \"pagination\": {\n    \"page\": 1,\n    \"limit\": 5,\n    \"total_items\": 17,\n    \"total_pages\": 4,\n    \"has_next_page\": true,\n    \"has_previous_page\": false\n  }\n}"
+				}
+			]
+		},
+		{
+			"name": "List emails",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"const responseData = pm.response.json();",
+							"",
+							"pm.test(\"Response has data array\", function () {",
+							"    pm.expect(responseData).to.have.property(\"data\");",
+							"    pm.expect(responseData.data).to.be.an(\"array\");",
+							"});",
+							"",
+							"pm.test(\"Response has pagination info\", function () {",
+							"    pm.expect(responseData).to.have.property(\"pagination\");",
+							"});",
+							"",
+							"pm.test(\"At least one email exists\", function () {",
+							"    pm.expect(responseData.data.length).to.be.above(0);",
+							"});",
+							"",
+							"pm.test(\"Email contains recipient_name field\", function () {",
+							"    const firstEmail = responseData.data[0];",
+							"    pm.expect(firstEmail).to.have.property(\"recipient_name\");",
+							"});",
+							"",
+							"pm.test(\"Recipient name is 'harry鍾'\", function () {",
+							"    const firstEmail = responseData.data[0];",
+							"    pm.expect(firstEmail.recipient_name).to.eql(\"harry鍾\");",
+							"});",
+							"",
+							"// Optional: Check all emails have recipient_name field",
+							"pm.test(\"All emails have recipient_name field\", function () {",
+							"    responseData.data.forEach((email, index) => {",
+							"        pm.expect(email, `Email at index ${index}`).to.have.property(\"recipient_name\");",
+							"    });",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{access_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs/{{run_id_from_send_email_api}}/emails?limit=ALL",
+					"protocol": "https",
+					"host": [
+						"{{environment}}-email-service-internal-api-tpet",
+						"aws-educate",
+						"tw"
+					],
+					"path": [
+						"{{environment}}",
+						"runs",
+						"{{run_id_from_send_email_api}}",
+						"emails"
+					],
+					"query": [
+						{
+							"key": "last_evaluated_key",
+							"value": "eyJlbWFpbF9pZCI6ICIyNzc4MzU3YzY2OTQ0ZWI5YmE1YjFlYzg1MTEzZTliZSIsICJydW5faWQiOiAiYjg4ZGM5OGQ2YjA1NDNlNzg4NmM1OWU4ZDIzZjRlNDQiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTA4LTAzVDE2OjEwOjAyWiJ9",
+							"disabled": true
+						},
+						{
+							"key": "limit",
+							"value": "ALL",
+							"description": "(Required) 最多取回多少筆 data，數字請指定 1~5000 想拿全部資料請寫 ALL"
+						},
+						{
+							"key": "sort_by",
+							"value": "created_at",
+							"description": "(Optional) 目前只能設定為 created_at, Default=created_at",
+							"disabled": true
+						},
+						{
+							"key": "sort_order",
+							"value": "ASC",
+							"description": "(Optional) {ASC / DESC}, Default=DESC",
+							"disabled": true
+						},
+						{
+							"key": "status",
+							"value": "SUCCESS",
+							"description": "(Optional) 查詢特定 Status 的資料 (PENDING / SUCCESS / FAILED)",
+							"disabled": true
+						},
+						{
+							"key": "page",
+							"value": "2",
+							"description": "(Optional) 要第幾頁的資料",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "200",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs/{{run_id_from_send_email_api}}/emails?limit=ALL",
+							"protocol": "https",
+							"host": [
+								"{{environment}}-email-service-internal-api-tpet",
+								"aws-educate",
+								"tw"
+							],
+							"path": [
+								"{{environment}}",
+								"runs",
+								"{{run_id_from_send_email_api}}",
+								"emails"
+							],
+							"query": [
+								{
+									"key": "last_evaluated_key",
+									"value": "eyJlbWFpbF9pZCI6ICIyNzc4MzU3YzY2OTQ0ZWI5YmE1YjFlYzg1MTEzZTliZSIsICJydW5faWQiOiAiYjg4ZGM5OGQ2YjA1NDNlNzg4NmM1OWU4ZDIzZjRlNDQiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTA4LTAzVDE2OjEwOjAyWiJ9",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "ALL",
+									"description": "(Required) 最多取回多少筆 data，數字請指定 1~5000 想拿全部資料請寫 ALL"
+								},
+								{
+									"key": "sort_by",
+									"value": "created_at",
+									"description": "(Optional) 目前只能設定為 created_at, Default=created_at",
+									"disabled": true
+								},
+								{
+									"key": "sort_order",
+									"value": "ASC",
+									"description": "(Optional) {ASC / DESC}, Default=DESC",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "SUCCESS",
+									"description": "(Optional) 查詢特定 Status 的資料 (PENDING / SUCCESS / FAILED)",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "2",
+									"description": "(Optional) 要第幾頁的資料",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 01 Feb 2026 13:49:05 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Content-Length",
+							"value": "1272"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Apigw-Requestid",
+							"value": "YGr4qir7yK4EM4w="
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"data\": [\n        {\n            \"email_id\": \"96d1486a7ffa4e1e8dbc4f58689b1445\",\n            \"run_id\": \"574057a6b1604d39a86347739c013e70\",\n            \"attachment_file_ids\": [\n                \"e1bdc010efdf48cc904dbe0e5aceae7d\"\n            ],\n            \"bcc\": [\n                \"rich.liu627@gmail.com\",\n                \"harryup2000@gmail.com\"\n            ],\n            \"cc\": [\n                \"ptqwe20020413@gmail.com\",\n                \"h830519h@yahoo.com.tw\"\n            ],\n            \"created_at\": \"2026-02-01 12:59:08\",\n            \"display_name\": \"GitHub Actions - PR00 - API Regression Test\",\n            \"is_generate_certificate\": true,\n            \"recipient_email\": \"h830519h@yahoo.com.tw\",\n            \"reply_to\": \"postman+abcdef@aws-educate.tw\",\n            \"row_data\": {\n                \"Name\": \"harry鍾\",\n                \"Email\": \"h830519h@yahoo.com.tw\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            },\n            \"sender_id\": \"3929693e-40b1-70c6-3407-37f9c42b388b\",\n            \"sender_local_part\": \"githubactions.pr00.abcdef\",\n            \"sender_username\": \"ptshiun\",\n            \"sent_at\": \"2026-02-01 12:59:11\",\n            \"spreadsheet_file_id\": null,\n            \"status\": \"SUCCESS\",\n            \"subject\": \"[PR 00 - abcdef Regression Test] Account Electronics THX\",\n            \"template_file_id\": \"e1bdc010efdf48cc904dbe0e5aceae7d\",\n            \"updated_at\": \"2026-02-01 12:59:11\",\n            \"recipient_name\": \"harry鍾\"\n        }\n    ],\n    \"pagination\": {\n        \"page\": 1,\n        \"limit\": 1,\n        \"total_items\": 1,\n        \"total_pages\": 1,\n        \"has_next_page\": false,\n        \"has_previous_page\": false\n    }\n}"
 				}
 			]
 		}
