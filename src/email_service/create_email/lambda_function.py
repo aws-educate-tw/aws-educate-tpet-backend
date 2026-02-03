@@ -43,6 +43,7 @@ def prepare_email_item(run_id: str, email_data: dict, row_data: dict) -> dict:
     email_id = str(uuid.uuid4().hex)
     row_data = convert_float_to_decimal(row_data)
     created_at = time_util.get_current_utc_time()
+    print("Preparing email item:", email_data, row_data)
 
     # Map template variables to recipient_name column
     template_variables = email_data.get("template_variables", [])
