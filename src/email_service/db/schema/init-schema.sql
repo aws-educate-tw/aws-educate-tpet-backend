@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS EMAILS (
     display_name VARCHAR(255),
     is_generate_certificate BOOLEAN NOT NULL DEFAULT FALSE,
     recipient_email VARCHAR(255) NOT NULL,
+    recipient_name VARCHAR(255),
     reply_to VARCHAR(255),
     row_data JSONB,
     sender_id VARCHAR(255),
