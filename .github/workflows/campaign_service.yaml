@@ -180,6 +180,6 @@ jobs:
 
       - name: Terraform Apply
         id: apply
-        run: terraform apply -var-file='${{ env.TF_VARS_FILE }}' -auto-approve
+        run: terraform apply -var-file='${{ env.TF_VARS_FILE }}' -parallelism=1 -auto-approve
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
