@@ -45,6 +45,16 @@ api_gateway_origins = [
     path_pattern = "/dev/*webhook*"
   },
   {
+    # Event Service - prod
+    domain_name  = "prod-event-service-internal-api-tpet.aws-educate.tw"
+    path_pattern = "/prod/*event*"
+  },
+  {
+    # Event Service - dev
+    domain_name  = "dev-event-service-internal-api-tpet.aws-educate.tw"
+    path_pattern = "/dev/*event*"
+  },
+  {
     # Email Service - prod
     domain_name  = "prod-email-service-internal-api-tpet.aws-educate.tw"
     path_pattern = "/prod/*"

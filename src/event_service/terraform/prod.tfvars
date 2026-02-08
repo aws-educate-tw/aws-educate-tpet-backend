@@ -1,0 +1,13 @@
+aws_region                                    = "ap-northeast-1"
+environment                                   = "prod"
+service_underscore                            = "event_service"
+service_hyphen                                = "event-service"
+dynamodb_table                                = "RSVP_Events"
+run_dynamodb_table                            = "run"
+pagination_state_dynamodb_table               = "email_service_pagination_state"
+enable_pitr                                   = true
+enable_deletion_protection_for_dynamodb_table = true
+lambda_architecture                           = "x86_64"
+database_name                                 = "email_service_db"
+domain_name                                   = "aws-educate.tw"
+rds_engine_version                            = "16.8"
