@@ -4,7 +4,6 @@ service_underscore                            = "event_service"
 service_hyphen                                = "event-service"
 dynamodb_table                                = "RSVP_Events"
 run_dynamodb_table                            = "run"
-pagination_state_dynamodb_table               = "email_service_pagination_state"
 enable_pitr                                   = false
 enable_deletion_protection_for_dynamodb_table = true
 lambda_architecture                           = "x86_64"
