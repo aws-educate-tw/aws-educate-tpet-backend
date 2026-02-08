@@ -1,11 +1,11 @@
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def lambda_handler(event, context):
     # TODO: Implement RSVP update logic
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     return {
         "statusCode": 200,
         "headers": {"content-type": "application/json"},
