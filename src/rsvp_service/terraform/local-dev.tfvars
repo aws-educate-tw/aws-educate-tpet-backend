@@ -1,7 +1,7 @@
 aws_region                                    = "us-west-2"
 environment                                   = "local-dev"
-service_underscore                            = "event_service"
-service_hyphen                                = "event-service"
+service_underscore                            = "rsvp_service"
+service_hyphen                                = "rsvp-service"
 dynamodb_table                                = "RSVP_Events"
 run_dynamodb_table                            = "run"
 enable_pitr                                   = false

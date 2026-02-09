@@ -32,7 +32,7 @@ module "api_gateway" {
   source  = "terraform-aws-modules/apigateway-v2/aws"
   version = "5.0.0"
 
-  description = "Event service api gateway in ${var.environment} environment"
+  description = "RSVP service api gateway in ${var.environment} environment"
   name        = "${var.environment}-${var.service_underscore}"
   stage_name  = var.environment
 
@@ -66,7 +66,7 @@ module "api_gateway" {
 
   # Routes & Integration(s)
   routes = {
-    "PUT /event/rsvp" = {
+    "PUT /rsvp" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -83,7 +83,7 @@ module "api_gateway" {
       }
     }
 
-    "GET /event/rsvp" = {
+    "GET /rsvp" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
