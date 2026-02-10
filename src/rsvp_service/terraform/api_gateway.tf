@@ -99,6 +99,23 @@ module "api_gateway" {
         timeout_milliseconds   = 29000
       }
     }
+
+    "GET /rsvp/runs/{run_id}/snapshot" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+
+      # TODO: Re-enable authorizer after auth flow is ready
+      # authorization_type = "CUSTOM"
+      # authorizer_key     = "lambda_authorizer"
+
+      integration = {
+        uri                    = module.rsvp_snapshot_lambda.lambda_function_arn
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
   }
 
   tags = local.tags
