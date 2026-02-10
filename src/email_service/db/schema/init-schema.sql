@@ -5,12 +5,12 @@ CREATE TABLE IF NOT EXISTS RUNS (
 
     -- RSVP Event Information Fields
     event_name VARCHAR(255),                            -- Event name
-    event_location VARCHAR(500),                        -- Event location 
+    event_location VARCHAR(500),                        -- Event location
     event_time TIMESTAMP WITH TIME ZONE,                -- Event start time
-    registration_deadline TIMESTAMP WITH TIME ZONE,     -- Registration deadline 
+    registration_deadline TIMESTAMP WITH TIME ZONE,     -- Registration deadline
 
     -- RSVP Statistics Fields
-    participation_num INTEGER NOT NULL DEFAULT 0,       -- Total confirmed participants 
+    participation_num INTEGER NOT NULL DEFAULT 0,       -- Total confirmed participants
     max_participants INTEGER DEFAULT NULL,              -- Maximum participant capacity
 
     attachment_file_ids JSONB NOT NULL DEFAULT '[]',
@@ -68,19 +68,19 @@ CREATE TABLE IF NOT EXISTS EMAILS (
 
 -- Create PARTICIPANT table for RSVP functionality
 CREATE TABLE IF NOT EXISTS PARTICIPANT (
-    participant_id VARCHAR(255) PRIMARY KEY, 
+    participant_id VARCHAR(255) PRIMARY KEY,
     run_id VARCHAR(255) NOT NULL,
     email_id VARCHAR(255) NOT NULL,
     rsvp_status VARCHAR(50) NOT NULL DEFAULT 'PENDING',  -- PENDING / ATTEND / NOT_ATTEND
     rsvp_responded_at TIMESTAMP WITH TIME ZONE,          -- Response timestamp
-    
-    CONSTRAINT fk_participant_run 
-        FOREIGN KEY (run_id) 
-        REFERENCES RUNS(run_id) 
+
+    CONSTRAINT fk_participant_run
+        FOREIGN KEY (run_id)
+        REFERENCES RUNS(run_id)
         ON DELETE CASCADE,
-    CONSTRAINT fk_participant_email 
-        FOREIGN KEY (email_id) 
-        REFERENCES EMAILS(email_id) 
+    CONSTRAINT fk_participant_email
+        FOREIGN KEY (email_id)
+        REFERENCES EMAILS(email_id)
         ON DELETE CASCADE
 );
 
