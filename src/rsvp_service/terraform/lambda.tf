@@ -14,6 +14,7 @@ locals {
   source_path                                       = "${path.module}/.."
   rsvp_update_function_name_and_ecr_repo_name       = "${var.environment}-${var.service_underscore}-rsvp_update-${random_string.this.result}"
   rsvp_status_query_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-rsvp_status_query-${random_string.this.result}"
+  rsvp_snapshot_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-rsvp_snapshot-${random_string.this.result}"
   path_include                                      = ["**"]
   path_exclude                                      = ["**/__pycache__/**"]
   files_include                                     = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
@@ -33,7 +34,7 @@ provider "docker" {
 ####################################
 ####################################
 ####################################
-# PUT /api/rsvp ####################
+# PUT /rsvp ########################
 ####################################
 ####################################
 ####################################
@@ -43,7 +44,7 @@ module "rsvp_update_lambda" {
   version = "7.7.0"
 
   function_name  = local.rsvp_update_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /api/rsvp"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /rsvp"
   create_package = false
   timeout        = 30
 
@@ -57,10 +58,9 @@ module "rsvp_update_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"            = var.environment,
-    "SERVICE"                = var.service_underscore,
-    "DYNAMODB_TABLE"         = var.dynamodb_table,
-    "SYNC_AURORA_LAMBDA_ARN" = module.sync_aurora_lambda.lambda_function_arn
+    "ENVIRONMENT"    = var.environment,
+    "SERVICE"        = var.service_underscore,
+    "DYNAMODB_TABLE" = var.dynamodb_table
   }
 
   allowed_triggers = {
@@ -97,27 +97,6 @@ module "rsvp_update_lambda" {
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/sk-run_id-gsi"
-      ]
-    }
-    scheduler_manage = {
-      effect = "Allow",
-      actions = [
-        "scheduler:CreateSchedule",
-        "scheduler:UpdateSchedule",
-        "scheduler:DeleteSchedule",
-        "scheduler:GetSchedule"
-      ],
-      resources = [
-        "arn:aws:scheduler:${var.aws_region}:${data.aws_caller_identity.this.account_id}:schedule/default/*"
-      ]
-    }
-    scheduler_pass_role = {
-      effect = "Allow",
-      actions = [
-        "iam:PassRole"
-      ],
-      resources = [
-        aws_iam_role.eventbridge_scheduler_role.arn
       ]
     }
   }
@@ -159,7 +138,7 @@ module "rsvp_update_docker_image" {
 ####################################
 ####################################
 ####################################
-# GET /api/rsvp ####################
+# GET /rsvp ########################
 ####################################
 ####################################
 ####################################
@@ -169,7 +148,7 @@ module "rsvp_status_query_lambda" {
   version = "7.7.0"
 
   function_name  = local.rsvp_status_query_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /api/rsvp"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp"
   create_package = false
   timeout        = 30
 
@@ -263,27 +242,26 @@ module "rsvp_status_query_docker_image" {
 ####################################
 ####################################
 ####################################
-# Sync Aurora (Final Flush) ########
+# GET /rsvp/runs/{run_id}/snapshot ##
 ####################################
 ####################################
 ####################################
 
-module "sync_aurora_lambda" {
+module "rsvp_snapshot_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = "${var.environment}-${var.service_underscore}-sync_aurora-${random_string.this.result}"
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: Sync Aurora FINAL_FLUSH"
+  function_name  = local.rsvp_snapshot_function_name_and_ecr_repo_name
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp/runs/{run_id}/snapshot"
   create_package = false
-  timeout        = 300
-  memory_size    = 512
+  timeout        = 30
 
   ##################
   # Container Image
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri     = module.sync_aurora_docker_image.image_uri
+  image_uri     = module.rsvp_snapshot_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -291,6 +269,13 @@ module "sync_aurora_lambda" {
     "ENVIRONMENT"    = var.environment,
     "SERVICE"        = var.service_underscore,
     "DYNAMODB_TABLE" = var.dynamodb_table
+  }
+
+  allowed_triggers = {
+    AllowExecutionFromAPIGateway = {
+      service    = "apigateway"
+      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+    }
   }
 
   tags = {
@@ -325,7 +310,7 @@ module "sync_aurora_lambda" {
   }
 }
 
-module "sync_aurora_docker_image" {
+module "rsvp_snapshot_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
@@ -333,7 +318,7 @@ module "sync_aurora_docker_image" {
   keep_remotely        = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = "${var.environment}-${var.service_underscore}-sync_aurora-${random_string.this.result}"
+  ecr_repo             = local.rsvp_snapshot_function_name_and_ecr_repo_name
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
@@ -352,7 +337,7 @@ module "sync_aurora_docker_image" {
   })
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
-  source_path = "${local.source_path}/sync_aurora/" # Remember to change
+  source_path = "${local.source_path}/rsvp_snapshot/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }
