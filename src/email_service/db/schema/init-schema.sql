@@ -2,6 +2,17 @@
 CREATE TABLE IF NOT EXISTS RUNS (
     run_id VARCHAR(255) PRIMARY KEY,
     run_type VARCHAR(50) NOT NULL DEFAULT 'DIRECT', -- DIRECT or SPREADSHEET or WEBHOOK
+
+    -- RSVP Event Information Fields
+    event_name VARCHAR(255),                            -- Event name
+    event_location VARCHAR(500),                        -- Event location 
+    event_time TIMESTAMP WITH TIME ZONE,                -- Event start time
+    registration_deadline TIMESTAMP WITH TIME ZONE,     -- Registration deadline 
+
+    -- RSVP Statistics Fields
+    participation_num INTEGER NOT NULL DEFAULT 0,       -- Total confirmed participants 
+    max_participants INTEGER DEFAULT NULL,              -- Maximum participant capacity
+
     attachment_file_ids JSONB NOT NULL DEFAULT '[]',
     attachment_files JSONB NOT NULL DEFAULT '[]',
     bcc JSONB NOT NULL DEFAULT '[]',
@@ -55,6 +66,24 @@ CREATE TABLE IF NOT EXISTS EMAILS (
     CONSTRAINT fk_run FOREIGN KEY (run_id) REFERENCES RUNS(run_id) ON DELETE CASCADE
 );
 
+-- Create PARTICIPANT table for RSVP functionality
+CREATE TABLE IF NOT EXISTS PARTICIPANT (
+    participant_id VARCHAR(255) PRIMARY KEY, 
+    run_id VARCHAR(255) NOT NULL,
+    email_id VARCHAR(255) NOT NULL,
+    rsvp_status VARCHAR(50) NOT NULL DEFAULT 'PENDING',  -- PENDING / ATTEND / NOT_ATTEND
+    rsvp_responded_at TIMESTAMP WITH TIME ZONE,          -- Response timestamp
+    
+    CONSTRAINT fk_participant_run 
+        FOREIGN KEY (run_id) 
+        REFERENCES RUNS(run_id) 
+        ON DELETE CASCADE,
+    CONSTRAINT fk_participant_email 
+        FOREIGN KEY (email_id) 
+        REFERENCES EMAILS(email_id) 
+        ON DELETE CASCADE
+);
+
 -- Create index on run_id in EMAILS table for faster joins
 CREATE INDEX IF NOT EXISTS idx_emails_run_id ON EMAILS(run_id);
 
@@ -78,3 +107,6 @@ CREATE INDEX IF NOT EXISTS idx_runs_sender_id_created_year ON RUNS(sender_id, cr
 
 -- Create combined index on run_id and status for email status queries
 CREATE INDEX IF NOT EXISTS idx_emails_run_id_status ON EMAILS(run_id, status);
+
+-- Create index on run_id in PARTICIPANT table for faster queries
+CREATE INDEX IF NOT EXISTS idx_participant_run_id ON PARTICIPANT(run_id);
