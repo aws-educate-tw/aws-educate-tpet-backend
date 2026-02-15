@@ -66,6 +66,13 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.3
+      
+      - name: Upgrade Docker Client
+        run: |
+          # Install latest Docker CLI
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          sudo sh get-docker.sh
+          docker version
 
       - name: Terraform Init
         id: init
