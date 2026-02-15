@@ -74,7 +74,7 @@ jobs:
 
       - name: Terraform Init
         id: init
-        run: terraform init -backend-config="preview.tfbackend" -reconfigure -upgrade
+        run: terraform init -backend-config="preview.tfbackend" -reconfigure
         working-directory: ${{ env.TF_DIR }}
         env:
           DOCKER_API_VERSION: "1.44"
@@ -525,7 +525,7 @@ jobs:
 
       - name: Terraform Init
         id: init
-        run: terraform init -backend-config="${{ env.ENVIRONMENT }}.tfbackend" -reconfigure -upgrade
+        run: terraform init -backend-config="${{ env.ENVIRONMENT }}.tfbackend" -reconfigure
         working-directory: ${{ env.TF_DIR }}
         env:
           DOCKER_API_VERSION: "1.44"
