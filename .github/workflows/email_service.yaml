@@ -72,10 +72,19 @@ jobs:
         with:
           terraform_version: 1.9.3
 
+      - name: Upgrade Docker Client
+        run: |
+          # Install latest Docker CLI
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          sudo sh get-docker.sh
+          docker version
+
       - name: Terraform Init
         id: init
-        run: terraform init -backend-config="preview.tfbackend" -reconfigure
+        run: terraform init -backend-config="preview.tfbackend" -reconfigure -upgrade
         working-directory: ${{ env.TF_DIR }}
+        env:
+          DOCKER_API_VERSION: "1.44"
 
       # Database Migration Steps (BEFORE Terraform Apply to ensure schema is ready)
       - name: Check for Migration Changes
@@ -263,6 +272,8 @@ jobs:
         run: |
           terraform plan -var-file='preview.tfvars' 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
+        env:
+          DOCKER_API_VERSION: "1.44"
         continue-on-error: true
 
       - name: Terraform Apply
@@ -270,6 +281,8 @@ jobs:
         run: |
           terraform apply -var-file='preview.tfvars' -parallelism=1 -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
+        env:
+          DOCKER_API_VERSION: "1.44"
         continue-on-error: true
 
       - name: Configure AWS credentials
@@ -519,8 +532,10 @@ jobs:
 
       - name: Terraform Init
         id: init
-        run: terraform init -backend-config="${{ env.ENVIRONMENT }}.tfbackend" -reconfigure
+        run: terraform init -backend-config="${{ env.ENVIRONMENT }}.tfbackend" -reconfigure -upgrade
         working-directory: ${{ env.TF_DIR }}
+        env:
+          DOCKER_API_VERSION: "1.44"
 
       # Database Migration Steps (BEFORE Terraform Apply to ensure schema is ready)
       - name: Check for Migration Changes
@@ -656,6 +671,8 @@ jobs:
         run: |
           terraform destroy -auto-approve -var-file='${{ env.TF_VARS_FILE }}' 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
+        env:
+          DOCKER_API_VERSION: "1.44"
         continue-on-error: true
 
       - name: Terraform Plan
@@ -663,6 +680,8 @@ jobs:
         run: |
           terraform plan -var-file='${{ env.TF_VARS_FILE }}' 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
+        env:
+          DOCKER_API_VERSION: "1.44"
         continue-on-error: true
 
       - name: Terraform Apply
@@ -670,6 +689,8 @@ jobs:
         run: |
           terraform apply -var-file='${{ env.TF_VARS_FILE }}' -parallelism=1 -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
+        env:
+          DOCKER_API_VERSION: "1.44"
         continue-on-error: true
 
       - name: Slack Notification
