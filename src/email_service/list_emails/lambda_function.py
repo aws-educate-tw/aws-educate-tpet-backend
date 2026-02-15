@@ -140,8 +140,8 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
         # If requested limit is small, use it directly
         if requested_limit <= RDS_DATA_API_SAFE_BATCH_SIZE:
-            emails = email_repo.list_emails(filter_criteria)
-            # Handle potential None return from list_emails
+            emails = email_repo.list_emails_with_rsvp(filter_criteria)
+            # Handle potential None return from list_emails_with_rsvp
             if emails is None:
                 emails = []
             logger.info(
@@ -181,9 +181,9 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                 )
 
                 # Fetch current batch
-                batch_emails = email_repo.list_emails(batch_filter_criteria)
+                batch_emails = email_repo.list_emails_with_rsvp(batch_filter_criteria)
 
-                # Handle potential None return from list_emails
+                # Handle potential None return from list_emails_with_rsvp
                 if batch_emails is None:
                     batch_emails = []
 
@@ -249,6 +249,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         }
 
     # Process emails for Decimal conversion
+    # RSVP status is already included from list_emails_with_rsvp query
     processed_emails = []
     for email in emails:
         processed_email = {}
