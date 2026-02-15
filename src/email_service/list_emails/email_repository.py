@@ -132,6 +132,59 @@ class EmailRepository:
         emails = self._execute(sql_string, sql_parameters_list, fetch=True)
 
         return emails
+    
+    def list_emails_with_rsvp(self, filter_criteria_dict):
+        """Get email list with RSVP status"""
+        # Build base SQL with LEFT JOIN to participant table, selecting all email columns plus rsvp_status
+        sql_string = """
+            SELECT 
+                e.*,
+                COALESCE(p.rsvp_status, 'PENDING') AS rsvp_status
+            FROM emails e
+            LEFT JOIN participant p
+                ON e.email_id = p.email_id
+                AND e.run_id = p.run_id
+            WHERE 1=1
+        """
+        sql_parameters_list = []
+
+        # Add filter conditions with table alias prefix for emails table
+        processed_filters = {}
+        for key, value in filter_criteria_dict.items():
+            if (
+                key
+                not in (
+                    "page",
+                    "limit",
+                    "sort_by",
+                    "sort_order",
+                )  # Exclude pagination/sorting keys
+                and value is not None
+            ):
+                processed_filters[key] = value
+
+        # Build WHERE clause with e. prefix to avoid ambiguity
+        for key, value in processed_filters.items():
+            if value is not None:
+                sql_string += f" AND e.{key} = :{key}"
+                sql_parameters_list.append(self._create_param(key, value))
+
+        # Add sorting
+        sort_by = filter_criteria_dict.get("sort_by", "created_at")
+        sort_order = filter_criteria_dict.get("sort_order", "DESC").upper()
+        sql_string += f" ORDER BY e.{sort_by} {sort_order}, e.email_id {sort_order}"
+
+        # Add pagination
+        sql_string, sql_parameters_list = self._add_pagination_sql(
+            sql_string_in=sql_string,
+            sql_parameters_list_out=sql_parameters_list,
+            pagination_criteria_dict=filter_criteria_dict,
+        )
+
+        # Execute query
+        emails_with_rsvp = self._execute(sql_string, sql_parameters_list, fetch=True)
+
+        return emails_with_rsvp
 
     def count_emails(self, filter_criteria_dict):
         """Count emails matching the criteria"""
