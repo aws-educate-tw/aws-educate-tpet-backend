@@ -132,12 +132,12 @@ class EmailRepository:
         emails = self._execute(sql_string, sql_parameters_list, fetch=True)
 
         return emails
-    
+
     def list_emails_with_rsvp(self, filter_criteria_dict):
         """Get email list with RSVP status"""
         # Build base SQL with LEFT JOIN to participant table, selecting all email columns plus rsvp_status
         sql_string = """
-            SELECT 
+            SELECT
                 e.*,
                 COALESCE(p.rsvp_status, 'PENDING') AS rsvp_status
             FROM emails e
