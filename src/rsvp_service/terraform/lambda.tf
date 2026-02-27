@@ -62,9 +62,10 @@ module "rsvp_update_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore,
-    "DYNAMODB_TABLE" = var.dynamodb_table
+    "ENVIRONMENT"     = var.environment,
+    "SERVICE"         = var.service_underscore,
+    "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
   allowed_triggers = {
@@ -100,7 +101,8 @@ module "rsvp_update_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/sk-run_id-gsi"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
       ]
     }
   }
@@ -166,9 +168,10 @@ module "rsvp_status_query_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore,
-    "DYNAMODB_TABLE" = var.dynamodb_table
+    "ENVIRONMENT"     = var.environment,
+    "SERVICE"         = var.service_underscore,
+    "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
   allowed_triggers = {
@@ -204,7 +207,8 @@ module "rsvp_status_query_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/sk-run_id-gsi"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
       ]
     }
   }
@@ -270,9 +274,10 @@ module "campaign_vaildation_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore,
-    "DYNAMODB_TABLE" = var.dynamodb_table
+    "ENVIRONMENT"     = var.environment,
+    "SERVICE"         = var.service_underscore,
+    "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
   allowed_triggers = {
@@ -308,7 +313,8 @@ module "campaign_vaildation_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/sk-run_id-gsi"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
       ]
     }
   }
@@ -374,9 +380,10 @@ module "upsert_run_configure_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore,
-    "DYNAMODB_TABLE" = var.dynamodb_table
+    "ENVIRONMENT"     = var.environment,
+    "SERVICE"         = var.service_underscore,
+    "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
   allowed_triggers = {
@@ -412,7 +419,8 @@ module "upsert_run_configure_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/sk-run_id-gsi"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
       ]
     }
   }
@@ -478,9 +486,10 @@ module "batch_import_participants_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore,
-    "DYNAMODB_TABLE" = var.dynamodb_table
+    "ENVIRONMENT"     = var.environment,
+    "SERVICE"         = var.service_underscore,
+    "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
   allowed_triggers = {
@@ -516,7 +525,8 @@ module "batch_import_participants_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/sk-run_id-gsi"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
       ]
     }
   }
@@ -582,9 +592,10 @@ module "campaigns_dashboard_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore,
-    "DYNAMODB_TABLE" = var.dynamodb_table
+    "ENVIRONMENT"     = var.environment,
+    "SERVICE"         = var.service_underscore,
+    "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
   allowed_triggers = {
@@ -620,7 +631,8 @@ module "campaigns_dashboard_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/sk-run_id-gsi"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
       ]
     }
   }
@@ -686,9 +698,10 @@ module "create_campaign_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"    = var.environment,
-    "SERVICE"        = var.service_underscore,
-    "DYNAMODB_TABLE" = var.dynamodb_table
+    "ENVIRONMENT"     = var.environment,
+    "SERVICE"         = var.service_underscore,
+    "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
   allowed_triggers = {
@@ -724,7 +737,8 @@ module "create_campaign_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/sk-run_id-gsi"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
       ]
     }
   }
