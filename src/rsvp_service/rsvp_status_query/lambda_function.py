@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 
 def lambda_handler(event, context):
-    # TODO: Implement RSVP status query logic
+    # TODO: Implement rsvp_status_query logic
     now = datetime.now(UTC).isoformat()
     return {
         "statusCode": 200,

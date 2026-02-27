@@ -100,7 +100,7 @@ module "api_gateway" {
       }
     }
 
-    "GET /rsvp/runs/{run_id}/snapshot" = {
+    "GET /internal/campaign/{event_id}/check" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -110,7 +110,75 @@ module "api_gateway" {
       # authorizer_key     = "lambda_authorizer"
 
       integration = {
-        uri                    = module.rsvp_snapshot_lambda.lambda_function_arn
+        uri                    = module.campaign_vaildation_lambda.lambda_function_arn
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
+
+    "PUT /internal/runs/{run_id}" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+
+      # TODO: Re-enable authorizer after auth flow is ready
+      # authorization_type = "CUSTOM"
+      # authorizer_key     = "lambda_authorizer"
+
+      integration = {
+        uri                    = module.upsert_run_configure_lambda.lambda_function_arn
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
+
+    "POST /internal/runs/{run_id}/participants/batch" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+
+      # TODO: Re-enable authorizer after auth flow is ready
+      # authorization_type = "CUSTOM"
+      # authorizer_key     = "lambda_authorizer"
+
+      integration = {
+        uri                    = module.batch_import_participants_lambda.lambda_function_arn
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
+
+    "GET /campaigns" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+
+      # TODO: Re-enable authorizer after auth flow is ready
+      # authorization_type = "CUSTOM"
+      # authorizer_key     = "lambda_authorizer"
+
+      integration = {
+        uri                    = module.campaigns_dashboard_lambda.lambda_function_arn
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
+
+    "POST /campaign" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+
+      # TODO: Re-enable authorizer after auth flow is ready
+      # authorization_type = "CUSTOM"
+      # authorizer_key     = "lambda_authorizer"
+
+      integration = {
+        uri                    = module.create_campaign_lambda.lambda_function_arn
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
