@@ -16,7 +16,6 @@ locals {
   validate_input_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-validate_input-${random_string.this.result}"
   auto_resume_aurora_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-auto_resume_aurora-${random_string.this.result}"
   upsert_run_function_name_and_ecr_repo_name         = "${var.environment}-${var.service_underscore}-upsert_run-${random_string.this.result}"
-  sync_aurora_function_name_and_ecr_repo_name        = "${var.environment}-${var.service_underscore}-sync_aurora-${random_string.this.result}"
   create_run_function_name_and_ecr_repo_name         = "${var.environment}-${var.service_underscore}-create_run-${random_string.this.result}"
   create_email_function_name_and_ecr_repo_name       = "${var.environment}-${var.service_underscore}-create_email-${random_string.this.result}"
   send_email_function_name_and_ecr_repo_name         = "${var.environment}-${var.service_underscore}-send_email-${random_string.this.result}"
@@ -194,7 +193,6 @@ module "validate_input_lambda" {
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
-    "SYNC_AURORA_LAMBDA_ARN"             = module.sync_aurora_lambda.lambda_function_arn
   }
 
   allowed_triggers = {
@@ -590,27 +588,6 @@ module "upsert_run_lambda" {
         "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.create_email_sqs.queue_name}"
       ]
     }
-    scheduler_manage = {
-      effect = "Allow",
-      actions = [
-        "scheduler:CreateSchedule",
-        "scheduler:UpdateSchedule",
-        "scheduler:DeleteSchedule",
-        "scheduler:GetSchedule"
-      ],
-      resources = [
-        "arn:aws:scheduler:${var.aws_region}:${data.aws_caller_identity.this.account_id}:schedule/default/*"
-      ]
-    }
-    scheduler_pass_role = {
-      effect = "Allow",
-      actions = [
-        "iam:PassRole"
-      ],
-      resources = [
-        aws_iam_role.eventbridge_scheduler_role.arn
-      ]
-    }
   }
 }
 
@@ -646,111 +623,6 @@ module "upsert_run_docker_image" {
     dir_sha = local.dir_sha
   }
 
-}
-
-####################################
-####################################
-####################################
-# Sync Aurora (Final Flush) ########
-####################################
-####################################
-####################################
-
-module "sync_aurora_lambda" {
-  source  = "terraform-aws-modules/lambda/aws"
-  version = "7.7.0"
-
-  function_name  = local.sync_aurora_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: Sync Aurora FINAL_FLUSH"
-  create_package = false
-  timeout        = 300
-  memory_size    = 512
-
-  ##################
-  # Container Image
-  ##################
-  package_type  = "Image"
-  architectures = [var.lambda_architecture]
-  image_uri     = module.sync_aurora_docker_image.image_uri
-
-  publish = true # Whether to publish creation/change as new Lambda Function Version.
-
-  environment_variables = {
-    "ENVIRONMENT"                        = var.environment,
-    "SERVICE"                            = var.service_underscore
-    "DATABASE_NAME"                      = var.database_name
-    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
-    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
-  }
-
-  tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-  }
-
-  ######################
-  # Additional policies
-  ######################
-
-  attach_policy_statements = true
-  policy_statements = {
-    rds_data_access = {
-      effect = "Allow",
-      actions = [
-        "rds-data:ExecuteStatement",
-        "rds-data:BatchExecuteStatement",
-        "rds-data:BeginTransaction",
-        "rds-data:CommitTransaction",
-        "rds-data:RollbackTransaction"
-      ],
-      resources = [
-        module.aurora_postgresql_v2.cluster_arn
-      ]
-    },
-    secrets_manager_access = {
-      effect = "Allow",
-      actions = [
-        "secretsmanager:GetSecretValue"
-      ],
-      resources = [
-        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
-      ]
-    }
-  }
-}
-
-module "sync_aurora_docker_image" {
-  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
-  version = "7.7.0"
-
-  create_ecr_repo      = true
-  keep_remotely        = true
-  use_image_tag        = false
-  image_tag_mutability = "MUTABLE"
-  ecr_repo             = local.sync_aurora_function_name_and_ecr_repo_name
-  ecr_repo_lifecycle_policy = jsonencode({
-    "rules" : [
-      {
-        "rulePriority" : 1,
-        "description" : "Keep only the last 10 images",
-        "selection" : {
-          "tagStatus" : "any",
-          "countType" : "imageCountMoreThan",
-          "countNumber" : 10
-        },
-        "action" : {
-          "type" : "expire"
-        }
-      }
-    ]
-  })
-
-  # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
-  source_path = "${local.source_path}/sync_aurora/" # Remember to change
-  triggers = {
-    dir_sha = local.dir_sha
-  }
 }
 
 module "create_email_lambda" {
