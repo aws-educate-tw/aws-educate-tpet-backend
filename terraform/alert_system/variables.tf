@@ -34,4 +34,3 @@ variable "zone_id" {
   type        = string
   default     = "Z07729212EE8WFR3NG5K0"
 }
-
