@@ -5,10 +5,10 @@ import os
 import urllib.parse
 
 import boto3
-from utils import build_blocks, handle_button_action, verify_slack_request_signature
 from incident_repository import IncidentRepository
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+from utils import build_blocks, handle_button_action, verify_slack_request_signature
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)

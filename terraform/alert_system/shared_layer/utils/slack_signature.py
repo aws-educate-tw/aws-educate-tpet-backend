@@ -4,6 +4,7 @@ import time
 
 DEFAULT_MAX_REQUEST_AGE_SECONDS = 60 * 5
 
+
 def get_header_case_insensitive(headers, header_name):
     """Get a header value from a dict without assuming key case."""
     if not headers:

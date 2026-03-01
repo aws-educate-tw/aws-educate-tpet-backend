@@ -3,10 +3,10 @@ import logging
 import os
 
 import boto3
-from utils import build_blocks, post_thread_message, update_incident_message
 from incident_repository import IncidentRepository
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+from utils import build_blocks, post_thread_message, update_incident_message
 
 SLACK_BOT_TOKEN = os.environ["SLACK_BOT_TOKEN"]
 
