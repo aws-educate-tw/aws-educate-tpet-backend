@@ -5,7 +5,7 @@ import os
 import urllib.parse
 
 import boto3
-from utils import build_blocks, handle_button_action
+from utils import build_blocks, handle_button_action, verify_slack_request_signature
 from incident_repository import IncidentRepository
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -16,6 +16,7 @@ logger.setLevel(logging.INFO)
 cw = boto3.client("cloudwatch")
 incident_repo = IncidentRepository()
 slack = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
+slack_signing_secret = os.environ["SLACK_SIGNING_SECRET"]
 
 
 def lambda_handler(event, context):
@@ -32,6 +33,8 @@ def lambda_handler(event, context):
     try:
         logger.info("=== Incoming Event ===")
         logger.info(json.dumps(event))
+
+        headers = event.get("headers", {})
 
         # Validate event structure
         body = event.get("body")
@@ -51,6 +54,18 @@ def lambda_handler(event, context):
             return {
                 "statusCode": 400,
                 "body": json.dumps({"error": "Failed to decode request body"}),
+            }
+
+        if not verify_slack_request_signature(
+            headers=headers,
+            raw_body=body,
+            signing_secret=slack_signing_secret,
+            logger=logger,
+        ):
+            logger.warning("Slack signature verification failed")
+            return {
+                "statusCode": 403,
+                "body": json.dumps({"error": "Forbidden: invalid Slack signature"}),
             }
 
         # Parse URL-encoded parameters

@@ -1,14 +1,14 @@
 FROM public.ecr.aws/lambda/python:3.11
 
 # Install dependencies
-COPY requirements.txt /var/task/
+COPY slack_interaction_handler/requirements.txt /var/task/
 RUN pip install -r /var/task/requirements.txt
 
 # Copy shared utils
-COPY ../shared_layer/utils /var/task/utils
+COPY shared_layer/utils /var/task/utils
 
 # Copy function code
-COPY . /var/task/
+COPY slack_interaction_handler/ /var/task/
 
 # Set the command to run the Lambda function
 CMD ["lambda_function.lambda_handler"]

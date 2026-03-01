@@ -23,7 +23,7 @@ def map_incident_state(cw_state):
     if cw_state == "ALARM":
         return "ALARM"
     if cw_state == "INSUFFICIENT_DATA":
-        return "ACKNOWLEDGED"
+        return None
     if cw_state == "OK":
         return "RESOLVED"
     return cw_state
@@ -85,6 +85,11 @@ def lambda_handler(event, context):
                     continue
 
                 incident_state = map_incident_state(raw_state)
+                if incident_state is None:
+                    logger.info(
+                        f"Skipping INSUFFICIENT_DATA for alarm {alarm_name} (no incident update)"
+                    )
+                    continue
                 description = msg.get("AlarmDescription", "No description")
                 trigger_info = msg.get("Trigger", {})
 
