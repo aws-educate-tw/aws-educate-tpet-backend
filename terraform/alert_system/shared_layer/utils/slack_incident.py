@@ -1,6 +1,7 @@
 import logging
 
 from slack_sdk.errors import SlackApiError
+from .alarm_state_enum import IncidentState
 
 logger = logging.getLogger()
 
@@ -34,7 +35,7 @@ def post_incident_message(
                 attachments=[{"color": color, "blocks": blocks}],
             )
             slack_ts = result["ts"]
-            logger.info(f"Posted incident message for {alarm_name}")
+            logger.info("Posted incident message for %s", alarm_name)
 
             # Then upload the chart image to the same thread
             slack_client.files_upload_v2(
@@ -45,7 +46,7 @@ def post_incident_message(
                 title=chart_data["title"],
                 request_file_info=False,
             )
-            logger.info(f"Uploaded chart to thread for {alarm_name}")
+            logger.info("Uploaded chart to thread for %s", alarm_name)
         else:
             # Post message without chart
             result = slack_client.chat_postMessage(
@@ -54,17 +55,21 @@ def post_incident_message(
                 attachments=[{"color": color, "blocks": blocks}],
             )
             slack_ts = result["ts"]
-            logger.info(f"Posted incident message for {alarm_name}")
+            logger.info("Posted incident message for %s", alarm_name)
 
         return slack_ts
 
     except SlackApiError as e:
         logger.error(
-            f"Failed to post incident message: {e.response['error']}", exc_info=True
+            "Failed to post incident message: %s",
+            e.response['error'],
+            exc_info=True,
         )
         raise
     except Exception as e:
-        logger.error(f"Unexpected error posting incident message: {e}", exc_info=True)
+        logger.error(
+            "Unexpected error posting incident message: %s", e, exc_info=True
+        )
         raise
 
 
@@ -94,16 +99,22 @@ def update_incident_message(
         )
 
         logger.info(
-            f"Updated incident message for {alarm_name} to state {incident_state}"
+            "Updated incident message for %s to state %s",
+            alarm_name,
+            incident_state,
         )
 
     except SlackApiError as e:
         logger.error(
-            f"Failed to update incident message: {e.response['error']}", exc_info=True
+            "Failed to update incident message: %s",
+            e.response['error'],
+            exc_info=True,
         )
         raise
     except Exception as e:
-        logger.error(f"Unexpected error updating incident message: {e}", exc_info=True)
+        logger.error(
+            "Unexpected error updating incident message: %s", e, exc_info=True
+        )
         raise
 
 
@@ -125,16 +136,18 @@ def post_thread_message(slack_client, channel, thread_ts, message):
             channel=channel, thread_ts=thread_ts, text=message
         )
 
-        logger.info(f"Posted thread message to channel {channel}")
+        logger.info("Posted thread message to channel %s", channel)
         return result
 
     except SlackApiError as e:
         logger.error(
-            f"Failed to post thread message: {e.response['error']}", exc_info=True
+            "Failed to post thread message: %s", e.response['error'], exc_info=True
         )
         raise
     except Exception as e:
-        logger.error(f"Unexpected error posting thread message: {e}", exc_info=True)
+        logger.error(
+            "Unexpected error posting thread message: %s", e, exc_info=True
+        )
         raise
 
 
@@ -168,8 +181,8 @@ def handle_button_action(
             # Disable alarm actions to prevent auto-recovery
             cw_client.disable_alarm_actions(AlarmNames=[alarm_name])
 
-            incident_state = "ACKNOWLEDGED"
-            logger.info(f"{alarm_name} -> ACKNOWLEDGED (actions disabled)")
+            incident_state = IncidentState.ACKNOWLEDGED.value
+            logger.info("%s -> ACKNOWLEDGED (actions disabled)", alarm_name)
 
             # Update Slack message
             blocks, color = build_blocks_func(alarm_name, description, incident_state)
@@ -199,8 +212,8 @@ def handle_button_action(
             # Enable alarm actions
             cw_client.enable_alarm_actions(AlarmNames=[alarm_name])
 
-            incident_state = "ALARM"
-            logger.info(f"{alarm_name} -> ALARM (actions enabled)")
+            incident_state = IncidentState.ALARM.value
+            logger.info("%s -> ALARM (actions enabled)", alarm_name)
 
             # Update Slack message
             blocks, color = build_blocks_func(alarm_name, description, incident_state)
@@ -227,8 +240,10 @@ def handle_button_action(
             )
 
         else:
-            logger.warning(f"Unknown action_id: {action_id}")
+            logger.warning("Unknown action_id: %s", action_id)
 
     except Exception as e:
-        logger.error(f"Failed to handle button action {action_id}: {e}", exc_info=True)
+        logger.error(
+            "Failed to handle button action %s: %s", action_id, e, exc_info=True
+        )
         raise

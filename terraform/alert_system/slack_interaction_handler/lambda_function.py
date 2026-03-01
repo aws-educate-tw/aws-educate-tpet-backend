@@ -50,7 +50,7 @@ def lambda_handler(event, context):
             if event.get("isBase64Encoded", False):
                 body = base64.b64decode(body).decode("utf-8")
         except Exception as e:
-            logger.error(f"Failed to decode base64 body: {e}", exc_info=True)
+            logger.error("Failed to decode base64 body: %s", e, exc_info=True)
             return {
                 "statusCode": 400,
                 "body": json.dumps({"error": "Failed to decode request body"}),
@@ -72,7 +72,7 @@ def lambda_handler(event, context):
         try:
             params = urllib.parse.parse_qs(body)
         except Exception as e:
-            logger.error(f"Failed to parse URL-encoded body: {e}", exc_info=True)
+            logger.error("Failed to parse URL-encoded body: %s", e, exc_info=True)
             return {
                 "statusCode": 400,
                 "body": json.dumps({"error": "Invalid request body format"}),
@@ -85,7 +85,7 @@ def lambda_handler(event, context):
                 logger.info("Parsed Slack payload:")
                 logger.info(json.dumps(payload))
             except (json.JSONDecodeError, IndexError) as e:
-                logger.error(f"Failed to parse Slack payload: {e}", exc_info=True)
+                logger.error("Failed to parse Slack payload: %s", e, exc_info=True)
                 return {
                     "statusCode": 400,
                     "body": json.dumps({"error": "Invalid Slack payload format"}),
@@ -116,7 +116,9 @@ def lambda_handler(event, context):
 
                 if not action_id or not alarm_name:
                     logger.error(
-                        f"Missing action_id or alarm_name - action_id: {action_id}, alarm_name: {alarm_name}"
+                        "Missing action_id or alarm_name - action_id: %s, alarm_name: %s",
+                        action_id,
+                        alarm_name,
                     )
                     return {
                         "statusCode": 400,
@@ -126,11 +128,14 @@ def lambda_handler(event, context):
                     }
 
                 logger.info(
-                    f"Processing action '{action_id}' for alarm '{alarm_name}' by user '{user_id}'"
+                    "Processing action '%s' for alarm '%s' by user '%s'",
+                    action_id,
+                    alarm_name,
+                    user_id,
                 )
 
             except (KeyError, IndexError) as e:
-                logger.error(f"Failed to extract action details: {e}", exc_info=True)
+                logger.error("Failed to extract action details: %s", e, exc_info=True)
                 return {
                     "statusCode": 400,
                     "body": json.dumps({"error": "Invalid action structure"}),
@@ -144,17 +149,18 @@ def lambda_handler(event, context):
                     description = alarm_details["MetricAlarms"][0].get(
                         "AlarmDescription", "No description"
                     )
-                    logger.info(f"Retrieved alarm description for {alarm_name}")
+                    logger.info("Retrieved alarm description for %s", alarm_name)
                 else:
-                    logger.warning(f"No metric alarms found for {alarm_name}")
+                    logger.warning("No metric alarms found for %s", alarm_name)
             except cw.exceptions.ClientError as e:
                 logger.error(
-                    f"CloudWatch API error getting alarm description: {e}",
+                    "CloudWatch API error getting alarm description: %s",
+                    e,
                     exc_info=True,
                 )
             except Exception as e:
                 logger.error(
-                    f"Unexpected error getting alarm description: {e}", exc_info=True
+                    "Unexpected error getting alarm description: %s", e, exc_info=True
                 )
 
             # Get existing incident from DynamoDB
@@ -162,7 +168,7 @@ def lambda_handler(event, context):
                 item = incident_repo.get_incident(alarm_name)
             except Exception as e:
                 logger.error(
-                    f"Failed to get incident for {alarm_name}: {e}", exc_info=True
+                    "Failed to get incident for %s: %s", alarm_name, e, exc_info=True
                 )
                 return {
                     "statusCode": 500,
@@ -176,7 +182,7 @@ def lambda_handler(event, context):
                 }
 
             if not item:
-                logger.warning(f"No incident found for {alarm_name}")
+                logger.warning("No incident found for %s", alarm_name)
                 return {
                     "statusCode": 404,
                     "body": json.dumps(
@@ -198,11 +204,12 @@ def lambda_handler(event, context):
                     build_blocks_func=build_blocks,
                 )
                 logger.info(
-                    f"Successfully handled action '{action_id}' for {alarm_name}"
+                    "Successfully handled action '%s' for %s", action_id, alarm_name
                 )
             except SlackApiError as e:
                 logger.error(
-                    f"Slack API error handling action: {e.response['error']}",
+                    "Slack API error handling action: %s",
+                    e.response['error'],
                     exc_info=True,
                 )
                 return {
@@ -215,7 +222,7 @@ def lambda_handler(event, context):
                     ),
                 }
             except Exception as e:
-                logger.error(f"Failed to handle button action: {e}", exc_info=True)
+                logger.error("Failed to handle button action: %s", e, exc_info=True)
                 return {
                     "statusCode": 500,
                     "body": json.dumps(
@@ -256,7 +263,7 @@ def lambda_handler(event, context):
             # Not JSON, continue to check other cases
             pass
         except Exception as e:
-            logger.error(f"Error processing URL verification: {e}", exc_info=True)
+            logger.error("Error processing URL verification: %s", e, exc_info=True)
 
         # Unknown request type
         logger.warning("Request ignored (no recognized payload type)")
@@ -266,7 +273,7 @@ def lambda_handler(event, context):
         }
 
     except Exception as e:
-        logger.error(f"Unexpected error in lambda_handler: {e}", exc_info=True)
+        logger.error("Unexpected error in lambda_handler: %s", e, exc_info=True)
         return {
             "statusCode": 500,
             "body": json.dumps({"error": "Internal server error", "details": str(e)}),

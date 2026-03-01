@@ -1,8 +1,27 @@
+from .alarm_state_enum import IncidentState
+
 def build_blocks(alarm_name, description, state, chart_url=None):
-    if state == "ALARM":
+    """
+    Build Slack message blocks for alarm incidents.
+
+    Args:
+        alarm_name: Name of the alarm
+        description: Alarm description text
+        state: Incident state (ALARM, ACKNOWLEDGED, RESOLVED)
+        chart_url: Optional URL to CloudWatch metric chart
+
+    Returns:
+        tuple: (blocks, color) - Slack message blocks and attachment color
+    """
+    try:
+        incident_state = IncidentState(state)
+    except ValueError:
+        incident_state = None
+
+    if incident_state == IncidentState.ALARM:
         color = "#FF0000"
         emoji = "🚨"
-        status = "ALARM"
+        status = IncidentState.ALARM.value
         buttons = [
             {
                 "type": "button",
@@ -12,10 +31,10 @@ def build_blocks(alarm_name, description, state, chart_url=None):
                 "style": "primary",
             }
         ]
-    elif state == "ACKNOWLEDGED":
+    elif incident_state == IncidentState.ACKNOWLEDGED:
         color = "#FFA500"
         emoji = "👀"
-        status = "ACKNOWLEDGED"
+        status = IncidentState.ACKNOWLEDGED.value
         buttons = [
             {
                 "type": "button",
@@ -24,10 +43,10 @@ def build_blocks(alarm_name, description, state, chart_url=None):
                 "value": alarm_name,
             }
         ]
-    elif state == "RESOLVED":
+    elif incident_state == IncidentState.RESOLVED:
         color = "#36A64F"
         emoji = "✅"
-        status = "RESOLVED"
+        status = IncidentState.RESOLVED.value
         buttons = []
     else:
         color = "#439FE0"

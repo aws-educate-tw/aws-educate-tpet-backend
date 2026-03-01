@@ -6,7 +6,13 @@ import boto3
 from incident_repository import IncidentRepository
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-from utils import build_blocks, post_thread_message, update_incident_message
+from utils import (
+    CloudWatchAlarmState,
+    IncidentState,
+    build_blocks,
+    post_thread_message,
+    update_incident_message,
+)
 
 SLACK_BOT_TOKEN = os.environ["SLACK_BOT_TOKEN"]
 
@@ -56,7 +62,7 @@ def lambda_handler(event, context):
             }
 
         if not state_value:
-            logger.error(f"Missing state value for alarm {alarm_name}")
+            logger.error("Missing state value for alarm %s", alarm_name)
             return {
                 "statusCode": 400,
                 "body": json.dumps(
@@ -67,11 +73,11 @@ def lambda_handler(event, context):
                 ),
             }
 
-        logger.info(f"Processing alarm: {alarm_name}, State: {state_value}")
+        logger.info("Processing alarm: %s, State: %s", alarm_name, state_value)
 
         # Only process when state becomes OK
-        if state_value != "OK":
-            logger.info(f"Alarm state is {state_value}, no action needed")
+        if state_value != CloudWatchAlarmState.OK.value:
+            logger.info("Alarm state is %s, no action needed", state_value)
             return {
                 "statusCode": 200,
                 "body": json.dumps(
@@ -87,16 +93,18 @@ def lambda_handler(event, context):
         # Re-enable alarm actions
         try:
             cw.enable_alarm_actions(AlarmNames=[alarm_name])
-            logger.info(f"Successfully re-enabled alarm actions for {alarm_name}")
+            logger.info("Successfully re-enabled alarm actions for %s", alarm_name)
         except cw.exceptions.ResourceNotFoundException:
-            logger.error(f"Alarm not found: {alarm_name}")
+            logger.error("Alarm not found: %s", alarm_name)
             return {
                 "statusCode": 404,
                 "body": json.dumps({"error": "Alarm not found", "alarm": alarm_name}),
             }
         except Exception as e:
             logger.error(
-                f"Failed to re-enable alarm actions for {alarm_name}: {e}",
+                "Failed to re-enable alarm actions for %s: %s",
+                alarm_name,
+                e,
                 exc_info=True,
             )
             return {
@@ -114,7 +122,9 @@ def lambda_handler(event, context):
         try:
             item = incident_repo.get_incident(alarm_name)
         except Exception as e:
-            logger.error(f"Failed to get incident for {alarm_name}: {e}", exc_info=True)
+            logger.error(
+                "Failed to get incident for %s: %s", alarm_name, e, exc_info=True
+            )
             # Alarm was re-enabled, but we couldn't update incident status
             return {
                 "statusCode": 500,
@@ -130,7 +140,7 @@ def lambda_handler(event, context):
 
         # If no incident exists, we're done
         if not item:
-            logger.info(f"No incident found for {alarm_name}")
+            logger.info("No incident found for %s", alarm_name)
             return {
                 "statusCode": 200,
                 "body": json.dumps(
@@ -144,7 +154,7 @@ def lambda_handler(event, context):
 
         # If incident is already closed, we're done
         if not item.get("incident_open", False):
-            logger.info(f"Incident already closed for {alarm_name}")
+            logger.info("Incident already closed for %s", alarm_name)
             return {
                 "statusCode": 200,
                 "body": json.dumps(
@@ -158,7 +168,8 @@ def lambda_handler(event, context):
 
         # Update Slack message to RESOLVED state
         description = detail.get("alarmDescription", "Alarm recovered")
-        blocks, color = build_blocks(alarm_name, description, "RESOLVED")
+        resolved_state = IncidentState.RESOLVED.value
+        blocks, color = build_blocks(alarm_name, description, resolved_state)
 
         slack_updated = False
         try:
@@ -167,32 +178,38 @@ def lambda_handler(event, context):
                 channel=item["slack_channel"],
                 ts=item["slack_ts"],
                 alarm_name=alarm_name,
-                incident_state="RESOLVED",
+                incident_state=resolved_state,
                 blocks=blocks,
                 color=color,
             )
-            logger.info(f"Updated Slack message to RESOLVED for {alarm_name}")
+            logger.info("Updated Slack message to RESOLVED for %s", alarm_name)
             slack_updated = True
         except SlackApiError as e:
             logger.error(
-                f"Slack API error updating message for {alarm_name}: {e.response['error']}",
+                "Slack API error updating message for %s: %s",
+                alarm_name,
+                e.response['error'],
                 exc_info=True,
             )
             # Continue to update DynamoDB even if Slack update fails
         except Exception as e:
             logger.error(
-                f"Unexpected error updating Slack message for {alarm_name}: {e}",
+                "Unexpected error updating Slack message for %s: %s",
+                alarm_name,
+                e,
                 exc_info=True,
             )
             # Continue to update DynamoDB even if Slack update fails
 
         # Update DynamoDB to mark incident as closed
         try:
-            incident_repo.close_incident(alarm_name, "RESOLVED")
-            logger.info(f"Closed incident in DynamoDB for {alarm_name}")
+            incident_repo.close_incident(alarm_name, resolved_state)
+            logger.info("Closed incident in DynamoDB for %s", alarm_name)
         except Exception as e:
             logger.error(
-                f"Failed to close incident in DynamoDB for {alarm_name}: {e}",
+                "Failed to close incident in DynamoDB for %s: %s",
+                alarm_name,
+                e,
                 exc_info=True,
             )
             return {
@@ -218,17 +235,21 @@ def lambda_handler(event, context):
                 thread_ts=item["slack_ts"],
                 message=message,
             )
-            logger.info(f"Sent auto-reenable notification for {alarm_name}")
+            logger.info("Sent auto-reenable notification for %s", alarm_name)
             notification_sent = True
         except SlackApiError as e:
             logger.warning(
-                f"Failed to send thread notification for {alarm_name}: {e.response['error']}",
+                "Failed to send thread notification for %s: %s",
+                alarm_name,
+                e.response['error'],
                 exc_info=True,
             )
             # Non-critical, don't fail the entire operation
         except Exception as e:
             logger.warning(
-                f"Unexpected error sending thread notification for {alarm_name}: {e}",
+                "Unexpected error sending thread notification for %s: %s",
+                alarm_name,
+                e,
                 exc_info=True,
             )
             # Non-critical, don't fail the entire operation
@@ -248,7 +269,7 @@ def lambda_handler(event, context):
         }
 
     except Exception as e:
-        logger.error(f"Unexpected error in lambda_handler: {e}", exc_info=True)
+        logger.error("Unexpected error in lambda_handler: %s", e, exc_info=True)
         return {
             "statusCode": 500,
             "body": json.dumps({"error": "Internal server error", "details": str(e)}),
