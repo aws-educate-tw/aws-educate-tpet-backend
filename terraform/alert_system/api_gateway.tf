@@ -15,9 +15,9 @@ resource "aws_apigatewayv2_api" "slack_interactions" {
   }
 }
 
-resource "aws_apigatewayv2_stage" "local_dev" {
+resource "aws_apigatewayv2_stage" "slack_interactions_api_gw_stage" {
   api_id      = aws_apigatewayv2_api.slack_interactions.id
-  name        = "local-dev"
+  name        = "${var.environment}"
   auto_deploy = true
 
   tags = {
@@ -55,5 +55,5 @@ output "api_gateway_url" {
 
 output "slack_interaction_endpoint" {
   description = "Full Slack interaction endpoint URL"
-  value       = "${aws_apigatewayv2_api.slack_interactions.api_endpoint}/${aws_apigatewayv2_stage.local_dev.name}/slack/interactivity"
+  value       = "${aws_apigatewayv2_api.slack_interactions.api_endpoint}/${aws_apigatewayv2_stage.slack_interactions_api_gw_stage.name}/slack/interactivity"
 }
