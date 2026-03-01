@@ -6,7 +6,12 @@ from cloudwatch_util import CloudWatchError, get_metric_chart
 from incident_repository import IncidentRepository
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-from utils import CloudWatchAlarmState, IncidentState, build_blocks, post_incident_message
+from utils import (
+    CloudWatchAlarmState,
+    IncidentState,
+    build_blocks,
+    post_incident_message,
+)
 
 SLACK_BOT_TOKEN = os.environ["SLACK_BOT_TOKEN"]
 SLACK_CHANNEL = os.environ["SLACK_CHANNEL"]
@@ -164,7 +169,7 @@ def lambda_handler(event, context):
                         logger.error(
                             "Slack API error posting message for %s: %s",
                             alarm_name,
-                            e.response['error'],
+                            e.response["error"],
                             exc_info=True,
                         )
                         failed_records.append(
@@ -242,7 +247,7 @@ def lambda_handler(event, context):
                     logger.error(
                         "Slack API error updating message for %s: %s",
                         alarm_name,
-                        e.response['error'],
+                        e.response["error"],
                         exc_info=True,
                     )
                     # Continue to update DynamoDB even if Slack update fails

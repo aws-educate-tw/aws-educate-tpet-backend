@@ -188,7 +188,7 @@ def lambda_handler(event, context):
             logger.error(
                 "Slack API error updating message for %s: %s",
                 alarm_name,
-                e.response['error'],
+                e.response["error"],
                 exc_info=True,
             )
             # Continue to update DynamoDB even if Slack update fails
@@ -241,7 +241,7 @@ def lambda_handler(event, context):
             logger.warning(
                 "Failed to send thread notification for %s: %s",
                 alarm_name,
-                e.response['error'],
+                e.response["error"],
                 exc_info=True,
             )
             # Non-critical, don't fail the entire operation

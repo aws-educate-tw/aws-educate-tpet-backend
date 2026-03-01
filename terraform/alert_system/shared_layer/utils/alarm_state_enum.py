@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class CloudWatchAlarmState(str, Enum):
     ALARM = "ALARM"
     INSUFFICIENT_DATA = "INSUFFICIENT_DATA"

@@ -90,7 +90,9 @@ class IncidentRepository:
                 UpdateExpression="SET last_state = :s, updated_at = :t",
                 ExpressionAttributeValues={":s": incident_state, ":t": now},
             )
-            logger.info("Updated incident state for %s to %s", alarm_name, incident_state)
+            logger.info(
+                "Updated incident state for %s to %s", alarm_name, incident_state
+            )
         except Exception as e:
             logger.error("Failed to update incident state %s: %s", alarm_name, e)
             raise
