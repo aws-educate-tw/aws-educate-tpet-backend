@@ -85,8 +85,8 @@ module "slack_alert_lambda" {
   environment_variables = {
     ENVIRONMENT     = var.environment
     INCIDENT_TABLE  = aws_dynamodb_table.alarm_slack_mapping.name
-    SLACK_BOT_TOKEN = data.aws_secretsmanager_secret_version.slack_alert_bot_secret.secret_string
-    SLACK_CHANNEL   = data.aws_secretsmanager_secret_version.slack_alert_channel_id.secret_string
+    SLACK_BOT_TOKEN = local.slack_alert_config.slack_bot_token
+    SLACK_CHANNEL   = local.slack_alert_config.slack_channel
   }
 
   allowed_triggers = {
@@ -201,8 +201,8 @@ module "slack_interaction_handler_lambda" {
   environment_variables = {
     ENVIRONMENT              = var.environment
     INCIDENT_TABLE           = aws_dynamodb_table.alarm_slack_mapping.name
-    SLACK_BOT_TOKEN          = data.aws_secretsmanager_secret_version.slack_alert_bot_secret.secret_string
-    SLACK_SIGNING_SECRET     = data.aws_secretsmanager_secret_version.slack_alert_bot_signing_secret.secret_string
+    SLACK_BOT_TOKEN          = local.slack_alert_config.slack_bot_token
+    SLACK_SIGNING_SECRET     = local.slack_alert_config.slack_signing_secret
   }
 
   attach_policy_statements = true
@@ -297,7 +297,7 @@ module "auto_reenable_lambda" {
   environment_variables = {
     ENVIRONMENT              = var.environment
     INCIDENT_TABLE           = aws_dynamodb_table.alarm_slack_mapping.name
-    SLACK_BOT_TOKEN          = data.aws_secretsmanager_secret_version.slack_alert_bot_secret.secret_string
+    SLACK_BOT_TOKEN          = local.slack_alert_config.slack_bot_token
   }
 
   attach_policy_statements = true

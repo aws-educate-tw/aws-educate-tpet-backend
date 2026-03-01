@@ -8,26 +8,6 @@ output "dynamodb_table_arn" {
   value       = aws_dynamodb_table.alarm_slack_mapping.arn
 }
 
-output "slack_alert_lambda_function_name" {
-  description = "Slack Alert Lambda function name"
-  value       = module.slack_alert_lambda.lambda_function_name
-}
-
-output "slack_alert_lambda_arn" {
-  description = "Slack Alert Lambda ARN"
-  value       = module.slack_alert_lambda.lambda_function_arn
-}
-
-output "slack_interaction_handler_lambda_function_name" {
-  description = "Slack Interaction Handler Lambda function name"
-  value       = module.slack_interaction_handler_lambda.lambda_function_name
-}
-
-output "slack_interaction_handler_lambda_arn" {
-  description = "Slack Interaction Handler Lambda ARN"
-  value       = module.slack_interaction_handler_lambda.lambda_function_arn
-}
-
 output "sns_topic_arn" {
   description = "SNS Topic ARN for CloudWatch alarms"
   value       = local.sns_topic_arn
