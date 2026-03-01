@@ -35,8 +35,3 @@ variable "zone_id" {
   default     = "Z07729212EE8WFR3NG5K0"
 }
 
-variable "create_sns_topic" {
-  description = "Whether to create a new SNS topic or use existing one"
-  type        = bool
-  default     = false
-}

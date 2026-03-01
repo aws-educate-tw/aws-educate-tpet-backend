@@ -160,8 +160,8 @@ module "slack_alert_docker_image" {
     ]
   })
 
-  source_path      = local.source_path_alert
-  docker_file_path = "Dockerfile"
+  source_path      = path.module
+  docker_file_path = "slack_alert/Dockerfile"
 
   triggers = {
     dir_sha = local.dir_sha_alert
@@ -202,6 +202,7 @@ module "slack_interaction_handler_lambda" {
     ENVIRONMENT              = var.environment
     INCIDENT_TABLE           = aws_dynamodb_table.alarm_slack_mapping.name
     SLACK_BOT_TOKEN          = data.aws_secretsmanager_secret_version.slack_alert_bot_secret.secret_string
+    SLACK_SIGNING_SECRET     = data.aws_secretsmanager_secret_version.slack_alert_bot_signing_secret.secret_string
   }
 
   attach_policy_statements = true
@@ -261,8 +262,8 @@ module "slack_interaction_handler_docker_image" {
     ]
   })
 
-  source_path      = local.source_path_handler
-  docker_file_path = "Dockerfile"
+  source_path      = path.module
+  docker_file_path = "slack_interaction_handler/Dockerfile"
 
   triggers = {
     dir_sha = local.dir_sha_handler
@@ -353,8 +354,8 @@ module "auto_reenable_docker_image" {
     ]
   })
 
-  source_path      = local.source_path_reenable
-  docker_file_path = "Dockerfile"
+  source_path      = path.module
+  docker_file_path = "auto_reenable/Dockerfile"
 
   triggers = {
     dir_sha = local.dir_sha_reenable
