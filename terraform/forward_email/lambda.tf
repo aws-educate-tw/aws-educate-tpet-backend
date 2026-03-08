@@ -27,6 +27,7 @@ locals {
   files_exclude = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
   files         = sort(setsubtract(local.files_include, local.files_exclude))
   dir_sha       = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
+  bucket_name = "${var.environment}-${var.bucket_name}"
 }
 
 provider "docker" {
@@ -66,13 +67,13 @@ module "forward_email_lambda" {
 
   environment_variables = {
     "ENVIRONMENT" = var.environment
-    "BUCKET_NAME" = aws_s3_bucket.aws_educate_tpet_email_bucket.bucket
+    "BUCKET_NAME" = local.bucket_name
   }
 
   allowed_triggers = {
     AllowExecutionFromS3 = {
       service    = "s3"
-      source_arn = aws_s3_bucket.aws_educate_tpet_email_bucket.arn
+      source_arn = "arn:aws:s3:::${local.bucket_name}"
     }
   }
 
@@ -105,8 +106,8 @@ module "forward_email_lambda" {
         "s3:ListBucket"
       ]
       resources = [
-        aws_s3_bucket.aws_educate_tpet_email_bucket.arn,
-        "${aws_s3_bucket.aws_educate_tpet_email_bucket.arn}/*"
+        "arn:aws:s3:::${local.bucket_name}",
+        "arn:aws:s3:::${local.bucket_name}/*"
       ]
     }
     ses_access = {

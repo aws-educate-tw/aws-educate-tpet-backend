@@ -11,37 +11,6 @@ resource "aws_ses_receipt_rule_set" "ses_receipt_rule_set" {
   rule_set_name = "${var.environment}-forward-email-rule-set"
 }
 
-# Add a header to the email and store it in S3
-resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_mkt" {
-  name          = "forward_to_mkt" # rule name
-  rule_set_name = aws_ses_receipt_rule_set.ses_receipt_rule_set.rule_set_name
-  recipients    = [var.mkt_email]
-  enabled       = true #  enabled receipt rules within the active rule set.
-  scan_enabled  = true
-
-  s3_action {
-    bucket_name       = local.bucket_name
-    object_key_prefix = "mkt/"
-    position          = 1
-  }
-
-}
-
-resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_tech" {
-  name          = "forward_to_tech" # rule name
-  rule_set_name = aws_ses_receipt_rule_set.ses_receipt_rule_set.rule_set_name
-  recipients    = [var.tech_email]
-  enabled       = true #  enabled receipt rules within the active rule set.
-  scan_enabled  = true
-
-  s3_action {
-    bucket_name       = local.bucket_name
-    object_key_prefix = "tech/"
-    position          = 1
-  }
-
-}
-
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_dev" {
   name          = "forward_to_dev" # rule name
   rule_set_name = aws_ses_receipt_rule_set.ses_receipt_rule_set.rule_set_name
@@ -66,8 +35,39 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_contact" {
   s3_action {
     bucket_name       = local.bucket_name
     object_key_prefix = "contact/"
-    position          = 1
+    position          = 2
   }
+}
+
+# Add a header to the email and store it in S3
+resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_mkt" {
+  name          = "forward_to_mkt" # rule name
+  rule_set_name = aws_ses_receipt_rule_set.ses_receipt_rule_set.rule_set_name
+  recipients    = [var.mkt_email]
+  enabled       = true #  enabled receipt rules within the active rule set.
+  scan_enabled  = true
+
+  s3_action {
+    bucket_name       = local.bucket_name
+    object_key_prefix = "mkt/"
+    position          = 3
+  }
+
+}
+
+resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_tech" {
+  name          = "forward_to_tech" # rule name
+  rule_set_name = aws_ses_receipt_rule_set.ses_receipt_rule_set.rule_set_name
+  recipients    = [var.tech_email]
+  enabled       = true #  enabled receipt rules within the active rule set.
+  scan_enabled  = true
+
+  s3_action {
+    bucket_name       = local.bucket_name
+    object_key_prefix = "tech/"
+    position          = 4
+  }
+
 }
 
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_event" {
@@ -80,7 +80,7 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_event" {
   s3_action {
     bucket_name       = local.bucket_name
     object_key_prefix = "event/"
-    position          = 1
+    position          = 5
   }
 }
 
@@ -94,7 +94,7 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group1" {
   s3_action {
     bucket_name       = local.bucket_name
     object_key_prefix = "group1/"
-    position          = 1
+    position          = 6
   }
 }
 
@@ -108,10 +108,9 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group2" {
   s3_action {
     bucket_name       = local.bucket_name
     object_key_prefix = "group2/"
-    position          = 1
+    position          = 7
   }
 }
-
 
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group3" {
   name          = "forward_to_group3" # rule name
@@ -123,7 +122,7 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group3" {
   s3_action {
     bucket_name       = local.bucket_name
     object_key_prefix = "group3/"
-    position          = 1
+    position          = 8
   }
 }
 
@@ -137,6 +136,6 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_default" {
   s3_action {
     bucket_name       = local.bucket_name
     object_key_prefix = "default/"
-    position          = 1
+    position          = 9
   }
 }

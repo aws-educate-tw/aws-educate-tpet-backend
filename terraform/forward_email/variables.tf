@@ -47,6 +47,12 @@ variable "dev_email" {
   default     = "dev@aws-educate.tw"
 }
 
+variable "contact_email" {
+  description = "The email address for contact"
+  type        = string
+  default     = "awseducate.cloudambassador@gmail.com"
+}
+
 variable "mkt_email" {
   description = "The email address for mkt"
   type        = string
