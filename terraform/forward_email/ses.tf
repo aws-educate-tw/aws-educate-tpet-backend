@@ -20,15 +20,11 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_mkt" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
+    bucket_name       = local.bucket_name
     object_key_prefix = "mkt/"
     position          = 1
   }
 
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
 }
 
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_tech" {
@@ -39,15 +35,11 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_tech" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
+    bucket_name       = local.bucket_name
     object_key_prefix = "tech/"
     position          = 1
   }
 
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
 }
 
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_dev" {
@@ -58,15 +50,24 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_dev" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
+    bucket_name       = local.bucket_name
     object_key_prefix = "dev/"
     position          = 1
   }
+}
 
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
+resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_contact" {
+  name          = "forward_to_contact" # rule name
+  rule_set_name = aws_ses_receipt_rule_set.ses_receipt_rule_set.rule_set_name
+  recipients    = [var.contact_email]
+  enabled       = true #  enabled receipt rules within the active rule set.
+  scan_enabled  = true
+
+  s3_action {
+    bucket_name       = local.bucket_name
+    object_key_prefix = "contact/"
+    position          = 1
+  }
 }
 
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_event" {
@@ -77,15 +78,10 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_event" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
+    bucket_name       = local.bucket_name
     object_key_prefix = "event/"
     position          = 1
   }
-
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
 }
 
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group1" {
@@ -96,15 +92,10 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group1" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
+    bucket_name       = local.bucket_name
     object_key_prefix = "group1/"
     position          = 1
   }
-
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
 }
 
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group2" {
@@ -115,15 +106,10 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group2" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
+    bucket_name       = local.bucket_name
     object_key_prefix = "group2/"
     position          = 1
   }
-
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
 }
 
 
@@ -135,15 +121,10 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group3" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
+    bucket_name       = local.bucket_name
     object_key_prefix = "group3/"
     position          = 1
   }
-
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
 }
 
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_default" {
@@ -154,13 +135,8 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_default" {
   scan_enabled  = true
 
   s3_action {
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
+    bucket_name       = local.bucket_name
     object_key_prefix = "default/"
     position          = 1
   }
-
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
 }
