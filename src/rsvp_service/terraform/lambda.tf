@@ -65,6 +65,8 @@ module "rsvp_update_lambda" {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "PARTICIPANTS_TABLE" = var.dynamodb_table,
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
     "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
@@ -101,8 +103,9 @@ module "rsvp_update_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
       ]
     }
   }
@@ -171,6 +174,8 @@ module "rsvp_status_query_lambda" {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "PARTICIPANTS_TABLE" = var.dynamodb_table,
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
     "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
@@ -207,8 +212,9 @@ module "rsvp_status_query_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
       ]
     }
   }
@@ -277,6 +283,8 @@ module "campaign_vaildation_lambda" {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "PARTICIPANTS_TABLE" = var.dynamodb_table,
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
     "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
@@ -313,8 +321,9 @@ module "campaign_vaildation_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
       ]
     }
   }
@@ -383,6 +392,8 @@ module "upsert_run_configure_lambda" {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "PARTICIPANTS_TABLE" = var.dynamodb_table,
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
     "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
@@ -419,8 +430,9 @@ module "upsert_run_configure_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
       ]
     }
   }
@@ -489,6 +501,8 @@ module "batch_import_participants_lambda" {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "PARTICIPANTS_TABLE" = var.dynamodb_table,
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
     "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
@@ -525,8 +539,9 @@ module "batch_import_participants_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
       ]
     }
   }
@@ -595,6 +610,8 @@ module "campaigns_dashboard_lambda" {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "PARTICIPANTS_TABLE" = var.dynamodb_table,
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
     "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
@@ -631,8 +648,9 @@ module "campaigns_dashboard_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
       ]
     }
   }
@@ -701,6 +719,8 @@ module "create_campaign_lambda" {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = var.dynamodb_table,
+    "PARTICIPANTS_TABLE" = var.dynamodb_table,
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
     "CAMPAIGNS_TABLE" = var.campaigns_table
   }
 
@@ -737,8 +757,9 @@ module "create_campaign_lambda" {
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_event_lookup",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
       ]
     }
   }

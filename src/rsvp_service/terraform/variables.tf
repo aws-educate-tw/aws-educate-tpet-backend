@@ -18,18 +18,6 @@ variable "domain_name" {
   default     = "aws-educate.tw"
 }
 
-variable "dynamodb_table" {
-  description = "Current service's DynamoDB table name"
-}
-
-variable "campaigns_table" {
-  description = "Campaigns DynamoDB table name"
-}
-
-variable "run_dynamodb_table" {
-  description = "Current service's Run DynamoDB table name"
-}
-
 variable "enable_pitr" {
   description = "Enable Point-In-Time Recovery for DynamoDB tables"
   type        = bool
