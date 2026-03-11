@@ -76,7 +76,7 @@ module "api_gateway" {
       # authorizer_key     = "lambda_authorizer"
 
       integration = {
-        uri                    = module.rsvp_update_lambda.lambda_function_arn
+        uri                    = module.update_rsvp_lambda.lambda_function_arn
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
@@ -93,7 +93,7 @@ module "api_gateway" {
       # authorizer_key     = "lambda_authorizer"
 
       integration = {
-        uri                    = module.rsvp_status_query_lambda.lambda_function_arn
+        uri                    = module.get_rsvp_status_lambda.lambda_function_arn
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
@@ -110,7 +110,7 @@ module "api_gateway" {
       # authorizer_key     = "lambda_authorizer"
 
       integration = {
-        uri                    = module.campaign_vaildation_lambda.lambda_function_arn
+        uri                    = module.varify_campaign_lambda.lambda_function_arn
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
@@ -127,7 +127,7 @@ module "api_gateway" {
       # authorizer_key     = "lambda_authorizer"
 
       integration = {
-        uri                    = module.upsert_run_configure_lambda.lambda_function_arn
+        uri                    = module.upsert_run_configuration_lambda.lambda_function_arn
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
@@ -161,7 +161,7 @@ module "api_gateway" {
       # authorizer_key     = "lambda_authorizer"
 
       integration = {
-        uri                    = module.campaigns_dashboard_lambda.lambda_function_arn
+        uri                    = module.list_campaigns_lambda.lambda_function_arn
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000

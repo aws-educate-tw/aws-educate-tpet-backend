@@ -44,7 +44,7 @@ provider "docker" {
 ####################################
 ####################################
 
-module "rsvp_update_lambda" {
+module "update_rsvp_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
@@ -58,7 +58,7 @@ module "rsvp_update_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri     = module.rsvp_update_docker_image.image_uri
+  image_uri     = module.update_rsvp_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -112,7 +112,7 @@ module "rsvp_update_lambda" {
   }
 }
 
-module "rsvp_update_docker_image" {
+module "update_rsvp_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
@@ -154,7 +154,7 @@ module "rsvp_update_docker_image" {
 ####################################
 ####################################
 
-module "rsvp_status_query_lambda" {
+module "get_rsvp_status_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
@@ -168,7 +168,7 @@ module "rsvp_status_query_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri     = module.rsvp_status_query_docker_image.image_uri
+  image_uri     = module.get_rsvp_status_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -222,7 +222,7 @@ module "rsvp_status_query_lambda" {
   }
 }
 
-module "rsvp_status_query_docker_image" {
+module "get_rsvp_status_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
@@ -264,7 +264,7 @@ module "rsvp_status_query_docker_image" {
 ####################################
 ####################################
 
-module "campaign_vaildation_lambda" {
+module "varify_campaign_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
@@ -278,7 +278,7 @@ module "campaign_vaildation_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri     = module.campaign_vaildation_docker_image.image_uri
+  image_uri     = module.varify_campaign_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -332,7 +332,7 @@ module "campaign_vaildation_lambda" {
   }
 }
 
-module "campaign_vaildation_docker_image" {
+module "varify_campaign_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
@@ -374,7 +374,7 @@ module "campaign_vaildation_docker_image" {
 ####################################
 ####################################
 
-module "upsert_run_configure_lambda" {
+module "upsert_run_configuration_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
@@ -388,7 +388,7 @@ module "upsert_run_configure_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri     = module.upsert_run_configure_docker_image.image_uri
+  image_uri     = module.upsert_run_configuration_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -442,7 +442,7 @@ module "upsert_run_configure_lambda" {
   }
 }
 
-module "upsert_run_configure_docker_image" {
+module "upsert_run_configuration_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
@@ -594,7 +594,7 @@ module "import_participant_docker_image" {
 ####################################
 ####################################
 
-module "campaigns_dashboard_lambda" {
+module "list_campaigns_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
@@ -608,7 +608,7 @@ module "campaigns_dashboard_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri     = module.campaigns_dashboard_docker_image.image_uri
+  image_uri     = module.list_campaigns_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -662,7 +662,7 @@ module "campaigns_dashboard_lambda" {
   }
 }
 
-module "campaigns_dashboard_docker_image" {
+module "list_campaigns_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
