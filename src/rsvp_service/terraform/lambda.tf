@@ -12,12 +12,13 @@ resource "random_string" "this" {
 
 locals {
   source_path                                           = "${path.module}/.."
-  rsvp_update_function_name_and_ecr_repo_name           = "${var.environment}-${var.service_underscore}-rsvp_update-${random_string.this.result}"
-  rsvp_status_query_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-rsvp_status_query-${random_string.this.result}"
-  campaign_vaildation_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-campaign_vaildation-${random_string.this.result}"
-  upsert_run_configure_function_name_and_ecr_repo_name  = "${var.environment}-${var.service_underscore}-upsert_run_configure-${random_string.this.result}"
-  batch_import_participants_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-batch_import_participants-${random_string.this.result}"
-  campaigns_dashboard_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-campaigns_dashboard-${random_string.this.result}"
+  update_rsvp_function_name_and_ecr_repo_name           = "${var.environment}-${var.service_underscore}-update_rsvp-${random_string.this.result}"
+  get_rsvp_status_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-get_rsvp_status-${random_string.this.result}"
+  varify_campaign_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-varify_campaign-${random_string.this.result}"
+  upsert_run_configuration_function_name_and_ecr_repo_name  = "${var.environment}-${var.service_underscore}-upsert_run_configuration-${random_string.this.result}"
+  import_participant_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-import_participant-${random_string.this.result}"
+  list_campaigns_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-list_campaigns-${random_string.this.result}"
+  get_campaign_function_name_and_ecr_repo_name          = "${var.environment}-${var.service_underscore}-get_campaign-${random_string.this.result}"
   create_campaign_function_name_and_ecr_repo_name       = "${var.environment}-${var.service_underscore}-create_campaign-${random_string.this.result}"
   path_include                                      = ["**"]
   path_exclude                                      = ["**/__pycache__/**"]
@@ -38,7 +39,7 @@ provider "docker" {
 ####################################
 ####################################
 ####################################
-# PUT /rsvp ########################
+# PUT /rsvp/{run_id_participant_id} ########################
 ####################################
 ####################################
 ####################################
@@ -47,8 +48,8 @@ module "rsvp_update_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.rsvp_update_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /rsvp"
+  function_name  = local.update_rsvp_function_name_and_ecr_repo_name
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /rsvp/{run_id_participant_id}"
   create_package = false
   timeout        = 30
 
@@ -64,10 +65,10 @@ module "rsvp_update_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = var.dynamodb_table,
-    "PARTICIPANTS_TABLE" = var.dynamodb_table,
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
-    "CAMPAIGNS_TABLE" = var.campaigns_table
+    "DYNAMODB_TABLE"  = "participants",
+    "PARTICIPANTS_TABLE" = "participants",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
   allowed_triggers = {
@@ -102,10 +103,10 @@ module "rsvp_update_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
     }
   }
@@ -117,9 +118,10 @@ module "rsvp_update_docker_image" {
 
   create_ecr_repo      = true
   keep_remotely        = true
+  keep_locally         = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = local.rsvp_update_function_name_and_ecr_repo_name
+  ecr_repo             = local.update_rsvp_function_name_and_ecr_repo_name
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
@@ -138,7 +140,7 @@ module "rsvp_update_docker_image" {
   })
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
-  source_path = "${local.source_path}/rsvp_update/" # Remember to change
+  source_path = "${local.source_path}/update_rsvp/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }
@@ -147,7 +149,7 @@ module "rsvp_update_docker_image" {
 ####################################
 ####################################
 ####################################
-# GET /rsvp ########################
+# GET /rsvp/{run_id_participant_id}/status ########################
 ####################################
 ####################################
 ####################################
@@ -156,8 +158,8 @@ module "rsvp_status_query_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.rsvp_status_query_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp"
+  function_name  = local.get_rsvp_status_function_name_and_ecr_repo_name
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp/{run_id_participant_id}/status"
   create_package = false
   timeout        = 30
 
@@ -173,10 +175,10 @@ module "rsvp_status_query_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = var.dynamodb_table,
-    "PARTICIPANTS_TABLE" = var.dynamodb_table,
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
-    "CAMPAIGNS_TABLE" = var.campaigns_table
+    "DYNAMODB_TABLE"  = "participants",
+    "PARTICIPANTS_TABLE" = "participants",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
   allowed_triggers = {
@@ -211,10 +213,10 @@ module "rsvp_status_query_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
     }
   }
@@ -226,9 +228,10 @@ module "rsvp_status_query_docker_image" {
 
   create_ecr_repo      = true
   keep_remotely        = true
+  keep_locally         = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = local.rsvp_status_query_function_name_and_ecr_repo_name
+  ecr_repo             = local.get_rsvp_status_function_name_and_ecr_repo_name
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
@@ -247,7 +250,7 @@ module "rsvp_status_query_docker_image" {
   })
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
-  source_path = "${local.source_path}/rsvp_status_query/" # Remember to change
+  source_path = "${local.source_path}/get_rsvp_status/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }
@@ -265,7 +268,7 @@ module "campaign_vaildation_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.campaign_vaildation_function_name_and_ecr_repo_name
+  function_name  = local.varify_campaign_function_name_and_ecr_repo_name
   description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /internal/campaign/{event_id}/check"
   create_package = false
   timeout        = 30
@@ -282,10 +285,10 @@ module "campaign_vaildation_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = var.dynamodb_table,
-    "PARTICIPANTS_TABLE" = var.dynamodb_table,
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
-    "CAMPAIGNS_TABLE" = var.campaigns_table
+    "DYNAMODB_TABLE"  = "participants",
+    "PARTICIPANTS_TABLE" = "participants",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
   allowed_triggers = {
@@ -320,10 +323,10 @@ module "campaign_vaildation_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
     }
   }
@@ -335,9 +338,10 @@ module "campaign_vaildation_docker_image" {
 
   create_ecr_repo      = true
   keep_remotely        = true
+  keep_locally         = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = local.campaign_vaildation_function_name_and_ecr_repo_name
+  ecr_repo             = local.varify_campaign_function_name_and_ecr_repo_name
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
@@ -356,7 +360,7 @@ module "campaign_vaildation_docker_image" {
   })
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
-  source_path = "${local.source_path}/campaign_vaildation/" # Remember to change
+  source_path = "${local.source_path}/varify_campaign/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }
@@ -374,7 +378,7 @@ module "upsert_run_configure_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.upsert_run_configure_function_name_and_ecr_repo_name
+  function_name  = local.upsert_run_configuration_function_name_and_ecr_repo_name
   description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /internal/runs/{run_id}"
   create_package = false
   timeout        = 30
@@ -391,10 +395,10 @@ module "upsert_run_configure_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = var.dynamodb_table,
-    "PARTICIPANTS_TABLE" = var.dynamodb_table,
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
-    "CAMPAIGNS_TABLE" = var.campaigns_table
+    "DYNAMODB_TABLE"  = "participants",
+    "PARTICIPANTS_TABLE" = "participants",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
   allowed_triggers = {
@@ -429,10 +433,10 @@ module "upsert_run_configure_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
     }
   }
@@ -444,9 +448,10 @@ module "upsert_run_configure_docker_image" {
 
   create_ecr_repo      = true
   keep_remotely        = true
+  keep_locally         = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = local.upsert_run_configure_function_name_and_ecr_repo_name
+  ecr_repo             = local.upsert_run_configuration_function_name_and_ecr_repo_name
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
@@ -465,7 +470,7 @@ module "upsert_run_configure_docker_image" {
   })
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
-  source_path = "${local.source_path}/upsert_run_configure/" # Remember to change
+  source_path = "${local.source_path}/upsert_run_configuration/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }
@@ -474,17 +479,17 @@ module "upsert_run_configure_docker_image" {
 ####################################
 ####################################
 ####################################
-# POST /internal/runs/{run_id}/participants/batch
+# POST /internal/runs/{run_id}/participants
 ####################################
 ####################################
 ####################################
 
-module "batch_import_participants_lambda" {
+module "import_participant_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.batch_import_participants_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /internal/runs/{run_id}/participants/batch"
+  function_name  = local.import_participant_function_name_and_ecr_repo_name
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /internal/runs/{run_id}/participants"
   create_package = false
   timeout        = 30
 
@@ -493,17 +498,17 @@ module "batch_import_participants_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri     = module.batch_import_participants_docker_image.image_uri
+  image_uri     = module.import_participant_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = var.dynamodb_table,
-    "PARTICIPANTS_TABLE" = var.dynamodb_table,
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
-    "CAMPAIGNS_TABLE" = var.campaigns_table
+    "DYNAMODB_TABLE"  = "participants",
+    "PARTICIPANTS_TABLE" = "participants",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
   allowed_triggers = {
@@ -538,24 +543,25 @@ module "batch_import_participants_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
     }
   }
 }
 
-module "batch_import_participants_docker_image" {
+module "import_participant_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
   create_ecr_repo      = true
   keep_remotely        = true
+  keep_locally         = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = local.batch_import_participants_function_name_and_ecr_repo_name
+  ecr_repo             = local.import_participant_function_name_and_ecr_repo_name
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
@@ -574,7 +580,7 @@ module "batch_import_participants_docker_image" {
   })
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
-  source_path = "${local.source_path}/batch_import_participants/" # Remember to change
+  source_path = "${local.source_path}/import_participant/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }
@@ -592,7 +598,7 @@ module "campaigns_dashboard_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.campaigns_dashboard_function_name_and_ecr_repo_name
+  function_name  = local.list_campaigns_function_name_and_ecr_repo_name
   description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /campaigns"
   create_package = false
   timeout        = 30
@@ -609,10 +615,10 @@ module "campaigns_dashboard_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = var.dynamodb_table,
-    "PARTICIPANTS_TABLE" = var.dynamodb_table,
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
-    "CAMPAIGNS_TABLE" = var.campaigns_table
+    "DYNAMODB_TABLE"  = "participants",
+    "PARTICIPANTS_TABLE" = "participants",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
   allowed_triggers = {
@@ -647,10 +653,10 @@ module "campaigns_dashboard_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
     }
   }
@@ -662,9 +668,10 @@ module "campaigns_dashboard_docker_image" {
 
   create_ecr_repo      = true
   keep_remotely        = true
+  keep_locally         = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = local.campaigns_dashboard_function_name_and_ecr_repo_name
+  ecr_repo             = local.list_campaigns_function_name_and_ecr_repo_name
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
@@ -683,7 +690,7 @@ module "campaigns_dashboard_docker_image" {
   })
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
-  source_path = "${local.source_path}/campaigns_dashboard/" # Remember to change
+  source_path = "${local.source_path}/list_campaigns/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }
@@ -692,17 +699,17 @@ module "campaigns_dashboard_docker_image" {
 ####################################
 ####################################
 ####################################
-# POST /campaign
+# GET /campaigns/{campaign_id}
 ####################################
 ####################################
 ####################################
 
-module "create_campaign_lambda" {
+module "get_campaign_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.create_campaign_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /campaign"
+  function_name  = local.get_campaign_function_name_and_ecr_repo_name
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /campaigns/{campaign_id}"
   create_package = false
   timeout        = 30
 
@@ -711,17 +718,17 @@ module "create_campaign_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri     = module.create_campaign_docker_image.image_uri
+  image_uri     = module.get_campaign_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = var.dynamodb_table,
-    "PARTICIPANTS_TABLE" = var.dynamodb_table,
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = var.run_dynamodb_table,
-    "CAMPAIGNS_TABLE" = var.campaigns_table
+    "DYNAMODB_TABLE"  = "participants",
+    "PARTICIPANTS_TABLE" = "participants",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
   allowed_triggers = {
@@ -756,10 +763,120 @@ module "create_campaign_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.dynamodb_table}/index/gsi_campaign_participant_uniq_handle_created_at",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.campaigns_table}",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/${var.run_dynamodb_table}"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
+      ]
+    }
+  }
+}
+
+module "get_campaign_docker_image" {
+  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version = "7.7.0"
+
+  create_ecr_repo      = true
+  keep_remotely        = true
+  keep_locally         = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = local.get_campaign_function_name_and_ecr_repo_name
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
+  source_path = "${local.source_path}/get_campaign/" # Remember to change
+  triggers = {
+    dir_sha = local.dir_sha
+  }
+}
+
+####################################
+####################################
+####################################
+# POST /campaigns
+####################################
+####################################
+####################################
+
+module "create_campaign_lambda" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "7.7.0"
+
+  function_name  = local.create_campaign_function_name_and_ecr_repo_name
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /campaigns"
+  create_package = false
+  timeout        = 30
+
+  ##################
+  # Container Image
+  ##################
+  package_type  = "Image"
+  architectures = [var.lambda_architecture]
+  image_uri     = module.create_campaign_docker_image.image_uri
+
+  publish = true # Whether to publish creation/change as new Lambda Function Version.
+
+  environment_variables = {
+    "ENVIRONMENT"     = var.environment,
+    "SERVICE"         = var.service_underscore,
+    "DYNAMODB_TABLE"  = "participants",
+    "PARTICIPANTS_TABLE" = "participants",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "CAMPAIGNS_TABLE" = "Campaigns"
+  }
+
+  allowed_triggers = {
+    AllowExecutionFromAPIGateway = {
+      service    = "apigateway"
+      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+    }
+  }
+
+  tags = {
+    "Terraform"   = "true",
+    "Environment" = var.environment,
+    "Service"     = var.service_underscore
+  }
+
+  ######################
+  # Additional policies
+  ######################
+
+  attach_policy_statements = true
+  policy_statements = {
+    dynamodb_crud = {
+      effect = "Allow",
+      actions = [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+      ],
+      resources = [
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
     }
   }
@@ -771,6 +888,7 @@ module "create_campaign_docker_image" {
 
   create_ecr_repo      = true
   keep_remotely        = true
+  keep_locally         = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
   ecr_repo             = local.create_campaign_function_name_and_ecr_repo_name

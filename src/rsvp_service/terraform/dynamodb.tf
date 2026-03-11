@@ -1,5 +1,5 @@
 resource "aws_dynamodb_table" "campaigns" {
-  name         = "campaigns"
+  name         = "Campaigns"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "campaign_id"
 
@@ -15,7 +15,7 @@ resource "aws_dynamodb_table" "campaigns" {
   }
 
   tags = {
-    Name = var.campaigns_table
+    Name = "Campaigns"
   }
 }
 
@@ -42,7 +42,7 @@ resource "aws_dynamodb_table" "runs_campaigns_mapping" {
   }
 
   tags = {
-    Name = var.run_dynamodb_table
+    Name = "runs_campaigns_mapping"
   }
 }
 
@@ -86,6 +86,6 @@ resource "aws_dynamodb_table" "participants" {
   }
 
   tags = {
-    Name = var.dynamodb_table
+    Name = "participants"
   }
 }

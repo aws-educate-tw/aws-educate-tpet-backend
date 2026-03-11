@@ -18,6 +18,7 @@ variable "domain_name" {
   default     = "aws-educate.tw"
 }
 
+
 variable "enable_pitr" {
   description = "Enable Point-In-Time Recovery for DynamoDB tables"
   type        = bool

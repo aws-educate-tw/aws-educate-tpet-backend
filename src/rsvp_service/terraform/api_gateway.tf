@@ -66,7 +66,7 @@ module "api_gateway" {
 
   # Routes & Integration(s)
   routes = {
-    "PUT /rsvp" = {
+    "PUT /rsvp/{run_id_participant_id}" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -83,7 +83,7 @@ module "api_gateway" {
       }
     }
 
-    "GET /rsvp" = {
+    "GET /rsvp/{run_id_participant_id}/status" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -134,7 +134,7 @@ module "api_gateway" {
       }
     }
 
-    "POST /internal/runs/{run_id}/participants/batch" = {
+    "POST /internal/runs/{run_id}/participants" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -144,7 +144,7 @@ module "api_gateway" {
       # authorizer_key     = "lambda_authorizer"
 
       integration = {
-        uri                    = module.batch_import_participants_lambda.lambda_function_arn
+        uri                    = module.import_participant_lambda.lambda_function_arn
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
@@ -168,7 +168,24 @@ module "api_gateway" {
       }
     }
 
-    "POST /campaign" = {
+    "GET /campaigns/{campaign_id}" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+
+      # TODO: Re-enable authorizer after auth flow is ready
+      # authorization_type = "CUSTOM"
+      # authorizer_key     = "lambda_authorizer"
+
+      integration = {
+        uri                    = module.get_campaign_lambda.lambda_function_arn
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
+
+    "POST /campaigns" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
