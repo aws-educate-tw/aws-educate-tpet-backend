@@ -102,5 +102,3 @@ resource "aws_dynamodb_table" "participant" {
     Name = "participant"
   }
 }
-
-
