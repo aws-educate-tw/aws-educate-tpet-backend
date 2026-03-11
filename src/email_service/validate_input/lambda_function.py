@@ -472,6 +472,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         subject = body.get("subject")
         display_name = body.get("display_name", DEFAULT_DISPLAY_NAME)
         run_id = body.get("run_id")
+        campaign_id = body.get("campaign_id")
         attachment_file_ids = body.get("attachment_file_ids", [])
         is_generate_certificate = body.get("is_generate_certificate", False)
         reply_to = body.get("reply_to", DEFAULT_REPLY_TO)
@@ -583,6 +584,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "cc": cc,
                 "bcc": bcc,
                 "access_token": access_token,
+                "campaign_id": campaign_id,
             }
 
             try:
@@ -714,6 +716,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "recipient_source": recipient_source,
             "run_type": run_type,
             "run_id": run_id,
+            "campaign_id": campaign_id,
             "template_file_id": template_file_id,
             "spreadsheet_file_id": (
                 spreadsheet_file_id

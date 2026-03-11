@@ -36,7 +36,10 @@ CREATE TABLE IF NOT EXISTS RUNS (
     success_email_count INTEGER NOT NULL DEFAULT 0,
     failed_email_count INTEGER NOT NULL DEFAULT 0,
     template_file JSONB NOT NULL,
-    template_file_id VARCHAR(255) NOT NULL
+    template_file_id VARCHAR(255) NOT NULL,
+
+    --Add campaign_id
+    campaign_id VARCHAR(255)
 );
 
 -- Create EMAILS table with foreign key reference to RUNS
