@@ -34,7 +34,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         body = json.loads(event.get("body", "{}"))
         run_type = body.get("run_type")
         recipient_source = body.get("recipient_source", "DIRECT")
-        campaign_id = body.get("campaign_id") 
+        campaign_id = body.get("campaign_id")
 
         # Validate required fields
         if not run_type:
