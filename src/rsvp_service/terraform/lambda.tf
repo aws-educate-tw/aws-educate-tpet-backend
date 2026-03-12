@@ -14,7 +14,7 @@ locals {
   source_path                                           = "${path.module}/.."
   update_rsvp_function_name_and_ecr_repo_name           = "${var.environment}-${var.service_underscore}-update_rsvp-${random_string.this.result}"
   get_rsvp_status_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-get_rsvp_status-${random_string.this.result}"
-  varify_campaign_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-varify_campaign-${random_string.this.result}"
+  verify_campaign_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-verify_campaign-${random_string.this.result}"
   upsert_run_configuration_function_name_and_ecr_repo_name  = "${var.environment}-${var.service_underscore}-upsert_run_configuration-${random_string.this.result}"
   import_participant_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-import_participant-${random_string.this.result}"
   list_campaigns_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-list_campaigns-${random_string.this.result}"
@@ -264,11 +264,11 @@ module "get_rsvp_status_docker_image" {
 ####################################
 ####################################
 
-module "varify_campaign_lambda" {
+module "verify_campaign_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "7.7.0"
 
-  function_name  = local.varify_campaign_function_name_and_ecr_repo_name
+  function_name  = local.verify_campaign_function_name_and_ecr_repo_name
   description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /internal/campaign/{event_id}/check"
   create_package = false
   timeout        = 30
@@ -278,7 +278,7 @@ module "varify_campaign_lambda" {
   ##################
   package_type  = "Image"
   architectures = [var.lambda_architecture]
-  image_uri     = module.varify_campaign_docker_image.image_uri
+  image_uri     = module.verify_campaign_docker_image.image_uri
 
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
@@ -332,7 +332,7 @@ module "varify_campaign_lambda" {
   }
 }
 
-module "varify_campaign_docker_image" {
+module "verify_campaign_docker_image" {
   source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
   version = "7.7.0"
 
@@ -341,7 +341,7 @@ module "varify_campaign_docker_image" {
   keep_locally         = true
   use_image_tag        = false
   image_tag_mutability = "MUTABLE"
-  ecr_repo             = local.varify_campaign_function_name_and_ecr_repo_name
+  ecr_repo             = local.verify_campaign_function_name_and_ecr_repo_name
   ecr_repo_lifecycle_policy = jsonencode({
     "rules" : [
       {
@@ -360,7 +360,7 @@ module "varify_campaign_docker_image" {
   })
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
-  source_path = "${local.source_path}/varify_campaign/" # Remember to change
+  source_path = "${local.source_path}/verify_campaign/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }

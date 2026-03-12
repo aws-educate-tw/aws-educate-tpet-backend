@@ -110,7 +110,7 @@ module "api_gateway" {
       # authorizer_key     = "lambda_authorizer"
 
       integration = {
-        uri                    = module.varify_campaign_lambda.lambda_function_arn
+        uri                    = module.verify_campaign_lambda.lambda_function_arn
         type                   = "AWS_PROXY"
         payload_format_version = "1.0"
         timeout_milliseconds   = 29000
