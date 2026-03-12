@@ -30,5 +30,3 @@ resource "aws_dynamodb_table" "campaign" {
     Name = "campaign"
   }
 }
-
-
