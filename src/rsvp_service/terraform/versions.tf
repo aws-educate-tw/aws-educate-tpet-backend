@@ -1,9 +1,9 @@
 terraform {
-  required_version = "~> 1.9.0"
+  required_version = "~> 1.14.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.89.0, < 6.0.0"
+      version = ">= 6.36.0, < 7.0.0"
     }
 
     local = {
@@ -13,7 +13,7 @@ terraform {
 
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 3.0.2"
+      version = "~> 3.6.2"
     }
   }
 }

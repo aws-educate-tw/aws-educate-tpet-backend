@@ -1,5 +1,5 @@
 resource "aws_dynamodb_table" "campaigns" {
-  name         = "Campaigns"
+  name         = "campaign"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "campaign_id"
 
@@ -15,7 +15,7 @@ resource "aws_dynamodb_table" "campaigns" {
   }
 
   tags = {
-    Name = "Campaigns"
+    Name = "campaign"
   }
 }
 
@@ -47,7 +47,7 @@ resource "aws_dynamodb_table" "runs_campaigns_mapping" {
 }
 
 resource "aws_dynamodb_table" "participants" {
-  name         = "participants"
+  name         = "participant"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "run_id"
   range_key    = "participant_id"
@@ -73,7 +73,7 @@ resource "aws_dynamodb_table" "participants" {
   }
 
   global_secondary_index {
-    name            = "gsi_campaign_participant_uniq_handle_created_at"
+    name            = "participant-campaign_participant_uniq_handle-created_at-gsi"
     hash_key        = "campaign_participant_uniq_handle"
     range_key       = "created_at"
     projection_type = "ALL"
@@ -86,6 +86,6 @@ resource "aws_dynamodb_table" "participants" {
   }
 
   tags = {
-    Name = "participants"
+    Name = "participant"
   }
 }

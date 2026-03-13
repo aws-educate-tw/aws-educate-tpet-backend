@@ -65,8 +65,8 @@ module "update_rsvp_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participants",
-    "PARTICIPANTS_TABLE" = "participants",
+    "DYNAMODB_TABLE"  = "participant",
+    "PARTICIPANTS_TABLE" = "participant",
     "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
@@ -103,8 +103,8 @@ module "update_rsvp_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
@@ -175,8 +175,8 @@ module "get_rsvp_status_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participants",
-    "PARTICIPANTS_TABLE" = "participants",
+    "DYNAMODB_TABLE"  = "participant",
+    "PARTICIPANTS_TABLE" = "participant",
     "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
@@ -213,8 +213,8 @@ module "get_rsvp_status_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
@@ -259,7 +259,7 @@ module "get_rsvp_status_docker_image" {
 ####################################
 ####################################
 ####################################
-# GET /internal/campaign/{event_id}/check
+# GET /internal/campaign/{campaign_id}/check
 ####################################
 ####################################
 ####################################
@@ -285,8 +285,8 @@ module "verify_campaign_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participants",
-    "PARTICIPANTS_TABLE" = "participants",
+    "DYNAMODB_TABLE"  = "participant",
+    "PARTICIPANTS_TABLE" = "participant",
     "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
@@ -323,8 +323,8 @@ module "verify_campaign_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
@@ -395,8 +395,8 @@ module "upsert_run_configuration_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participants",
-    "PARTICIPANTS_TABLE" = "participants",
+    "DYNAMODB_TABLE"  = "participant",
+    "PARTICIPANTS_TABLE" = "participant",
     "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
@@ -433,8 +433,8 @@ module "upsert_run_configuration_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
@@ -505,8 +505,8 @@ module "import_participant_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participants",
-    "PARTICIPANTS_TABLE" = "participants",
+    "DYNAMODB_TABLE"  = "participant",
+    "PARTICIPANTS_TABLE" = "participant",
     "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
@@ -543,8 +543,8 @@ module "import_participant_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
@@ -615,8 +615,8 @@ module "list_campaigns_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participants",
-    "PARTICIPANTS_TABLE" = "participants",
+    "DYNAMODB_TABLE"  = "participant",
+    "PARTICIPANTS_TABLE" = "participant",
     "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
@@ -653,8 +653,8 @@ module "list_campaigns_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
@@ -725,8 +725,8 @@ module "get_campaign_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participants",
-    "PARTICIPANTS_TABLE" = "participants",
+    "DYNAMODB_TABLE"  = "participant",
+    "PARTICIPANTS_TABLE" = "participant",
     "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
@@ -763,8 +763,8 @@ module "get_campaign_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]
@@ -835,8 +835,8 @@ module "create_campaign_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participants",
-    "PARTICIPANTS_TABLE" = "participants",
+    "DYNAMODB_TABLE"  = "participant",
+    "PARTICIPANTS_TABLE" = "participant",
     "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
@@ -873,8 +873,8 @@ module "create_campaign_lambda" {
         "dynamodb:UpdateItem"
       ],
       resources = [
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participants/index/gsi_campaign_participant_uniq_handle_created_at",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
       ]

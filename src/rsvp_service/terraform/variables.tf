@@ -35,15 +35,7 @@ variable "lambda_architecture" {
   default     = "x86_64"
 }
 
-variable "database_name" {
-  description = "RDS Aurora PostgreSQL Database name"
-  type        = string
-}
 
-variable "rds_engine_version" {
-  description = "RDS Aurora PostgreSQL engine version"
-  type        = string
-}
 
 
 variable "bucket_name" {

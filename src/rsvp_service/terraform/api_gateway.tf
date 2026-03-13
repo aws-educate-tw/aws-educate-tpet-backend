@@ -30,7 +30,7 @@ data "aws_ssm_parameter" "lambda_authorizer_lambda_invoke_arn" {
 
 module "api_gateway" {
   source  = "terraform-aws-modules/apigateway-v2/aws"
-  version = "5.0.0"
+  version = "6.1.0"
 
   description = "RSVP service api gateway in ${var.environment} environment"
   name        = "${var.environment}-${var.service_underscore}"
@@ -100,7 +100,7 @@ module "api_gateway" {
       }
     }
 
-    "GET /internal/campaign/{event_id}/check" = {
+    "GET /internal/campaign/{campaign_id}/check" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
