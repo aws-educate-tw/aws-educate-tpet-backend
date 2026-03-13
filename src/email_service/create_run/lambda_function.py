@@ -34,7 +34,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         body = json.loads(event.get("body", "{}"))
         run_type = body.get("run_type")
         recipient_source = body.get("recipient_source", "DIRECT")
-        campaign_id = body.get("campaign_id")
+    
 
         # Validate required fields
         if not run_type:
@@ -91,7 +91,6 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             "run_id": str(uuid.uuid4()),
             "run_type": run_type,
             "recipient_source": recipient_source,
-            "campaign_id": campaign_id,
             "expected_email_send_count": 0,
             "success_email_count": 0,
             "failed_email_count": 0,
