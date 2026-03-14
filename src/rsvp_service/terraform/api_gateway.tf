@@ -66,7 +66,7 @@ module "api_gateway" {
 
   # Routes & Integration(s)
   routes = {
-    "PUT /rsvp/{run_id_participant_id}" = {
+    "PUT /rsvp-service/rsvp/{run_id_participant_id}" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -83,7 +83,7 @@ module "api_gateway" {
       }
     }
 
-    "GET /rsvp/{run_id_participant_id}/status" = {
+    "GET /rsvp-service/rsvp/{run_id_participant_id}/status" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -100,7 +100,7 @@ module "api_gateway" {
       }
     }
 
-    "GET /internal/campaign/{campaign_id}/check" = {
+    "GET /rsvp-service/internal/campaign/{campaign_id}/check" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -117,7 +117,7 @@ module "api_gateway" {
       }
     }
 
-    "PUT /internal/runs/{run_id}" = {
+    "PUT /rsvp-service/internal/campaign-runs/{campaign_id_run_id}" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -134,7 +134,7 @@ module "api_gateway" {
       }
     }
 
-    "POST /internal/runs/{run_id}/participants" = {
+    "POST /rsvp-service/internal/runs/{run_id}/participants" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -151,7 +151,7 @@ module "api_gateway" {
       }
     }
 
-    "GET /campaigns" = {
+    "GET /rsvp-service/campaigns" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -168,7 +168,7 @@ module "api_gateway" {
       }
     }
 
-    "GET /campaigns/{campaign_id}" = {
+    "GET /rsvp-service/campaigns/{campaign_id}" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
@@ -185,7 +185,7 @@ module "api_gateway" {
       }
     }
 
-    "POST /campaigns" = {
+    "POST /rsvp-service/campaigns" = {
       detailed_metrics_enabled = true
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40

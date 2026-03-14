@@ -39,7 +39,7 @@ provider "docker" {
 ####################################
 ####################################
 ####################################
-# PUT /rsvp/{run_id_participant_id} ########################
+# PUT /rsvp-service/rsvp/{run_id_participant_id} ########################
 ####################################
 ####################################
 ####################################
@@ -49,7 +49,7 @@ module "update_rsvp_lambda" {
   version = "7.7.0"
 
   function_name  = local.update_rsvp_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /rsvp/{run_id_participant_id}"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /rsvp-service/rsvp/{run_id_participant_id}"
   create_package = false
   timeout        = 30
 
@@ -67,7 +67,7 @@ module "update_rsvp_lambda" {
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = "participant",
     "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
@@ -106,7 +106,7 @@ module "update_rsvp_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
   }
@@ -149,7 +149,7 @@ module "update_rsvp_docker_image" {
 ####################################
 ####################################
 ####################################
-# GET /rsvp/{run_id_participant_id}/status ########################
+# GET /rsvp-service/rsvp/{run_id_participant_id}/status ########################
 ####################################
 ####################################
 ####################################
@@ -159,7 +159,7 @@ module "get_rsvp_status_lambda" {
   version = "7.7.0"
 
   function_name  = local.get_rsvp_status_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp/{run_id_participant_id}/status"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp-service/rsvp/{run_id_participant_id}/status"
   create_package = false
   timeout        = 30
 
@@ -177,7 +177,7 @@ module "get_rsvp_status_lambda" {
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = "participant",
     "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
@@ -216,7 +216,7 @@ module "get_rsvp_status_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
   }
@@ -259,7 +259,7 @@ module "get_rsvp_status_docker_image" {
 ####################################
 ####################################
 ####################################
-# GET /internal/campaign/{campaign_id}/check
+# GET /rsvp-service/internal/campaign/{campaign_id}/check
 ####################################
 ####################################
 ####################################
@@ -269,7 +269,7 @@ module "verify_campaign_lambda" {
   version = "7.7.0"
 
   function_name  = local.verify_campaign_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /internal/campaign/{event_id}/check"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp-service/internal/campaign/{campaign_id}/check"
   create_package = false
   timeout        = 30
 
@@ -287,7 +287,7 @@ module "verify_campaign_lambda" {
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = "participant",
     "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
@@ -326,7 +326,7 @@ module "verify_campaign_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
   }
@@ -369,7 +369,7 @@ module "verify_campaign_docker_image" {
 ####################################
 ####################################
 ####################################
-# PUT /internal/runs/{run_id}
+# PUT /rsvp-service/internal/campaign-runs/{campaign_id_run_id}
 ####################################
 ####################################
 ####################################
@@ -379,7 +379,7 @@ module "upsert_run_configuration_lambda" {
   version = "7.7.0"
 
   function_name  = local.upsert_run_configuration_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /internal/runs/{run_id}"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /rsvp-service/internal/campaign-runs/{campaign_id_run_id}"
   create_package = false
   timeout        = 30
 
@@ -397,7 +397,7 @@ module "upsert_run_configuration_lambda" {
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = "participant",
     "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
@@ -436,7 +436,7 @@ module "upsert_run_configuration_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
   }
@@ -479,7 +479,7 @@ module "upsert_run_configuration_docker_image" {
 ####################################
 ####################################
 ####################################
-# POST /internal/runs/{run_id}/participants
+# POST /rsvp-service/internal/runs/{run_id}/participants/
 ####################################
 ####################################
 ####################################
@@ -489,7 +489,7 @@ module "import_participant_lambda" {
   version = "7.7.0"
 
   function_name  = local.import_participant_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /internal/runs/{run_id}/participants"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /rsvp-service/internal/runs/{run_id}/participants/"
   create_package = false
   timeout        = 30
 
@@ -507,7 +507,7 @@ module "import_participant_lambda" {
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = "participant",
     "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
@@ -546,7 +546,7 @@ module "import_participant_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
   }
@@ -589,7 +589,7 @@ module "import_participant_docker_image" {
 ####################################
 ####################################
 ####################################
-# GET /campaigns
+# GET /rsvp-service/campaigns
 ####################################
 ####################################
 ####################################
@@ -599,7 +599,7 @@ module "list_campaigns_lambda" {
   version = "7.7.0"
 
   function_name  = local.list_campaigns_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /campaigns"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp-service/campaigns"
   create_package = false
   timeout        = 30
 
@@ -617,7 +617,7 @@ module "list_campaigns_lambda" {
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = "participant",
     "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
@@ -656,7 +656,7 @@ module "list_campaigns_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
   }
@@ -699,7 +699,7 @@ module "list_campaigns_docker_image" {
 ####################################
 ####################################
 ####################################
-# GET /campaigns/{campaign_id}
+# GET /rsvp-service/campaigns/{campaign_id}
 ####################################
 ####################################
 ####################################
@@ -709,7 +709,7 @@ module "get_campaign_lambda" {
   version = "7.7.0"
 
   function_name  = local.get_campaign_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /campaigns/{campaign_id}"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp-service/campaigns/{campaign_id}"
   create_package = false
   timeout        = 30
 
@@ -727,7 +727,7 @@ module "get_campaign_lambda" {
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = "participant",
     "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
@@ -766,7 +766,7 @@ module "get_campaign_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
   }
@@ -809,7 +809,7 @@ module "get_campaign_docker_image" {
 ####################################
 ####################################
 ####################################
-# POST /campaigns
+# POST /rsvp-service/campaigns
 ####################################
 ####################################
 ####################################
@@ -819,7 +819,7 @@ module "create_campaign_lambda" {
   version = "7.7.0"
 
   function_name  = local.create_campaign_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /campaigns"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /rsvp-service/campaigns"
   create_package = false
   timeout        = 30
 
@@ -837,7 +837,7 @@ module "create_campaign_lambda" {
     "SERVICE"         = var.service_underscore,
     "DYNAMODB_TABLE"  = "participant",
     "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "runs_campaigns_mapping",
+    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
     "CAMPAIGNS_TABLE" = "Campaigns"
   }
 
@@ -876,7 +876,7 @@ module "create_campaign_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/runs_campaigns_mapping"
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
   }
