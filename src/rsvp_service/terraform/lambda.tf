@@ -39,7 +39,7 @@ provider "docker" {
 ####################################
 ####################################
 ####################################
-# PUT /rsvp-service/rsvp/{run_id_participant_id} ########################
+# PUT /rsvp/{run_id_participant_id} ########################
 ####################################
 ####################################
 ####################################
@@ -49,7 +49,7 @@ module "update_rsvp_lambda" {
   version = "7.7.0"
 
   function_name  = local.update_rsvp_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /rsvp-service/rsvp/{run_id_participant_id}"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /rsvp/{run_id_participant_id}"
   create_package = false
   timeout        = 30
 
@@ -149,7 +149,7 @@ module "update_rsvp_docker_image" {
 ####################################
 ####################################
 ####################################
-# GET /rsvp-service/rsvp/{run_id_participant_id}/status ########################
+# GET /rsvp/{run_id_participant_id}/status ########################
 ####################################
 ####################################
 ####################################
@@ -159,7 +159,7 @@ module "get_rsvp_status_lambda" {
   version = "7.7.0"
 
   function_name  = local.get_rsvp_status_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp-service/rsvp/{run_id_participant_id}/status"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp/{run_id_participant_id}/status"
   create_package = false
   timeout        = 30
 
@@ -259,7 +259,7 @@ module "get_rsvp_status_docker_image" {
 ####################################
 ####################################
 ####################################
-# GET /rsvp-service/internal/campaign/{campaign_id}/check
+# GET /internal/campaign/{campaign_id}/check
 ####################################
 ####################################
 ####################################
@@ -269,7 +269,7 @@ module "verify_campaign_lambda" {
   version = "7.7.0"
 
   function_name  = local.verify_campaign_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp-service/internal/campaign/{campaign_id}/check"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /internal/campaign/{campaign_id}/check"
   create_package = false
   timeout        = 30
 
@@ -369,7 +369,7 @@ module "verify_campaign_docker_image" {
 ####################################
 ####################################
 ####################################
-# PUT /rsvp-service/internal/campaign-runs/{campaign_id_run_id}
+# PUT /internal/campaign-runs/{campaign_id_run_id}
 ####################################
 ####################################
 ####################################
@@ -379,7 +379,7 @@ module "upsert_run_configuration_lambda" {
   version = "7.7.0"
 
   function_name  = local.upsert_run_configuration_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /rsvp-service/internal/campaign-runs/{campaign_id_run_id}"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PUT /internal/campaign-runs/{campaign_id_run_id}"
   create_package = false
   timeout        = 30
 
@@ -479,7 +479,7 @@ module "upsert_run_configuration_docker_image" {
 ####################################
 ####################################
 ####################################
-# POST /rsvp-service/internal/runs/{run_id}/participants/
+# POST /internal/runs/{run_id}/participants/
 ####################################
 ####################################
 ####################################
@@ -489,7 +489,7 @@ module "import_participant_lambda" {
   version = "7.7.0"
 
   function_name  = local.import_participant_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /rsvp-service/internal/runs/{run_id}/participants/"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /internal/runs/{run_id}/participants/"
   create_package = false
   timeout        = 30
 
@@ -589,7 +589,7 @@ module "import_participant_docker_image" {
 ####################################
 ####################################
 ####################################
-# GET /rsvp-service/campaigns
+# GET /campaigns
 ####################################
 ####################################
 ####################################
@@ -599,7 +599,7 @@ module "list_campaigns_lambda" {
   version = "7.7.0"
 
   function_name  = local.list_campaigns_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp-service/campaigns"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /campaigns"
   create_package = false
   timeout        = 30
 
@@ -699,7 +699,7 @@ module "list_campaigns_docker_image" {
 ####################################
 ####################################
 ####################################
-# GET /rsvp-service/campaigns/{campaign_id}
+# GET /campaigns/{campaign_id}
 ####################################
 ####################################
 ####################################
@@ -709,7 +709,7 @@ module "get_campaign_lambda" {
   version = "7.7.0"
 
   function_name  = local.get_campaign_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /rsvp-service/campaigns/{campaign_id}"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: GET /campaigns/{campaign_id}"
   create_package = false
   timeout        = 30
 
@@ -809,7 +809,7 @@ module "get_campaign_docker_image" {
 ####################################
 ####################################
 ####################################
-# POST /rsvp-service/campaigns
+# POST /campaigns
 ####################################
 ####################################
 ####################################
@@ -819,7 +819,7 @@ module "create_campaign_lambda" {
   version = "7.7.0"
 
   function_name  = local.create_campaign_function_name_and_ecr_repo_name
-  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /rsvp-service/campaigns"
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: POST /campaigns"
   create_package = false
   timeout        = 30
 

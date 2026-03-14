@@ -47,12 +47,12 @@ api_gateway_origins = [
   {
     # RSVP Service - prod
     domain_name  = "prod-rsvp-service-internal-api-tpet.aws-educate.tw"
-    path_pattern = "/prod/*rsvp*"
+    path_pattern = "/rsvp-service/prod/*"
   },
   {
     # RSVP Service - dev
     domain_name  = "dev-rsvp-service-internal-api-tpet.aws-educate.tw"
-    path_pattern = "/dev/*rsvp*"
+    path_pattern = "/rsvp-service/dev/*"
   },
   {
     # Email Service - prod
