@@ -19,8 +19,8 @@ resource "aws_dynamodb_table" "campaigns" {
   }
 }
 
-resource "aws_dynamodb_table" "runs_campaigns_mapping" {
-  name         = "runs_campaigns_mapping"
+resource "aws_dynamodb_table" "campaign_run" {
+  name         = "campaign_run"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "campaign_id"
   range_key    = "run_id"
@@ -42,7 +42,7 @@ resource "aws_dynamodb_table" "runs_campaigns_mapping" {
   }
 
   tags = {
-    Name = "runs_campaigns_mapping"
+    Name = "campaign_run"
   }
 }
 
