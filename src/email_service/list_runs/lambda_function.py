@@ -4,6 +4,7 @@ import math  # Added for math.ceil
 
 from botocore.exceptions import ClientError
 from run_repository import RunRepository
+from run_type_enum import RunType
 
 # Removed unused time_util import
 
@@ -50,15 +51,16 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
             limit = 20
 
         # Validate run_type
+        valid_run_types = [rt.value for rt in RunType]
         if run_type:
             run_type = run_type.upper()
-            if run_type not in ["RSVP", "WEBHOOK"]:
+            if run_type not in valid_run_types:
                 logger.error("Invalid run_type parameter: %s", run_type)
                 return {
                     "statusCode": 400,
                     "body": json.dumps(
                         {
-                            "message": "Invalid run_type. Allowed values are 'RSVP', 'WEBHOOK'."
+                            "message": f"Invalid run_type. Allowed values are {[e.value for e in RunType]}."
                         }
                     ),
                 }
