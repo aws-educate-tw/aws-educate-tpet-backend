@@ -33,6 +33,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
         created_year: str | None = params.get("created_year", None)
         # Add any other filter parameters the user might send, e.g. sender_id
         sender_id: str | None = params.get("sender_id", None)
+        campaign_id: str | None = params.get("campaign_id", None)
 
         if sort_order not in ["ASC", "DESC"]:
             logger.warning(
@@ -48,6 +49,20 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
             logger.warning("Invalid limit %d received, defaulting to 20.", limit)
             limit = 20
 
+        # Validate run_type
+        if run_type:
+            run_type = run_type.upper()
+            if run_type not in ["RSVP", "WEBHOOK"]:
+                logger.error("Invalid run_type parameter: %s", run_type)
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps(
+                        {
+                            "message": "Invalid run_type. Allowed values are 'RSVP', 'WEBHOOK'."
+                        }
+                    ),
+                }
+
     except ValueError as e:
         logger.error("Invalid query parameter type: %s", e)
         return {
@@ -57,7 +72,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
 
     # Log the extracted parameters
     logger.info(
-        "Extracted parameters - page: %d, limit: %d, sort_by: %s, sort_order: %s, run_type: %s, created_year: %s, sender_id: %s",
+        "Extracted parameters - page: %d, limit: %d, sort_by: %s, sort_order: %s, run_type: %s, created_year: %s, sender_id: %s, campaign_id: %s",
         page,
         limit,
         sort_by,
@@ -65,6 +80,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
         run_type,
         created_year,
         sender_id,
+        campaign_id,
     )
 
     return {
@@ -75,6 +91,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
         "run_type": run_type,
         "created_year": created_year,
         "sender_id": sender_id,  # Include sender_id if it's a filter
+        "campaign_id": campaign_id,
     }
 
 
@@ -104,6 +121,8 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         filters["created_year"] = query_params_result["created_year"]
     if query_params_result.get("sender_id"):  # Assuming sender_id is a direct filter
         filters["sender_id"] = query_params_result["sender_id"]
+    if query_params_result.get("campaign_id"):
+        filters["campaign_id"] = query_params_result["campaign_id"]
 
     # Get access token from headers (user_id might be needed for filtering by sender_id if not passed directly)
     # For now, assuming sender_id can be an optional filter from query params.
@@ -139,6 +158,8 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             repo_params["created_year"] = filters["created_year"]
         if "sender_id" in filters:
             repo_params["sender_id"] = filters["sender_id"]
+        if "campaign_id" in filters:
+            repo_params["campaign_id"] = filters["campaign_id"]
 
         runs = run_repo.list_runs(repo_params)
         total_items = run_repo.count_runs(repo_params)
