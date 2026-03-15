@@ -139,3 +139,19 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_default" {
     position          = 9
   }
 }
+
+resource "aws_ses_active_receipt_rule_set" "ses_active_receipt_rule_set" {
+  rule_set_name = aws_ses_receipt_rule_set.ses_receipt_rule_set.rule_set_name
+
+  depends_on = [
+    aws_ses_receipt_rule.ses_receipt_rule_forward_to_dev,
+    aws_ses_receipt_rule.ses_receipt_rule_forward_to_contact,
+    aws_ses_receipt_rule.ses_receipt_rule_forward_to_mkt,
+    aws_ses_receipt_rule.ses_receipt_rule_forward_to_tech,
+    aws_ses_receipt_rule.ses_receipt_rule_forward_to_event,
+    aws_ses_receipt_rule.ses_receipt_rule_forward_to_group1,
+    aws_ses_receipt_rule.ses_receipt_rule_forward_to_group2,
+    aws_ses_receipt_rule.ses_receipt_rule_forward_to_group3,
+    aws_ses_receipt_rule.ses_receipt_rule_forward_to_default
+  ]
+}
