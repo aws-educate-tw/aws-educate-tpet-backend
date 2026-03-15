@@ -5,6 +5,7 @@ import os
 import urllib.parse
 
 import boto3
+from botocore.exceptions import ClientError
 from incident_repository import IncidentRepository
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -46,15 +47,15 @@ def lambda_handler(event, context):
             }
 
         # Decode base64 if needed
-        try:
-            if event.get("isBase64Encoded", False):
+        if event.get("isBase64Encoded", False):
+            try:
                 body = base64.b64decode(body).decode("utf-8")
-        except Exception as e:
-            logger.error("Failed to decode base64 body: %s", e, exc_info=True)
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "Failed to decode request body"}),
-            }
+            except (ValueError, UnicodeDecodeError) as e:
+                logger.error("Failed to decode base64 body: %s", e, exc_info=True)
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": "Failed to decode request body"}),
+                }
 
         if not verify_slack_request_signature(
             headers=headers,
@@ -71,7 +72,7 @@ def lambda_handler(event, context):
         # Parse URL-encoded parameters
         try:
             params = urllib.parse.parse_qs(body)
-        except Exception as e:
+        except ValueError as e:
             logger.error("Failed to parse URL-encoded body: %s", e, exc_info=True)
             return {
                 "statusCode": 400,
@@ -158,15 +159,11 @@ def lambda_handler(event, context):
                     e,
                     exc_info=True,
                 )
-            except Exception as e:
-                logger.error(
-                    "Unexpected error getting alarm description: %s", e, exc_info=True
-                )
 
             # Get existing incident from DynamoDB
             try:
                 item = incident_repo.get_incident(alarm_name)
-            except Exception as e:
+            except ClientError as e:
                 logger.error(
                     "Failed to get incident for %s: %s", alarm_name, e, exc_info=True
                 )
@@ -209,7 +206,7 @@ def lambda_handler(event, context):
             except SlackApiError as e:
                 logger.error(
                     "Slack API error handling action: %s",
-                    e.response['error'],
+                    e.response.get('error', 'Unknown error'),
                     exc_info=True,
                 )
                 return {
@@ -221,7 +218,7 @@ def lambda_handler(event, context):
                         }
                     ),
                 }
-            except Exception as e:
+            except (ClientError, ValueError) as e:
                 logger.error("Failed to handle button action: %s", e, exc_info=True)
                 return {
                     "statusCode": 500,
@@ -262,8 +259,6 @@ def lambda_handler(event, context):
         except json.JSONDecodeError:
             # Not JSON, continue to check other cases
             pass
-        except Exception as e:
-            logger.error("Error processing URL verification: %s", e, exc_info=True)
 
         # Unknown request type
         logger.warning("Request ignored (no recognized payload type)")

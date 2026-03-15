@@ -2,6 +2,7 @@ import json
 import logging
 import os
 
+from botocore.exceptions import ClientError
 from cloudwatch_util import CloudWatchError, get_metric_chart
 from incident_repository import IncidentRepository
 from slack_sdk import WebClient
@@ -108,7 +109,7 @@ def lambda_handler(event, context):
                 # Get existing incident from DynamoDB
                 try:
                     item = incident_repo.get_incident(alarm_name)
-                except Exception as e:
+                except ClientError as e:
                     logger.error(
                         "Failed to get incident for %s: %s",
                         alarm_name,
@@ -130,10 +131,6 @@ def lambda_handler(event, context):
                         "CloudWatch chart generation failed (status %s): %s",
                         e.status_code,
                         e.message,
-                    )
-                except Exception as e:
-                    logger.warning(
-                        "Unexpected error generating chart: %s", e, exc_info=True
                     )
 
                 blocks, color = build_blocks(
@@ -164,28 +161,13 @@ def lambda_handler(event, context):
                         logger.error(
                             "Slack API error posting message for %s: %s",
                             alarm_name,
-                            e.response['error'],
+                            e.response.get('error', 'Unknown error'),
                             exc_info=True,
                         )
                         failed_records.append(
                             {
                                 "index": idx,
                                 "error": "Slack API error",
-                                "alarm": alarm_name,
-                            }
-                        )
-                        continue
-                    except Exception as e:
-                        logger.error(
-                            "Failed to post Slack message for %s: %s",
-                            alarm_name,
-                            e,
-                            exc_info=True,
-                        )
-                        failed_records.append(
-                            {
-                                "index": idx,
-                                "error": "Slack posting failed",
                                 "alarm": alarm_name,
                             }
                         )
@@ -200,7 +182,7 @@ def lambda_handler(event, context):
                             incident_state=incident_state,
                         )
                         logger.info("Created new incident for %s", alarm_name)
-                    except Exception as e:
+                    except ClientError as e:
                         logger.error(
                             "Failed to create incident in DynamoDB for %s: %s",
                             alarm_name,
@@ -242,15 +224,7 @@ def lambda_handler(event, context):
                     logger.error(
                         "Slack API error updating message for %s: %s",
                         alarm_name,
-                        e.response['error'],
-                        exc_info=True,
-                    )
-                    # Continue to update DynamoDB even if Slack update fails
-                except Exception as e:
-                    logger.error(
-                        "Failed to update Slack message for %s: %s",
-                        alarm_name,
-                        e,
+                        e.response.get('error', 'Unknown error'),
                         exc_info=True,
                     )
                     # Continue to update DynamoDB even if Slack update fails
@@ -267,7 +241,7 @@ def lambda_handler(event, context):
                             alarm_name,
                             incident_state,
                         )
-                except Exception as e:
+                except ClientError as e:
                     logger.error(
                         "Failed to update incident in DynamoDB for %s: %s",
                         alarm_name,

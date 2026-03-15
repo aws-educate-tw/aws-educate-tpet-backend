@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 from utils import IncidentState
 
 logger = logging.getLogger()
@@ -42,7 +43,7 @@ class IncidentRepository:
                 "found" if item else "not found",
             )
             return item
-        except Exception as e:
+        except ClientError as e:
             logger.error("Failed to get incident %s: %s", alarm_name, e)
             raise
 
@@ -70,7 +71,7 @@ class IncidentRepository:
                 }
             )
             logger.info("Created new incident for %s", alarm_name)
-        except Exception as e:
+        except ClientError as e:
             logger.error("Failed to create incident %s: %s", alarm_name, e)
             raise
 
@@ -91,7 +92,7 @@ class IncidentRepository:
                 ExpressionAttributeValues={":s": incident_state, ":t": now},
             )
             logger.info("Updated incident state for %s to %s", alarm_name, incident_state)
-        except Exception as e:
+        except ClientError as e:
             logger.error("Failed to update incident state %s: %s", alarm_name, e)
             raise
 
@@ -116,7 +117,7 @@ class IncidentRepository:
                 },
             )
             logger.info("Closed incident for %s", alarm_name)
-        except Exception as e:
+        except ClientError as e:
             logger.error("Failed to close incident %s: %s", alarm_name, e)
             raise
 

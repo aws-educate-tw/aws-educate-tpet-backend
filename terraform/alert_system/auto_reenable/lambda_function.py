@@ -3,6 +3,7 @@ import logging
 import os
 
 import boto3
+from botocore.exceptions import ClientError
 from incident_repository import IncidentRepository
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -100,7 +101,7 @@ def lambda_handler(event, context):
                 "statusCode": 404,
                 "body": json.dumps({"error": "Alarm not found", "alarm": alarm_name}),
             }
-        except Exception as e:
+        except ClientError as e:
             logger.error(
                 "Failed to re-enable alarm actions for %s: %s",
                 alarm_name,
@@ -121,7 +122,7 @@ def lambda_handler(event, context):
         # Get the incident from DynamoDB
         try:
             item = incident_repo.get_incident(alarm_name)
-        except Exception as e:
+        except ClientError as e:
             logger.error(
                 "Failed to get incident for %s: %s", alarm_name, e, exc_info=True
             )
@@ -188,15 +189,7 @@ def lambda_handler(event, context):
             logger.error(
                 "Slack API error updating message for %s: %s",
                 alarm_name,
-                e.response['error'],
-                exc_info=True,
-            )
-            # Continue to update DynamoDB even if Slack update fails
-        except Exception as e:
-            logger.error(
-                "Unexpected error updating Slack message for %s: %s",
-                alarm_name,
-                e,
+                e.response.get('error', 'Unknown error'),
                 exc_info=True,
             )
             # Continue to update DynamoDB even if Slack update fails
@@ -205,7 +198,7 @@ def lambda_handler(event, context):
         try:
             incident_repo.close_incident(alarm_name, resolved_state)
             logger.info("Closed incident in DynamoDB for %s", alarm_name)
-        except Exception as e:
+        except ClientError as e:
             logger.error(
                 "Failed to close incident in DynamoDB for %s: %s",
                 alarm_name,
@@ -241,15 +234,7 @@ def lambda_handler(event, context):
             logger.warning(
                 "Failed to send thread notification for %s: %s",
                 alarm_name,
-                e.response['error'],
-                exc_info=True,
-            )
-            # Non-critical, don't fail the entire operation
-        except Exception as e:
-            logger.warning(
-                "Unexpected error sending thread notification for %s: %s",
-                alarm_name,
-                e,
+                e.response.get('error', 'Unknown error'),
                 exc_info=True,
             )
             # Non-critical, don't fail the entire operation
