@@ -1,5 +1,6 @@
 from .alarm_state_enum import IncidentState
 
+
 def build_blocks(alarm_name, description, state, chart_url=None):
     """
     Build Slack message blocks for alarm incidents.

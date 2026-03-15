@@ -120,4 +120,3 @@ class IncidentRepository:
         except ClientError as e:
             logger.error("Failed to close incident %s: %s", alarm_name, e)
             raise
-

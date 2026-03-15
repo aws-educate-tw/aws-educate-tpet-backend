@@ -1,6 +1,7 @@
 import logging
 
 from slack_sdk.errors import SlackApiError
+
 from .alarm_state_enum import IncidentState
 
 logger = logging.getLogger()
@@ -62,14 +63,12 @@ def post_incident_message(
     except SlackApiError as e:
         logger.error(
             "Failed to post incident message: %s",
-            e.response['error'],
+            e.response["error"],
             exc_info=True,
         )
         raise
     except Exception as e:
-        logger.error(
-            "Unexpected error posting incident message: %s", e, exc_info=True
-        )
+        logger.error("Unexpected error posting incident message: %s", e, exc_info=True)
         raise
 
 
@@ -107,14 +106,12 @@ def update_incident_message(
     except SlackApiError as e:
         logger.error(
             "Failed to update incident message: %s",
-            e.response['error'],
+            e.response["error"],
             exc_info=True,
         )
         raise
     except Exception as e:
-        logger.error(
-            "Unexpected error updating incident message: %s", e, exc_info=True
-        )
+        logger.error("Unexpected error updating incident message: %s", e, exc_info=True)
         raise
 
 
@@ -141,13 +138,11 @@ def post_thread_message(slack_client, channel, thread_ts, message):
 
     except SlackApiError as e:
         logger.error(
-            "Failed to post thread message: %s", e.response['error'], exc_info=True
+            "Failed to post thread message: %s", e.response["error"], exc_info=True
         )
         raise
     except Exception as e:
-        logger.error(
-            "Unexpected error posting thread message: %s", e, exc_info=True
-        )
+        logger.error("Unexpected error posting thread message: %s", e, exc_info=True)
         raise
 
 
