@@ -5,6 +5,8 @@ import os
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
+REGION = os.environ.get("AWS_REGION", "ap-northeast-1")
+
 logger = logging.getLogger()
 cloudwatch = boto3.client("cloudwatch")
 
@@ -37,17 +39,17 @@ def get_metric_chart(trigger_info):
         namespace = trigger_info.get("Namespace")
 
         if not metric_name or not namespace:
-            error_msg = f"Missing required metric info: metric={metric_name}, namespace={namespace}"
-            logger.warning(error_msg)
-            raise CloudWatchError(error_msg, status_code=400)
+            error_msg = "Missing required metric info: metric=%s, namespace=%s"
+            logger.warning(error_msg, metric_name, namespace)
+            raise CloudWatchError(error_msg % (metric_name, namespace), status_code=400)
 
         # Extract optional parameters with defaults
         dimensions = trigger_info.get("Dimensions", [])
         statistic = trigger_info.get("Statistic", "Average")
         period = trigger_info.get("Period", 300)
 
-        logger.info(f"Fetching metric: {namespace}/{metric_name}")
-        logger.info(f"Dimensions: {dimensions}")
+        logger.info("Fetching metric: %s/%s", namespace, metric_name)
+        logger.info("Dimensions: %s", dimensions)
 
         # Normalize statistic to proper case
         stat_mapping = {
@@ -65,7 +67,7 @@ def get_metric_chart(trigger_info):
         # Add dimensions as alternating name/value pairs
         for dim in dimensions:
             if not isinstance(dim, dict) or "name" not in dim or "value" not in dim:
-                logger.warning(f"Invalid dimension format: {dim}")
+                logger.warning("Invalid dimension format: %s", dim)
                 continue
             metric.append(dim["name"])
             metric.append(dim["value"])
@@ -73,14 +75,12 @@ def get_metric_chart(trigger_info):
         # Add stat and period at the end as a dict
         metric.append({"stat": normalized_stat, "period": period})
 
-        logger.info(f"Metric array: {metric}")
-
         # Build widget configuration
         widget = {
             "metrics": [metric],
             "view": "timeSeries",
             "stacked": False,
-            "region": os.environ.get("AWS_REGION", "us-east-1"),
+            "region": REGION,
             "title": f"{metric_name} Metric",
             "period": period,
             "width": 800,
@@ -105,9 +105,9 @@ def get_metric_chart(trigger_info):
                     ]
                 }
             except (ValueError, TypeError) as e:
-                logger.warning(f"Invalid threshold value: {threshold}, error: {e}")
+                logger.warning("Invalid threshold value: %s, error: %s", threshold, e)
 
-        logger.info(f"Widget structure: {json.dumps(widget, indent=2)}")
+        logger.info("Widget structure: %s", json.dumps(widget, indent=2))
 
         # Get metric widget image from CloudWatch
         logger.info("Fetching metric widget image from CloudWatch...")
@@ -118,7 +118,7 @@ def get_metric_chart(trigger_info):
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             error_msg = e.response.get("Error", {}).get("Message", str(e))
-            logger.error(f"CloudWatch API error [{error_code}]: {error_msg}")
+            logger.error("CloudWatch API error [%s]: %s", error_code, error_msg)
 
             if error_code == "InvalidParameterValue":
                 raise CloudWatchError(
@@ -137,7 +137,7 @@ def get_metric_chart(trigger_info):
                     f"CloudWatch API error: {error_msg}", status_code=500
                 ) from e
         except BotoCoreError as e:
-            logger.error(f"AWS SDK error: {e}")
+            logger.error("AWS SDK error: %s", e)
             raise CloudWatchError(f"AWS SDK error: {str(e)}", status_code=500) from e
 
         # Validate response
@@ -153,7 +153,7 @@ def get_metric_chart(trigger_info):
                 "Empty image data returned from CloudWatch", status_code=500
             )
 
-        logger.info(f"Successfully generated metric chart: {len(image_data)} bytes")
+        logger.info("Successfully generated metric chart: %s bytes", len(image_data))
 
         # Return image data and metadata for later upload
         return {
@@ -167,5 +167,5 @@ def get_metric_chart(trigger_info):
         raise
     except Exception as e:
         # Catch any unexpected errors
-        logger.error(f"Unexpected error generating metric chart: {e}", exc_info=True)
+        logger.error("Unexpected error generating metric chart: %s", e, exc_info=True)
         raise CloudWatchError(f"Unexpected error: {str(e)}", status_code=500) from e
