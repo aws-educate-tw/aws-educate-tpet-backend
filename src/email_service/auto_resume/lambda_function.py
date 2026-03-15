@@ -24,8 +24,8 @@ def ensure_database_awake() -> bool:
     :return: True if database is confirmed awake, False otherwise
     """
     health_check_url = f"https://{ENVIRONMENT}-email-service-internal-api-tpet.{DOMAIN_NAME}/{ENVIRONMENT}/email-service/health"
-    max_retries = 10
-    retry_delay = 7  # seconds
+    max_retries = 1
+    retry_delay = 1  # seconds
 
     for attempt in range(max_retries):
         try:
