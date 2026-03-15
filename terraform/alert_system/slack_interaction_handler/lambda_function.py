@@ -206,7 +206,7 @@ def lambda_handler(event, context):
             except SlackApiError as e:
                 logger.error(
                     "Slack API error handling action: %s",
-                    e.response.get('error', 'Unknown error'),
+                    e.response.get("error", "Unknown error"),
                     exc_info=True,
                 )
                 return {

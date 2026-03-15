@@ -166,7 +166,7 @@ def lambda_handler(event, context):
                         logger.error(
                             "Slack API error posting message for %s: %s",
                             alarm_name,
-                            e.response.get('error', 'Unknown error'),
+                            e.response.get("error", "Unknown error"),
                             exc_info=True,
                         )
                         failed_records.append(
@@ -229,7 +229,7 @@ def lambda_handler(event, context):
                     logger.error(
                         "Slack API error updating message for %s: %s",
                         alarm_name,
-                        e.response.get('error', 'Unknown error'),
+                        e.response.get("error", "Unknown error"),
                         exc_info=True,
                     )
                     # Continue to update DynamoDB even if Slack update fails
