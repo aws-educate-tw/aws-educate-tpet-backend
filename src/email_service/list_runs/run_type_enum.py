@@ -13,7 +13,9 @@ class RunType(Enum):
     Attributes:
         RSVP: Represents a run type for RSVP email sending.
         WEBHOOK: Represents a run type for webhook-based email sending.
+        EMAIL: Represents a run type for standard email sending.
     """
 
     RSVP = "RSVP"
     WEBHOOK = "WEBHOOK"
+    EMAIL = "EMAIL"
