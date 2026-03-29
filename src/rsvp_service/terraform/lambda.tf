@@ -393,10 +393,8 @@ module "upsert_run_configuration_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "Campaigns"
+    "DYNAMODB_TABLE" = var.dynamodb_table,
+    "DYNAMODB_TABLE_RUN" = var.dynamodb_table_run,
   }
 
   allowed_triggers = {
