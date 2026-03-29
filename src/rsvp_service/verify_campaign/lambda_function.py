@@ -102,9 +102,9 @@ def lambda_handler(event: dict, context: object) -> dict:
             {
                 "status": "success",
                 "data": {
-                    "isValid": True,
-                    "Campaign_id": item["campaign_id"],
-                    "Campaign_name": item.get("campaign_name", ""),
+                    "is_valid": True,
+                    "campaign_id": item["campaign_id"],
+                    "campaign_name": item.get("campaign_name", ""),
                     "is_active": item["is_active"],
                 },
             }
