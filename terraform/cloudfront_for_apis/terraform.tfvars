@@ -45,6 +45,16 @@ api_gateway_origins = [
     path_pattern = "/dev/*webhook*"
   },
   {
+    # RSVP Service - prod
+    domain_name  = "prod-rsvp-service-internal-api-tpet.aws-educate.tw"
+    path_pattern = "/rsvp-service/prod/*"
+  },
+  {
+    # RSVP Service - dev
+    domain_name  = "dev-rsvp-service-internal-api-tpet.aws-educate.tw"
+    path_pattern = "/rsvp-service/dev/*"
+  },
+  {
     # Email Service - prod
     domain_name  = "prod-email-service-internal-api-tpet.aws-educate.tw"
     path_pattern = "/prod/*"
