@@ -48,5 +48,9 @@ variable "private_bucket_name" {
 }
 
 variable "dynamodb_table" {
-  description = "Current service's DynamoDB table name"
+  description = "Current service's DynamoDB table for campaigns"
+}
+
+variable "dynamodb_table_run" {
+  description = "Current service's DynamoDB table for campaign runs"
 }
