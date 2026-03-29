@@ -35,9 +35,6 @@ variable "lambda_architecture" {
   default     = "x86_64"
 }
 
-
-
-
 variable "bucket_name" {
   description = "S3 bucket name for TPET (without environment prefix)"
   type        = string
@@ -48,4 +45,8 @@ variable "private_bucket_name" {
   description = "S3 private bucket name for TPET (without environment prefix)"
   type        = string
   default     = "aws-educate-tpet-private-bucket"
+}
+
+variable "dynamodb_table" {
+  description = "Current service's DynamoDB table name"
 }
