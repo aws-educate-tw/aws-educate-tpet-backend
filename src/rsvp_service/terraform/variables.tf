@@ -54,3 +54,7 @@ variable "dynamodb_table" {
 variable "dynamodb_table_run" {
   description = "Current service's DynamoDB table for campaign runs"
 }
+
+variable "dynamodb_table_participants" {
+  description = "Current service's DynamoDB table for participants"
+}

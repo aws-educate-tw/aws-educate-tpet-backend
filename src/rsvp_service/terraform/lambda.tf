@@ -501,10 +501,9 @@ module "import_participant_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "Campaigns"
+    "DYNAMODB_TABLE" = var.dynamodb_table,
+    "DYNAMODB_TABLE_RUN" = var.dynamodb_table_run,
+    "DYNAMODB_TABLE_PARTICIPANTS" = var.dynamodb_table_participants
   }
 
   allowed_triggers = {
