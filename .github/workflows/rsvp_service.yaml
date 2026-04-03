@@ -187,7 +187,7 @@ jobs:
           terraform plan -var-file='preview.tfvars' 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
         continue-on-error: true
-      
+
       - name: Terraform Apply
         id: apply
         run: |
