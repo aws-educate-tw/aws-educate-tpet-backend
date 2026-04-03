@@ -70,7 +70,7 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.9.3
+          terraform_version: 1.14.0
 
       - name: Terraform Init
         id: init
@@ -423,7 +423,7 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.9.3
+          terraform_version: 1.14.0
 
       - name: Set Environment Variables
         run: |
