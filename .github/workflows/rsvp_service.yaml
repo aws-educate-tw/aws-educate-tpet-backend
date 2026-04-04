@@ -1,0 +1,517 @@
+name: "RSVP Service Infrastructure Change Management Pipeline with GitHub Actions"
+
+on:
+  pull_request:
+    paths:
+      - src/rsvp_service/**
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - src/rsvp_service/**
+
+env:
+  SERVICE_NAME: RSVP Service
+  SERVICE_LABEL: service/rsvp
+  TF_LOG: INFO
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  TF_DIR: ./src/rsvp_service/terraform
+  DOCKER_API_VERSION: "1.44"
+  GREP_FILTER: >-
+    grep -v -E '^[[:space:]]*(module\.|random_|aws_).*: (Creating|Creation complete|Still creating|Modifications complete|Destroying|Destruction complete|Reading\.\.\.|Plan:|Read complete after)' |
+    grep -v -E '^\[.*\][[:space:]]*module\..*$' |
+    grep -v '^[0-9]+[[:space:]]' |
+    grep -v 'Creation complete after' |
+    grep -v 'Still creating\.\.\.' |
+    grep -v ': Reading\.\.\.' |
+    grep -v ': Read complete' |
+    grep -v 'Refreshing state\.\.\.'
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: read
+  checks: write
+
+jobs:
+  preview:
+    name: "Deploy Preview Environment"
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Print Debug Information"
+        run: |
+          echo "Event Name: ${{ github.event_name }}"
+          echo "Event Action: ${{ github.event.action }}"
+          echo "Merged: ${{ github.event.pull_request.merged }}"
+
+          # Set commit SHA for pull request
+          if [[ "${{ github.event.pull_request.head.sha }}" != "" ]]; then
+            COMMIT_SHA=${{ github.event.pull_request.head.sha }}
+          else
+            COMMIT_SHA="unknown-sha"
+          fi
+
+          echo "PULL_REQUEST_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
+          echo "TIMESTAMP=$(date -u '+%Y-%m-%dT%H-%M-%SZ')" >> $GITHUB_ENV
+
+      - name: Disable Terraform command logging
+        run: |
+          echo "TF_CLI_ARGS=-no-color" >> $GITHUB_ENV
+          echo "TF_LOG=" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history for git diff
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.0
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config="preview.tfbackend" -reconfigure
+        working-directory: ${{ env.TF_DIR }}
+
+      - name: Check for DynamoDB Changes
+        id: check-dynamodb
+        run: |
+          # Check if DynamoDB-related Terraform files have changes
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }} ${{ github.sha }} | grep -E "src/rsvp_service/terraform/.*dynamodb.*\\.tf|src/rsvp_service/terraform/variables\\.tf" || true)
+
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "has_dynamodb_changes=true" >> $GITHUB_OUTPUT
+            echo "::notice::DynamoDB-related Terraform changes detected. Manual approval required."
+          else
+            echo "has_dynamodb_changes=false" >> $GITHUB_OUTPUT
+            echo "::notice::No DynamoDB-related changes detected."
+          fi
+
+      - name: Check for Existing Approval Issue
+        if: steps.check-dynamodb.outputs.has_dynamodb_changes == 'true'
+        id: check-existing-issue
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueTitle = `🔐 [${{ env.SERVICE_NAME }}] DynamoDB Change Approval Required - Preview - PR #${{ env.PULL_REQUEST_NUMBER }}`;
+
+            // Search for ALL issues (open or closed) with the same title
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              labels: `${{ env.SERVICE_LABEL }},env/preview,kind/dynamodb-change`,
+              per_page: 100
+            });
+
+            const existingIssue = issues.find(issue => issue.title === issueTitle);
+
+            if (existingIssue) {
+              console.log(`Found existing approval issue #${existingIssue.number}`);
+              core.setOutput('issue_exists', 'true');
+              core.setOutput('issue_number', existingIssue.number);
+
+              // Check if already approved (issue closed)
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number
+              });
+
+              const approved = comments.some(c =>
+                c.body.toLowerCase().match(/^(approved|approve|lgtm|yes)$/m)
+              );
+              core.setOutput('already_approved', approved ? 'true' : 'false');
+            } else {
+              console.log('No existing approval issue found');
+              core.setOutput('issue_exists', 'false');
+              core.setOutput('already_approved', 'false');
+            }
+      - name: Request DynamoDB Change Approval
+        if: steps.check-dynamodb.outputs.has_dynamodb_changes == 'true' && steps.check-existing-issue.outputs.issue_exists != 'true'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: ${{ github.actor }}
+          minimum-approvals: 1
+          issue-title: "🔐 [${{ env.SERVICE_NAME }}] DynamoDB Change Approval Required - Preview - PR #${{ env.PULL_REQUEST_NUMBER }}"
+          issue-body: |
+            ## DynamoDB Change Approval Required
+
+            **Service:** ${{ env.SERVICE_NAME }}
+            **Pull Request:** #${{ env.PULL_REQUEST_NUMBER }}
+            **Environment:** Preview
+            **Triggered by:** @${{ github.actor }}
+            **Commit:** ${{ env.COMMIT_SHA }}
+
+            ### Changed DynamoDB-Related Terraform Files:
+            ```
+            $(git diff --name-only origin/${{ github.base_ref }} ${{ github.sha }} | grep -E "src/rsvp_service/terraform/.*dynamodb.*\\.tf|src/rsvp_service/terraform/variables\\.tf")
+            ```
+
+            ### ⚠️ Important
+            - Review DynamoDB table/index changes carefully before approving
+            - Ensure changes are safe for existing data and access patterns
+            - Approval will allow Terraform to apply DynamoDB changes
+
+            **To approve:** Comment with `approved`, `approve`, `lgtm`, or `yes`
+            **To reject:** Comment with `denied`, `deny`, or `no`
+          exclude-workflow-initiator-as-approver: false
+          additional-approved-words: ""
+          additional-denied-words: ""
+
+      - name: Wait for Existing Approval
+        if: steps.check-dynamodb.outputs.has_dynamodb_changes == 'true' && steps.check-existing-issue.outputs.issue_exists == 'true' && steps.check-existing-issue.outputs.already_approved != 'true'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: ${{ github.actor }}
+          minimum-approvals: 1
+          issue-title: "🔐 [${{ env.SERVICE_NAME }}] DynamoDB Change Approval Required - Preview - PR #${{ env.PULL_REQUEST_NUMBER }}"
+          issue-body: "Waiting for existing approval..."
+          exclude-workflow-initiator-as-approver: false
+
+      - name: Skip Approval (Already Approved)
+        if: steps.check-dynamodb.outputs.has_dynamodb_changes == 'true' && steps.check-existing-issue.outputs.already_approved == 'true'
+        run: |
+          echo "::notice::DynamoDB changes already approved in issue #${{ steps.check-existing-issue.outputs.issue_number }}. Proceeding."
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -var-file='preview.tfvars' 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      - name: Terraform Apply
+        id: apply
+        run: |
+          terraform apply -var-file='preview.tfvars' -parallelism=1 -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: us-west-1 # Preview environment region
+      #
+      # # Enhanced security for token handling
+      # - name: Get Postman Service Account Token
+      #   id: get-token
+      #   run: |
+      #     # Mask all outputs
+      #     set +x
+      #
+      #     # Get secret and mask the response
+      #     SECRET_RESPONSE=$(aws secretsmanager get-secret-value \
+      #       --secret-id "aws-educate-tpet/preview/service-accounts/postman/access-token" \
+      #       --query 'SecretString' \
+      #       --output text)
+      #     echo "::add-mask::$SECRET_RESPONSE"
+      #
+      #     # Parse and mask the token
+      #     ACCESS_TOKEN=$(echo $SECRET_RESPONSE | jq -r '.access_token')
+      #     echo "::add-mask::$ACCESS_TOKEN"
+      #
+      #     # Store token securely
+      #     echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
+      #
+      #     # Validate without exposing token
+      #     if [ -z "$ACCESS_TOKEN" ]; then
+      #       echo "Error: Failed to retrieve access token"
+      #       exit 1
+      #     fi
+      #
+      # - name: Setup Node.js
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: "18"
+      #
+      # - name: Install Newman
+      #   run: npm install -g newman newman-reporter-htmlextra
+      #
+      # - name: Wait for API Gateway Deployment
+      #   run: |
+      #     MAX_RETRIES=10
+      #     RETRY_INTERVAL=5
+      #     COUNTER=0
+      #
+      #     HEALTH_CHECK_URL="https://preview-rsvp-service-internal-api-tpet.aws-educate.tw/preview/rsvp-service/health"
+      #
+      #     echo "Checking health endpoint: ${HEALTH_CHECK_URL}"
+      #
+      #     while [ $COUNTER -lt $MAX_RETRIES ]; do
+      #       HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_CHECK_URL}")
+      #
+      #       if [ "$HTTP_STATUS" -eq 200 ]; then
+      #         echo "✅ API Gateway is ready!"
+      #         exit 0
+      #       fi
+      #
+      #       echo "API not ready yet (Status: ${HTTP_STATUS}). Retrying in ${RETRY_INTERVAL} seconds..."
+      #       sleep $RETRY_INTERVAL
+      #       COUNTER=$((COUNTER + 1))
+      #     done
+      #
+      #     echo "❌ API Gateway failed to become ready within the timeout period"
+      #     exit 1
+      #
+      # # Enhanced security for Newman tests with report naming
+      # - name: Run API Tests
+      #   id: newman
+      #   run: |
+      #     # Create report directory with meaningful name
+      #     REPORT_DIR="newman/pr_${{ env.PULL_REQUEST_NUMBER }}_${{ env.TIMESTAMP }}_${{ env.COMMIT_SHA }}"
+      #     mkdir -p $REPORT_DIR
+      #
+      #     # Create temporary environment file that combines base environment and token
+      #     TEMP_ENV_FILE=$(mktemp)
+      #
+      #     # Merge base environment with token and contextual information
+      #     jq -s '.[0].values + [
+      #       {"key":"access_token", "value":"${{ env.ACCESS_TOKEN }}"},
+      #       {"key":"pull_request_number", "value":"${{ env.PULL_REQUEST_NUMBER }}"},
+      #       {"key":"commit_sha", "value":"${{ env.COMMIT_SHA }}"},
+      #       {"key":"timestamp", "value":"${{ env.TIMESTAMP }}"}
+      #     ] | {values: .}' \
+      #       ./tests/rsvp_service/api_regression/rsvp_service_preview_environment.json \
+      #       > $TEMP_ENV_FILE
+      #
+      #     # Run tests with combined environment file
+      #     newman run ./tests/rsvp_service/api_regression/rsvp_service_regression_test_collection.json \
+      #       --environment $TEMP_ENV_FILE \
+      #       --reporters cli,htmlextra \
+      #       --reporter-htmlextra-skipHeaders Authorization \
+      #       --reporter-htmlextra-export "$REPORT_DIR/report.html" \
+      #       --silent
+      #
+      #     # Cleanup
+      #     rm -f $TEMP_ENV_FILE
+      #   continue-on-error: true
+
+      # - name: Check Newman Test Results
+      #   if: always()
+      #   run: |
+      #     if [[ ${{ steps.newman.outcome }} != "success" ]]; then
+      #       echo "❌ Newman tests failed."
+      #       exit 1
+      #     else
+      #       echo "✅ Newman tests passed."
+      #     fi
+      #
+      # - name: Upload Test Results
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}
+      #     path: newman/
+      #
+      # - name: Get Artifact URL
+      #   if: always()
+      #   id: get-artifact-url
+      #   run: |
+      #
+      #     ARTIFACTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+      #     https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)
+      #
+      #
+      #     ARTIFACT_NAME="newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}"
+      #     ARTIFACT_ID=$(echo "$ARTIFACTS" | jq -r --arg name "$ARTIFACT_NAME" '.artifacts[] | select(.name==$name).id')
+      #
+      #
+      #     echo "ARTIFACT_ID=$ARTIFACT_ID" >> $GITHUB_ENV
+
+      - uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => {
+              return comment.user.type === 'Bot' &&
+                      comment.body.includes('[${{ env.SERVICE_NAME }}]') &&
+                      (comment.body.includes('Deployment Status') ||
+                      comment.body.includes('Test Results'));
+            });
+
+            const tfExitCode = '${{ steps.apply.outcome }}' === 'success' ? 0 : 1;
+            // const testExitCode = '${{ steps.newman.outcome }}' === 'success' ? 0 : 1;
+
+            // Get short SHA
+            const shortSHA = '${{ env.COMMIT_SHA }}'.substring(0, 6);
+            // const artifactUrl = `${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${process.env.ARTIFACT_ID}`;
+
+            let output = `### [${{ env.SERVICE_NAME }}] Preview Deployment Status\n\n`;
+            output += `| Service | Environment | Commit | Status | Details |\n`;
+            output += `|:--------|:------------|:-------|:-------|:--------|\n`;
+            output += `| ${{ env.SERVICE_NAME }} | Preview | \`${shortSHA}\` | ${tfExitCode === 0 ? '✅' : '❌'} | ${
+              tfExitCode === 0
+                ? 'Successfully deployed'
+                : `[Check deployment logs](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+            } |\n`;
+
+            // output += `\n### Test Results\n\n`;
+            // output += `| Test Suite | Status | Report |\n`;
+            // output += `|:-----------|:-------|:--------|\n`;
+            // output += `| API Tests | ${testExitCode === 0 ? '✅' : '❌'} | [Download Report](${artifactUrl}) |\n`;
+
+            output += `\n---\n`;
+            output += `🔍 **Details**\n`;
+            output += `- Run ID: \`${context.runId}\`\n`;
+            output += `- Triggered by: @${{ github.actor }}\n`;
+            output += `- Environment: Preview\n`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: output,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output,
+              });
+            }
+
+      - name: Slack Notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          author_name: "[${{ env.SERVICE_NAME }}] Preview environment deployment"
+          job_name: Deploy Preview Environment
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took,pullRequest
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          MATRIX_CONTEXT: ${{ toJson(matrix) }}
+        if: always()
+
+  deploy:
+    name: "Deploy to Target Environment"
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Print Debug Information"
+        run: |
+          echo "Event Name: ${{ github.event_name }}"
+          echo "Event Action: ${{ github.event.action }}"
+          echo "Merged: ${{ github.event.pull_request.merged }}"
+
+      - name: Disable Terraform command logging
+        run: |
+          echo "TF_CLI_ARGS=-no-color" >> $GITHUB_ENV
+          echo "TF_LOG=" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.0
+
+      - name: Set Environment Variables
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+            echo "TF_VARS_FILE=prod.tfvars" >> $GITHUB_ENV
+            echo "AWS_REGION=ap-northeast-1" >> $GITHUB_ENV  # Tokyo for prod
+          elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+            echo "TF_VARS_FILE=dev.tfvars" >> $GITHUB_ENV
+            echo "AWS_REGION=us-east-1" >> $GITHUB_ENV  # N. Virginia for dev
+          else
+            echo "Unsupported branch: ${{ github.ref }}"
+            exit 1
+          fi
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config="${{ env.ENVIRONMENT }}.tfbackend" -reconfigure
+        working-directory: ${{ env.TF_DIR }}
+
+      - name: Check for DynamoDB Changes
+        id: check-dynamodb
+        run: |
+          # Check if DynamoDB-related Terraform files have changes in the last commit
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep -E "src/rsvp_service/terraform/.*dynamodb.*\\.tf|src/rsvp_service/terraform/variables\\.tf" || true)
+
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "has_dynamodb_changes=true" >> $GITHUB_OUTPUT
+            echo "::notice::DynamoDB-related Terraform changes detected. Manual approval required."
+          else
+            echo "has_dynamodb_changes=false" >> $GITHUB_OUTPUT
+            echo "::notice::No DynamoDB-related changes detected."
+          fi
+
+      - name: Request DynamoDB Change Approval
+        if: steps.check-dynamodb.outputs.has_dynamodb_changes == 'true'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: ${{ github.actor }}
+          minimum-approvals: 1
+          issue-title: "🔐 [${{ env.SERVICE_NAME }}] DynamoDB Change Approval Required - ${{ env.ENVIRONMENT }} - ${{ github.ref_name }}"
+          issue-body: |
+            ## DynamoDB Change Approval Required
+
+            **Service:** ${{ env.SERVICE_NAME }}
+            **Environment:** ${{ env.ENVIRONMENT }}
+            **Branch:** ${{ github.ref }}
+            **Triggered by:** @${{ github.actor }}
+            **Commit:** ${{ github.sha }}
+
+            ### Changed DynamoDB-Related Terraform Files:
+            ```
+            $(git diff --name-only HEAD~1 HEAD | grep -E "src/rsvp_service/terraform/.*dynamodb.*\\.tf|src/rsvp_service/terraform/variables\\.tf")
+            ```
+
+            ### ⚠️ Important
+            - Review DynamoDB table/index changes carefully before approving
+            - This is a **${{ env.ENVIRONMENT }}** environment deployment
+            - Approval will allow Terraform to apply DynamoDB changes
+
+            **To approve:** Comment with `approved`, `approve`, `lgtm`, or `yes`
+            **To reject:** Comment with `denied`, `deny`, or `no`
+          exclude-workflow-initiator-as-approver: false
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -var-file='${{ env.TF_VARS_FILE }}' 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      - name: Terraform Apply
+        id: apply
+        run: |
+          terraform apply -var-file='${{ env.TF_VARS_FILE }}' -parallelism=1 -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
+        working-directory: ${{ env.TF_DIR }}
+        continue-on-error: true
+
+      - name: Slack Notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          author_name: "[${{ env.SERVICE_NAME }}] ${{ env.ENVIRONMENT }} environment deployment"
+          job_name: Deploy to Target Environment
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took,pullRequest
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          MATRIX_CONTEXT: ${{ toJson(matrix) }}
+        if: always()
