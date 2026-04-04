@@ -25,16 +25,16 @@ def lambda_handler(event: dict, context: object) -> dict:
         )
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
-    # Parse composite path param: "{campaign_id}#{run_id}"
+    # Parse composite path param: "{campaign_id}-{run_id}"
     raw_path_param = (event.get("pathParameters") or {}).get("campaign_id_run_id", "")
-    parts = raw_path_param.split("#", 1)
+    parts = raw_path_param.split("-", 1)
     if len(parts) != 2 or not parts[0] or not parts[1]:
         return {
             "statusCode": 400,
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps(
                 {
-                    "message": "Path parameter must be in the format '{campaign_id}#{run_id}'.",
+                    "message": "Path parameter must be in the format '{campaign_id}-{run_id}'.",
                     "error": "MISSING_FIELDS",
                     "request_id": aws_request_id,
                 }
