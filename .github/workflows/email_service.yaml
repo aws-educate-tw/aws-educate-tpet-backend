@@ -83,7 +83,12 @@ jobs:
         id: check-migrations
         run: |
           # Check if migrations directory has changes
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }} ${{ github.sha }} | grep "src/email_service/db/migrations" || true)
+          # Use three-dot syntax to diff only changes introduced by this PR branch
+          # fetch-depth: 0 is required (set in checkout step above) to access base branch history
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          git fetch origin "$BASE_REF"
+          CHANGED_FILES=$(git diff --name-only "origin/$BASE_REF...HEAD" \
+            | grep "src/email_service/db/migrations" || true)
 
           if [ -n "$CHANGED_FILES" ]; then
             echo "has_migration_changes=true" >> $GITHUB_OUTPUT
@@ -92,6 +97,9 @@ jobs:
             echo "has_migration_changes=false" >> $GITHUB_OUTPUT
             echo "::notice::No migration changes detected."
           fi
+          echo "changed_migration_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Check for Existing Approval Issue
         if: steps.check-migrations.outputs.has_migration_changes == 'true'
@@ -154,7 +162,7 @@ jobs:
 
             ### Changed Migration Files:
             ```
-            $(git diff --name-only origin/${{ github.base_ref }} ${{ github.sha }} | grep "src/email_service/db/migrations")
+            ${{ steps.check-migrations.outputs.changed_migration_files }}
             ```
 
             ### ⚠️ Important
@@ -498,7 +506,9 @@ jobs:
           echo "TF_CLI_ARGS=-no-color" >> $GITHUB_ENV
           echo "TF_LOG=" >> $GITHUB_ENV
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history to allow git diff against github.event.before
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.3
@@ -527,8 +537,19 @@ jobs:
       - name: Check for Migration Changes
         id: check-migrations
         run: |
-          # Check if migrations directory has changes in the last commit
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep "src/email_service/db/migrations" || true)
+          # Use two-dot diff (A..B) to get direct diff between previous and current HEAD
+          # Three-dot (A...B) uses merge-base and can produce incorrect results on force-push
+          BEFORE_SHA="${{ github.event.before }}"
+          CURRENT_SHA="${{ github.sha }}"
+
+          # github.event.before is all zeros on the first push to a branch
+          # Diff against the empty tree to ensure migration files are not missed
+          if [[ "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+            BEFORE_SHA="4b825dc642cb6eb9a060e54bf8d69288fbee4904" # git empty tree SHA
+          fi
+
+          CHANGED_FILES=$(git diff --name-only "$BEFORE_SHA".."$CURRENT_SHA" \
+            | grep "src/email_service/db/migrations" || true)
 
           if [ -n "$CHANGED_FILES" ]; then
             echo "has_migration_changes=true" >> $GITHUB_OUTPUT
@@ -537,6 +558,9 @@ jobs:
             echo "has_migration_changes=false" >> $GITHUB_OUTPUT
             echo "::notice::No migration changes detected."
           fi
+          echo "changed_migration_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Request Migration Approval
         if: steps.check-migrations.outputs.has_migration_changes == 'true'
@@ -557,7 +581,7 @@ jobs:
 
             ### Changed Migration Files:
             ```
-            $(git diff --name-only HEAD~1 HEAD | grep "src/email_service/db/migrations")
+            ${{ steps.check-migrations.outputs.changed_migration_files }}
             ```
 
             ### ⚠️ Important
