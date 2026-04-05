@@ -158,13 +158,10 @@ def _query_all_campaign_run_items(runs_table, campaign_id):
 
 
 def _query_all_participants_by_run(run_id):
-    """Query all participants for a specific run and calculate RSVP statistics."""
+    """Query all participants for a specific run."""
     participants_table = dynamodb.Table(PARTICIPANTS_TABLE)
 
     participants = []
-    attendees_count = 0
-    pending_count = 0
-    not_attend_count = 0
 
     query_kwargs = {
         "KeyConditionExpression": Key("run_id").eq(run_id),
@@ -174,7 +171,6 @@ def _query_all_participants_by_run(run_id):
         response = participants_table.query(**query_kwargs)
         items = response.get("Items", [])
 
-        # Process each participant and count RSVP statuses
         for item in items:
             participants.append(
                 {
@@ -187,26 +183,12 @@ def _query_all_participants_by_run(run_id):
                 }
             )
 
-            status = str(item.get("rsvp_status", "")).upper()
-            if status == "ATTEND":
-                attendees_count += 1
-            elif status == "PENDING":
-                pending_count += 1
-            elif status == "NOT_ATTEND":
-                not_attend_count += 1
-
         last_evaluated_key = response.get("LastEvaluatedKey")
         if not last_evaluated_key:
             break
         query_kwargs["ExclusiveStartKey"] = last_evaluated_key
 
-    return {
-        "participants": participants,
-        "participants_count": len(participants),
-        "attendees_count": attendees_count,
-        "pending_count": pending_count,
-        "not_attend_count": not_attend_count,
-    }
+    return participants
 
 
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
@@ -265,23 +247,14 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
             for future in as_completed(futures):
                 run_id = futures[future]
-                runs_with_participants[run_id] = future.result()
+                runs_with_participants[run_id] = {"participants": future.result()}
 
         # Step 4: Merge run data with configurations and participant statistics
         runs = []
         for run_item in run_items_from_email_service:
             run_id = run_item.get("run_id")
             campaign_run_item = campaign_run_by_run_id.get(run_id, {})
-            participants_info = runs_with_participants.get(
-                run_id,
-                {
-                    "participants": [],
-                    "participants_count": 0,
-                    "attendees_count": 0,
-                    "pending_count": 0,
-                    "not_attend_count": 0,
-                },
-            )
+            participants_info = runs_with_participants.get(run_id, {"participants": []})
 
             runs.append(
                 {
@@ -295,10 +268,6 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                     ),
                     "is_active": bool(campaign_run_item.get("is_active", False)),
                     "participants": participants_info["participants"],
-                    "participants_count": participants_info["participants_count"],
-                    "attendees_count": participants_info["attendees_count"],
-                    "pending_count": participants_info["pending_count"],
-                    "not_attend_count": participants_info["not_attend_count"],
                 }
             )
 
