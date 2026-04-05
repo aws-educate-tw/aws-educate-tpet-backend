@@ -160,6 +160,19 @@ def _query_all_campaign_run_items(runs_table, campaign_id):
     return run_items
 
 
+def _safe_event_log_fields(event):
+    """Extract non-sensitive event metadata for logging."""
+    request_context = event.get("requestContext") or {}
+    http_context = request_context.get("http") or {}
+
+    return {
+        "action": event.get("action"),
+        "path": event.get("path") or http_context.get("path"),
+        "httpMethod": event.get("httpMethod") or http_context.get("method"),
+        "requestId": request_context.get("requestId"),
+    }
+
+
 def _query_all_participants_by_run(run_id):
     """Query all participants for a specific run."""
     participants_table = dynamodb.Table(PARTICIPANTS_TABLE)
@@ -197,7 +210,7 @@ def _query_all_participants_by_run(run_id):
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for retrieving campaign details with runs and participants."""
     aws_request_id = getattr(context, "aws_request_id", None)
-    logger.info("Received event: %s", event)
+    logger.info("Received event metadata: %s", _safe_event_log_fields(event))
 
     if event.get("action") == "PREWARM":
         logger.info(
