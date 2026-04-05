@@ -15,7 +15,7 @@ class RsvpRepository:
     def __init__(self):
         """Initialize the repository with a DynamoDB table name."""
         self.dynamodb = boto3.resource("dynamodb")
-        self.campaigns_table = self.dynamodb.Table(os.getenv("CAMPAIGNS_TABLE"))
+        self.campaigns_table = self.dynamodb.Table(os.getenv("CAMPAIGN_TABLE"))
         self.runs_table = self.dynamodb.Table(os.getenv("CAMPAIGN_RUN_TABLE"))
         self.participants_table = self.dynamodb.Table(os.getenv("PARTICIPANT_TABLE"))
 

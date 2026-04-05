@@ -617,7 +617,7 @@ module "list_campaigns_lambda" {
     "SERVICE"         = var.service_underscore,
     "PARTICIPANT_TABLE" = "participant",
     "CAMPAIGN_RUN_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "campaign"
+    "CAMPAIGN_TABLE" = "campaign"
   }
 
   allowed_triggers = {
@@ -726,7 +726,7 @@ module "get_campaign_lambda" {
     "SERVICE"         = var.service_underscore,
     "PARTICIPANT_TABLE" = "participant",
     "CAMPAIGN_RUN_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "campaign"
+    "CAMPAIGN_TABLE" = "campaign"
     "DOMAIN_NAME" = var.domain_name
   }
 

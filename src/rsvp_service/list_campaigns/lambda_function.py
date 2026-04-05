@@ -11,7 +11,7 @@ logger.setLevel(logging.INFO)
 
 dynamodb = boto3.resource("dynamodb")
 
-CAMPAIGNS_TABLE = os.getenv("CAMPAIGNS_TABLE", "campaign")
+CAMPAIGN_TABLE = os.getenv("CAMPAIGN_TABLE")
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -87,7 +87,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         )
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
-    campaigns_table = dynamodb.Table(CAMPAIGNS_TABLE)
+    campaigns_table = dynamodb.Table(CAMPAIGN_TABLE)
 
     try:
         campaign_items = _scan_all_campaigns(campaigns_table)
