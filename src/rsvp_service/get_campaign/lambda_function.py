@@ -7,17 +7,11 @@ from decimal import Decimal
 from urllib import parse, request
 from urllib.error import HTTPError, URLError
 
-import boto3
-from boto3.dynamodb.conditions import Key
+from rsvp_repository import RsvpRepository
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-dynamodb = boto3.resource("dynamodb")
-
-CAMPAIGNS_TABLE = os.getenv("CAMPAIGNS_TABLE", "campaign")
-RUNS_CAMPAIGNS_MAPPING_TABLE = os.getenv("RUNS_CAMPAIGNS_MAPPING_TABLE", "campaign_run")
-PARTICIPANTS_TABLE = os.getenv("PARTICIPANTS_TABLE", "participant")
 ENVIRONMENT = os.getenv("ENVIRONMENT")
 DOMAIN_NAME = os.getenv("DOMAIN_NAME")
 EMAIL_SERVICE_BASE_URL = (
@@ -141,25 +135,6 @@ def _fetch_campaign_runs(
     return runs
 
 
-def _query_all_campaign_run_items(runs_table, campaign_id):
-    """Query all campaign run configuration items from DynamoDB."""
-    query_kwargs = {
-        "KeyConditionExpression": Key("campaign_id").eq(campaign_id),
-    }
-    run_items = []
-
-    while True:
-        runs_response = runs_table.query(**query_kwargs)
-        run_items.extend(runs_response.get("Items", []))
-
-        last_evaluated_key = runs_response.get("LastEvaluatedKey")
-        if not last_evaluated_key:
-            break
-        query_kwargs["ExclusiveStartKey"] = last_evaluated_key
-
-    return run_items
-
-
 def _safe_event_log_fields(event):
     """Extract non-sensitive event metadata for logging."""
     request_context = event.get("requestContext") or {}
@@ -171,40 +146,6 @@ def _safe_event_log_fields(event):
         "httpMethod": event.get("httpMethod") or http_context.get("method"),
         "requestId": request_context.get("requestId"),
     }
-
-
-def _query_all_participants_by_run(run_id):
-    """Query all participants for a specific run."""
-    participants_table = dynamodb.Table(PARTICIPANTS_TABLE)
-
-    participants = []
-
-    query_kwargs = {
-        "KeyConditionExpression": Key("run_id").eq(run_id),
-    }
-
-    while True:
-        response = participants_table.query(**query_kwargs)
-        items = response.get("Items", [])
-
-        for item in items:
-            participants.append(
-                {
-                    "participant_id": item.get("participant_id"),
-                    "email_id": item.get("email_id"),
-                    "rsvp_status": item.get("rsvp_status"),
-                    "name": item.get("name"),
-                    "created_at": item.get("created_at"),
-                    "updated_at": item.get("updated_at"),
-                }
-            )
-
-        last_evaluated_key = response.get("LastEvaluatedKey")
-        if not last_evaluated_key:
-            break
-        query_kwargs["ExclusiveStartKey"] = last_evaluated_key
-
-    return participants
 
 
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
@@ -220,12 +161,10 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
     campaign_id = event.get("pathParameters", {}).get("campaign_id")
-    campaigns_table = dynamodb.Table(CAMPAIGNS_TABLE)
-    runs_table = dynamodb.Table(RUNS_CAMPAIGNS_MAPPING_TABLE)
+    repository = RsvpRepository()
 
     try:
-        campaign_response = campaigns_table.get_item(Key={"campaign_id": campaign_id})
-        campaign_item = campaign_response.get("Item")
+        campaign_item = repository.get_campaign_by_id(campaign_id)
         if not campaign_item:
             return _response(
                 404,
@@ -242,7 +181,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         )
 
         # Step 2: Query campaign run for registration_deadline and is_active
-        campaign_run_items = _query_all_campaign_run_items(runs_table, campaign_id)
+        campaign_run_items = repository.query_all_campaign_run_items(campaign_id)
 
         campaign_run_by_run_id = {
             item.get("run_id"): item
@@ -255,7 +194,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         with ThreadPoolExecutor() as executor:
             futures = {
                 executor.submit(
-                    _query_all_participants_by_run, run_item.get("run_id")
+                    repository.query_all_participants_by_run, run_item.get("run_id")
                 ): run_item.get("run_id")
                 for run_item in run_items_from_email_service
                 if run_item.get("run_id")
