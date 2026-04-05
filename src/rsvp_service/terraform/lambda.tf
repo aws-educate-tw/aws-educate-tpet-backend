@@ -729,6 +729,7 @@ module "get_campaign_lambda" {
     "PARTICIPANTS_TABLE" = "participant",
     "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
     "CAMPAIGNS_TABLE" = "campaign"
+    "DOMAIN_NAME" = var.domain_name
   }
 
   allowed_triggers = {

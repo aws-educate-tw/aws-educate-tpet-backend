@@ -19,7 +19,10 @@ CAMPAIGNS_TABLE = os.getenv("CAMPAIGNS_TABLE", "campaign")
 RUNS_CAMPAIGNS_MAPPING_TABLE = os.getenv("RUNS_CAMPAIGNS_MAPPING_TABLE", "campaign_run")
 PARTICIPANTS_TABLE = os.getenv("PARTICIPANTS_TABLE", "participant")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "local_dev")
-EMAIL_SERVICE_BASE_URL = f"https://{ENVIRONMENT}-email-service-internal-api-tpet.aws-educate.tw/{ENVIRONMENT}"
+DOMAIN_NAME = os.getenv("DOMAIN_NAME")
+EMAIL_SERVICE_BASE_URL = (
+    f"https://{ENVIRONMENT}-email-service-internal-api-tpet.{DOMAIN_NAME}/{ENVIRONMENT}"
+)
 
 
 class DecimalEncoder(json.JSONEncoder):
