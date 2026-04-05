@@ -1,7 +1,7 @@
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from botocore.exceptions import ClientError
 from campaigns_repository import CampaignsRepository
@@ -14,13 +14,14 @@ campaigns_repo = CampaignsRepository()
 
 def lambda_handler(event: dict, context: object) -> dict:
     """Lambda handler for POST /rsvp-service/campaigns — create a new campaign."""
-    
+
     aws_request_id = getattr(context, "aws_request_id", None)
     logger.info("Received event: %s. Request ID: %s", event, aws_request_id)
 
     if event.get("action") == "PREWARM":
         logger.info(
-            "Received a prewarm request. Skipping business logic. Request ID: %s", aws_request_id
+            "Received a prewarm request. Skipping business logic. Request ID: %s",
+            aws_request_id,
         )
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
@@ -59,7 +60,7 @@ def lambda_handler(event: dict, context: object) -> dict:
                 }
             ),
         }
-    
+
     cohort = body.get("cohort")
     if not cohort:
         logger.error("Missing required field 'cohort'. Request ID: %s", aws_request_id)
@@ -76,7 +77,7 @@ def lambda_handler(event: dict, context: object) -> dict:
         }
 
     campaign_id = f"evt_{uuid.uuid4().hex}"
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     item = {
         "campaign_id": campaign_id,
@@ -109,9 +110,7 @@ def lambda_handler(event: dict, context: object) -> dict:
             ),
         }
     except Exception as e:
-        logger.error(
-            "Unexpected error: %s. Request ID: %s", e, aws_request_id
-        )
+        logger.error("Unexpected error: %s. Request ID: %s", e, aws_request_id)
         return {
             "statusCode": 500,
             "headers": {"Content-Type": "application/json"},

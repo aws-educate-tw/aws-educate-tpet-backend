@@ -82,7 +82,7 @@ def lambda_handler(event: dict, context: object) -> dict:
         "registration_deadline": body["registration_deadline"],
         "max_participants": body["max_participants"],
         "campaign_location": body["campaign_location"],
-        "is_active": body.get("is_active", True)
+        "is_active": body.get("is_active", True),
     }
     if body.get("campaign_start_time"):
         config["campaign_start_time"] = body["campaign_start_time"]
@@ -134,7 +134,7 @@ def lambda_handler(event: dict, context: object) -> dict:
         "statusCode": 200,
         "headers": {"Content-Type": "application/json"},
         "body": json.dumps(
-            {   
+            {
                 "status": "SUCCESS",
                 "data": response_data,
             }

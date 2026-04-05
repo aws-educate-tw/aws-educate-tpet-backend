@@ -1,7 +1,7 @@
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from botocore.exceptions import ClientError
 from participants_repository import ParticipantsRepository
@@ -121,7 +121,7 @@ def lambda_handler(event: dict, context: object) -> dict:
         )
 
     # Step 3: Build item
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     item = {
         "run_id": run_id,
         "participant_id": participant_id,

@@ -34,7 +34,5 @@ class CampaignsRepository:
             )
             return response.get("Item")
         except ClientError as e:
-            logger.error(
-                "Error fetching campaign %s: %s", campaign_id, e
-            )
+            logger.error("Error fetching campaign %s: %s", campaign_id, e)
             raise
