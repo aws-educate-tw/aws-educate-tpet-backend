@@ -615,9 +615,8 @@ module "list_campaigns_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
+    "PARTICIPANT_TABLE" = "participant",
+    "CAMPAIGN_RUN_TABLE" = "campaign_run",
     "CAMPAIGNS_TABLE" = "campaign"
   }
 
@@ -725,9 +724,8 @@ module "get_campaign_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
+    "PARTICIPANT_TABLE" = "participant",
+    "CAMPAIGN_RUN_TABLE" = "campaign_run",
     "CAMPAIGNS_TABLE" = "campaign"
     "DOMAIN_NAME" = var.domain_name
   }

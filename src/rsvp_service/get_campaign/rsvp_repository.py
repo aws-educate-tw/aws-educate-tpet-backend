@@ -16,8 +16,8 @@ class RsvpRepository:
         """Initialize the repository with a DynamoDB table name."""
         self.dynamodb = boto3.resource("dynamodb")
         self.campaigns_table = self.dynamodb.Table(os.getenv("CAMPAIGNS_TABLE"))
-        self.runs_table = self.dynamodb.Table(os.getenv("RUNS_CAMPAIGNS_MAPPING_TABLE"))
-        self.participants_table = self.dynamodb.Table(os.getenv("PARTICIPANTS_TABLE"))
+        self.runs_table = self.dynamodb.Table(os.getenv("CAMPAIGN_RUN_TABLE"))
+        self.participants_table = self.dynamodb.Table(os.getenv("PARTICIPANT_TABLE"))
 
     def get_campaign_by_id(self, campaign_id: str) -> dict | None:
         """Get a campaign by its ID."""
