@@ -1,22 +1,15 @@
 import json
 import logging
-import os
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal
-from urllib import parse, request
-from urllib.error import HTTPError, URLError
+from urllib.error import HTTPError
 
 from rsvp_repository import RsvpRepository
 
+from email_service import EmailService
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-ENVIRONMENT = os.getenv("ENVIRONMENT")
-DOMAIN_NAME = os.getenv("DOMAIN_NAME")
-EMAIL_SERVICE_BASE_URL = (
-    f"https://{ENVIRONMENT}-email-service-internal-api-tpet.{DOMAIN_NAME}/{ENVIRONMENT}"
-)
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -53,86 +46,6 @@ def _extract_auth_header(headers):
         return None
 
     return headers.get("authorization") or headers.get("Authorization")
-
-
-def _fetch_campaign_runs(
-    campaign_id, authorization_header, max_retries=4, initial_retry_delay=2
-):
-    """Fetch all runs for a campaign from the email service with retry logic."""
-    runs = []
-    page = 1
-
-    while True:
-        query = parse.urlencode(
-            {
-                "campaign_id": campaign_id,
-                "run_type": "RSVP",
-                "page": page,
-                "limit": 100,
-            }
-        )
-        url = f"{EMAIL_SERVICE_BASE_URL}/runs?{query}"
-
-        request_headers = {"Content-Type": "application/json"}
-        if authorization_header:
-            request_headers["authorization"] = authorization_header
-
-        req = request.Request(url, headers=request_headers, method="GET")
-
-        for attempt in range(max_retries):
-            try:
-                with request.urlopen(req, timeout=10) as response:
-                    body = response.read().decode("utf-8")
-                    payload = json.loads(body)
-                break
-            except HTTPError as error:
-                status_code = error.code
-                if attempt < max_retries - 1:
-                    retry_delay = initial_retry_delay * (2**attempt)
-                    logger.warning(
-                        "Attempt %d/%d failed with HTTP %d. Retrying in %d seconds...",
-                        attempt + 1,
-                        max_retries,
-                        status_code,
-                        retry_delay,
-                    )
-                    time.sleep(retry_delay)
-                else:
-                    logger.error(
-                        "Failed to fetch runs from email service after %d attempts. Last error: HTTP %d",
-                        max_retries,
-                        status_code,
-                    )
-                    raise
-            except (URLError, TimeoutError) as error:
-                if attempt < max_retries - 1:
-                    retry_delay = initial_retry_delay * (2**attempt)
-                    logger.warning(
-                        "Attempt %d/%d failed due to network issue: %s. Retrying in %d seconds...",
-                        attempt + 1,
-                        max_retries,
-                        error,
-                        retry_delay,
-                    )
-                    time.sleep(retry_delay)
-                else:
-                    logger.error(
-                        "Failed to fetch runs from email service after %d attempts: %s",
-                        max_retries,
-                        error,
-                    )
-                    raise
-
-        data = payload.get("data", [])
-        runs.extend(data)
-
-        pagination = payload.get("pagination", {})
-        total_pages = _to_int(pagination.get("total_pages"), default_value=1)
-        if page >= total_pages:
-            break
-        page += 1
-
-    return runs
 
 
 def _safe_event_log_fields(event):
@@ -176,9 +89,8 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         authorization_header = _extract_auth_header(event.get("headers", {}))
 
         # Step 1: Fetch run_id and subject from GET /runs with RSVP + campaign_id
-        run_items_from_email_service = _fetch_campaign_runs(
-            campaign_id, authorization_header
-        )
+        email_service = EmailService(authorization_header)
+        run_items_from_email_service = email_service.fetch_campaign_runs(campaign_id)
 
         # Step 2: Query campaign run for registration_deadline and is_active
         campaign_run_items = repository.query_all_campaign_run_items(campaign_id)
