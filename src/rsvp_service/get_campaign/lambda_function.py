@@ -1,8 +1,9 @@
 import json
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 from rsvp_repository import RsvpRepository
 
@@ -61,6 +62,69 @@ def _safe_event_log_fields(event):
     }
 
 
+def _get_campaign_runs(
+    email_service, campaign_id, max_retries=4, initial_retry_delay=2
+):
+    """Get all runs for a campaign with retry logic and pagination."""
+    runs = []
+    page = 1
+
+    while True:
+        for attempt in range(max_retries):
+            try:
+                payload = email_service.list_runs(
+                    campaign_id=campaign_id, run_type="RSVP", page=page, limit=100
+                )
+                break
+            except HTTPError as error:
+                if attempt < max_retries - 1:
+                    retry_delay = initial_retry_delay * (2**attempt)
+                    logger.warning(
+                        "Attempt %d/%d failed with HTTP %d. Retrying in %d seconds...",
+                        attempt + 1,
+                        max_retries,
+                        error.code,
+                        retry_delay,
+                    )
+                    time.sleep(retry_delay)
+                else:
+                    logger.error(
+                        "Failed to get runs after %d attempts. Last error: HTTP %d",
+                        max_retries,
+                        error.code,
+                    )
+                    raise
+            except (URLError, TimeoutError) as error:
+                if attempt < max_retries - 1:
+                    retry_delay = initial_retry_delay * (2**attempt)
+                    logger.warning(
+                        "Attempt %d/%d failed due to network issue: %s. Retrying in %d seconds...",
+                        attempt + 1,
+                        max_retries,
+                        error,
+                        retry_delay,
+                    )
+                    time.sleep(retry_delay)
+                else:
+                    logger.error(
+                        "Failed to get runs after %d attempts: %s",
+                        max_retries,
+                        error,
+                    )
+                    raise
+
+        data = payload.get("data", [])
+        runs.extend(data)
+
+        pagination = payload.get("pagination", {})
+        total_pages = int(pagination.get("total_pages", 1) or 1)
+        if page >= total_pages:
+            break
+        page += 1
+
+    return runs
+
+
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for retrieving campaign details with runs and participants."""
     aws_request_id = getattr(context, "aws_request_id", None)
@@ -88,9 +152,9 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
         authorization_header = _extract_auth_header(event.get("headers", {}))
 
-        # Step 1: Fetch run_id and subject from GET /runs with RSVP + campaign_id
+        # Step 1: Get run_id and subject from GET /runs with RSVP + campaign_id
         email_service = EmailService(authorization_header)
-        run_items_from_email_service = email_service.fetch_campaign_runs(campaign_id)
+        run_items_from_email_service = _get_campaign_runs(email_service, campaign_id)
 
         # Step 2: Query campaign run for registration_deadline and is_active
         campaign_run_items = repository.query_all_campaign_run_items(campaign_id)
@@ -153,18 +217,18 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             "Propagating upstream error from email service: HTTP %d", error.code
         )
 
-        error_body = {"message": "Failed to fetch runs from email service"}
+        error_body = {"message": "Failed to get runs from email service"}
         try:
             response_text = error.read().decode("utf-8", errors="replace")
             if response_text:
                 parsed_error = json.loads(response_text)
                 if isinstance(parsed_error, dict) and "message" in parsed_error:
                     error_body["message"] = (
-                        f"Failed to fetch runs from email service: {parsed_error['message']}"
+                        f"Failed to get runs from email service: {parsed_error['message']}"
                     )
                 else:
                     error_body["message"] = (
-                        f"Failed to fetch runs from email service: {response_text}"
+                        f"Failed to get runs from email service: {response_text}"
                     )
         except Exception:
             logger.exception("Failed to parse error response from email service")
