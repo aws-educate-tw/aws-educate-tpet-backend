@@ -1,17 +1,12 @@
 import json
 import logging
-import os
 from decimal import Decimal
 
-import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+from campaign_repository import CampaignRepository
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-dynamodb = boto3.resource("dynamodb")
-
-CAMPAIGN_TABLE = os.getenv("CAMPAIGN_TABLE")
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -30,23 +25,6 @@ def _response(status_code, body):
         "headers": {"Content-Type": "application/json"},
         "body": json.dumps(body, cls=DecimalEncoder),
     }
-
-
-def _scan_all_campaigns(campaigns_table):
-    """Scan all campaigns from DynamoDB with pagination."""
-    items = []
-    scan_kwargs = {}
-
-    while True:
-        response = campaigns_table.scan(**scan_kwargs)
-        items.extend(response.get("Items", []))
-
-        last_evaluated_key = response.get("LastEvaluatedKey")
-        if not last_evaluated_key:
-            break
-        scan_kwargs["ExclusiveStartKey"] = last_evaluated_key
-
-    return items
 
 
 def _format_campaign(campaign_item):
@@ -87,10 +65,10 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         )
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
-    campaigns_table = dynamodb.Table(CAMPAIGN_TABLE)
+    campaign_repository = CampaignRepository()
 
     try:
-        campaign_items = _scan_all_campaigns(campaigns_table)
+        campaign_items = campaign_repository.list_campaigns()
         response_body = [_format_campaign(item) for item in campaign_items]
         return _response(200, response_body)
 

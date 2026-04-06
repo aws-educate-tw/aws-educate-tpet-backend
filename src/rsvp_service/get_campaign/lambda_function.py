@@ -5,7 +5,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import Decimal
 from urllib.error import HTTPError, URLError
 
-from rsvp_repository import RsvpRepository
+from campaign_repository import CampaignRepository
+from campaign_run_repository import CampaignRunRepository
+from participant_repository import ParticipantRepository
 
 from email_service import EmailService
 
@@ -138,10 +140,12 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
     campaign_id = event.get("pathParameters", {}).get("campaign_id")
-    repository = RsvpRepository()
+    campaign_repository = CampaignRepository()
+    campaign_run_repository = CampaignRunRepository()
+    participant_repository = ParticipantRepository()
 
     try:
-        campaign_item = repository.get_campaign_by_id(campaign_id)
+        campaign_item = campaign_repository.get_campaign_by_id(campaign_id)
         if not campaign_item:
             return _response(
                 404,
@@ -157,7 +161,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         run_items_from_email_service = _get_campaign_runs(email_service, campaign_id)
 
         # Step 2: Query campaign run for registration_deadline and is_active
-        campaign_run_items = repository.query_all_campaign_run_items(campaign_id)
+        campaign_run_items = campaign_run_repository.query_by_campaign_id(campaign_id)
 
         campaign_run_by_run_id = {
             item.get("run_id"): item
@@ -170,7 +174,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         with ThreadPoolExecutor() as executor:
             futures = {
                 executor.submit(
-                    repository.query_all_participants_by_run, run_item.get("run_id")
+                    participant_repository.query_by_run_id, run_item.get("run_id")
                 ): run_item.get("run_id")
                 for run_item in run_items_from_email_service
                 if run_item.get("run_id")
