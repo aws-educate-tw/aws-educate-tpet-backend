@@ -2,6 +2,7 @@ import logging
 import os
 
 import boto3
+from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
@@ -15,30 +16,25 @@ class CampaignRepository:
         """Initialize the repository with the campaigns table."""
         self.dynamodb = boto3.resource("dynamodb")
         self.table = self.dynamodb.Table(os.getenv("CAMPAIGN_TABLE"))
-
-    def get_campaign_by_id(self, campaign_id: str) -> dict | None:
-        """Get a campaign by its ID."""
-        try:
-            response = self.table.get_item(Key={"campaign_id": campaign_id})
-            return response.get("Item")
-        except ClientError as e:
-            logger.error("Error getting campaign by ID: %s", e)
-            raise
+        self.campaign_cohort = "8"
 
     def list_campaigns(self) -> list[dict]:
         """List all campaigns from DynamoDB with pagination."""
         try:
             items = []
-            scan_kwargs = {}
+            query_kwargs = {
+                "KeyConditionExpression": Key("cohort").eq(self.campaign_cohort),
+                "ScanIndexForward": False,
+            }
 
             while True:
-                response = self.table.scan(**scan_kwargs)
+                response = self.table.query(**query_kwargs)
                 items.extend(response.get("Items", []))
 
                 last_evaluated_key = response.get("LastEvaluatedKey")
                 if not last_evaluated_key:
                     break
-                scan_kwargs["ExclusiveStartKey"] = last_evaluated_key
+                query_kwargs["ExclusiveStartKey"] = last_evaluated_key
 
             return items
         except ClientError as e:
