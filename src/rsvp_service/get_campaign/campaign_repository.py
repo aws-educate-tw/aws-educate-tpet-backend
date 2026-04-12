@@ -2,7 +2,7 @@ import logging
 import os
 
 import boto3
-from boto3.dynamodb.conditions import Attr, Key
+from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
@@ -21,24 +21,14 @@ class CampaignRepository:
     def get_campaign_by_id(self, campaign_id: str) -> dict | None:
         """Get a campaign by its ID."""
         try:
-            query_kwargs = {
-                "KeyConditionExpression": Key("cohort").eq(self.campaign_cohort),
-                "FilterExpression": Attr("campaign_id").eq(campaign_id),
-                "ScanIndexForward": False,
-            }
-
-            while True:
-                response = self.table.query(**query_kwargs)
-                items = response.get("Items", [])
-                if items:
-                    return items[0]
-
-                last_evaluated_key = response.get("LastEvaluatedKey")
-                if not last_evaluated_key:
-                    break
-                query_kwargs["ExclusiveStartKey"] = last_evaluated_key
-
-            return None
+            response = self.table.query(
+                KeyConditionExpression=Key("cohort").eq(self.campaign_cohort)
+                & Key("campaign_id-created_at").begins_with(f"{campaign_id}-"),
+                ScanIndexForward=False,
+                Limit=1,
+            )
+            items = response.get("Items", [])
+            return items[0] if items else None
         except ClientError as e:
             logger.error("Error getting campaign by ID: %s", e)
             raise
