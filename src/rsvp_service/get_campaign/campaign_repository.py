@@ -23,7 +23,7 @@ class CampaignRepository:
         try:
             response = self.table.query(
                 KeyConditionExpression=Key("cohort").eq(self.campaign_cohort)
-                & Key("campaign_id-created_at").begins_with(f"{campaign_id}-"),
+                & Key("campaign_id_created_at").begins_with(f"{campaign_id}_"),
                 ScanIndexForward=False,
                 Limit=1,
             )
