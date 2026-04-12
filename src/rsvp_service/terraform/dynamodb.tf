@@ -2,7 +2,7 @@ resource "aws_dynamodb_table" "campaigns" {
   name         = "campaign"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "cohort"
-  range_key    = "campaign_id-created_at"
+  range_key    = "campaign_id_created_at"
 
   attribute {
     name = "cohort"
@@ -10,7 +10,7 @@ resource "aws_dynamodb_table" "campaigns" {
   }
 
   attribute {
-    name = "campaign_id-created_at"
+    name = "campaign_id_created_at"
     type = "S"
   }
 
