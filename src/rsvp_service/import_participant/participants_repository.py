@@ -29,7 +29,7 @@ class ParticipantsRepository:
         Query the GSI to check whether a participant with the same email
         already exists under this campaign (across any run).
 
-        :param campaign_participant_uniq_handle: "{campaign_id}#{email}"
+        :param campaign_participant_uniq_handle: "{campaign_id}-{email}"
         :return: The existing participant_id, or None if not found.
         :raises ClientError: Propagated so the caller can return a 500.
         """
