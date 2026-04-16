@@ -32,7 +32,7 @@ class CampaignsRepository:
         try:
             self.table.put_item(
                 Item=item,
-                ConditionExpression="attribute_not_exists(campaign_id)",
+                ConditionExpression="attribute_not_exists(campaign_id_created_at)",
             )
             logger.info("Created campaign: %s", item.get("campaign_id"))
         except ClientError as e:

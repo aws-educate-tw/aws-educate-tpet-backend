@@ -80,8 +80,9 @@ def lambda_handler(event: dict, context: object) -> dict:
     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     item = {
-        "campaign_id": campaign_id,
         "cohort": cohort,
+        "campaign_id_created_at": f"{campaign_id}-{now}",
+        "campaign_id": campaign_id,
         "campaign_name": campaign_name,
         "campaign_start_time": body.get("campaign_start_time", ""),
         "campaign_end_time": body.get("campaign_end_time", ""),

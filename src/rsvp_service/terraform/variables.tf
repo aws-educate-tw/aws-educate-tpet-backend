@@ -58,3 +58,8 @@ variable "dynamodb_table_run" {
 variable "dynamodb_table_participants" {
   description = "Current service's DynamoDB table for participants"
 }
+
+variable "cohort" {
+  description = "Current AWS Educate ambassador cohort number"
+  type        = string
+}

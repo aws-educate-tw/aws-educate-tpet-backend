@@ -283,10 +283,11 @@ module "verify_campaign_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"     = var.environment,
-    "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE" = var.dynamodb_table,
+    "ENVIRONMENT"        = var.environment,
+    "SERVICE"            = var.service_underscore,
+    "DYNAMODB_TABLE"     = var.dynamodb_table,
     "DYNAMODB_TABLE_RUN" = var.dynamodb_table_run,
+    "COHORT"             = var.cohort
   }
 
   allowed_triggers = {
@@ -608,11 +609,12 @@ module "list_campaigns_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"     = var.environment,
-    "SERVICE"         = var.service_underscore,
-    "PARTICIPANT_TABLE" = "participant",
+    "ENVIRONMENT"        = var.environment,
+    "SERVICE"            = var.service_underscore,
+    "PARTICIPANT_TABLE"  = "participant",
     "CAMPAIGN_RUN_TABLE" = "campaign_run",
-    "CAMPAIGN_TABLE" = "campaign"
+    "CAMPAIGN_TABLE"     = "campaign",
+    "COHORT"             = var.cohort
   }
 
   allowed_triggers = {
@@ -717,12 +719,13 @@ module "get_campaign_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"     = var.environment,
-    "SERVICE"         = var.service_underscore,
-    "PARTICIPANT_TABLE" = "participant",
+    "ENVIRONMENT"        = var.environment,
+    "SERVICE"            = var.service_underscore,
+    "PARTICIPANT_TABLE"  = "participant",
     "CAMPAIGN_RUN_TABLE" = "campaign_run",
-    "CAMPAIGN_TABLE" = "campaign"
-    "DOMAIN_NAME" = var.domain_name
+    "CAMPAIGN_TABLE"     = "campaign",
+    "DOMAIN_NAME"        = var.domain_name,
+    "COHORT"             = var.cohort
   }
 
   allowed_triggers = {
