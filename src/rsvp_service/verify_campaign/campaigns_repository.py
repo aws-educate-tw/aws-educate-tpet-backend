@@ -43,7 +43,5 @@ class CampaignsRepository:
             items = response.get("Items", [])
             return items[0] if items else None
         except ClientError as e:
-            logger.error(
-                "Error querying campaign %s: %s", campaign_id, e
-            )
+            logger.error("Error querying campaign %s: %s", campaign_id, e)
             raise
