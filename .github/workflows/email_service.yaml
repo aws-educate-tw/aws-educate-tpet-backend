@@ -148,7 +148,7 @@ jobs:
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.TOKEN }}
-          approvers: ${{ github.actor }}
+          approvers: ${{ github.event.pull_request.user.login || github.actor }}
           minimum-approvals: 1
           issue-title: "🔐 [${{ env.SERVICE_NAME }}] Database Migration Approval Required - Preview - PR #${{ env.PULL_REQUEST_NUMBER }}"
           issue-body: |
@@ -181,7 +181,7 @@ jobs:
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.TOKEN }}
-          approvers: ${{ github.actor }}
+          approvers: ${{ github.event.pull_request.user.login || github.actor }}
           minimum-approvals: 1
           issue-title: "🔐 [${{ env.SERVICE_NAME }}] Database Migration Approval Required - Preview - PR #${{ env.PULL_REQUEST_NUMBER }}"
           issue-body: "Waiting for existing approval..."
@@ -567,7 +567,7 @@ jobs:
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.TOKEN }}
-          approvers: ${{ github.actor }}
+          approvers: ${{ github.event.pull_request.user.login || github.actor }}
           minimum-approvals: 1
           issue-title: "🔐 [${{ env.SERVICE_NAME }}] Database Migration Approval Required - ${{ env.ENVIRONMENT }} - ${{ github.ref_name }}"
           issue-body: |
