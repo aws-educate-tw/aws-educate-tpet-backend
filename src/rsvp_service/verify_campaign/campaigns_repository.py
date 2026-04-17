@@ -26,7 +26,7 @@ class CampaignsRepository:
         Find a campaign by campaign_id.
 
         Since the table PK is `cohort` and SK is `campaign_id_created_at`
-        (format: "{campaign_id}-{created_at}"), we Query with cohort as the
+        (format: "{campaign_id}_{created_at}"), we Query with cohort as the
         partition key and begins_with(campaign_id) as the SK condition.
 
         :param campaign_id: The campaign_id to look up.
