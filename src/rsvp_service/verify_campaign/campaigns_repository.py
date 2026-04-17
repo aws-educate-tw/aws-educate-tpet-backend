@@ -18,7 +18,7 @@ class CampaignsRepository:
 
     def __init__(self):
         self.dynamodb = boto3.resource("dynamodb")
-        self.table = self.dynamodb.Table(os.environ["DYNAMODB_TABLE"])
+        self.table = self.dynamodb.Table(os.environ["CAMPAIGN_TABLE"])
         self.cohort = os.environ.get("COHORT", "8")
 
     def get_campaign_by_id(self, campaign_id: str) -> dict | None:

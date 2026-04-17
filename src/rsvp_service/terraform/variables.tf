@@ -47,15 +47,15 @@ variable "private_bucket_name" {
   default     = "aws-educate-tpet-private-bucket"
 }
 
-variable "dynamodb_table" {
+variable "campaign_table" {
   description = "Current service's DynamoDB table for campaigns"
 }
 
-variable "dynamodb_table_run" {
+variable "campaign_run_table" {
   description = "Current service's DynamoDB table for campaign runs"
 }
 
-variable "dynamodb_table_participants" {
+variable "participant_table" {
   description = "Current service's DynamoDB table for participants"
 }
 

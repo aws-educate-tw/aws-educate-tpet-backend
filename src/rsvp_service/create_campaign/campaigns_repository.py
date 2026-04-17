@@ -17,7 +17,7 @@ class CampaignsRepository:
 
     def __init__(self):
         self.dynamodb = boto3.resource("dynamodb")
-        self.table = self.dynamodb.Table(os.environ["DYNAMODB_TABLE"])
+        self.table = self.dynamodb.Table(os.environ["CAMPAIGN_TABLE"])
 
     def create_campaign(self, item: dict) -> None:
         """

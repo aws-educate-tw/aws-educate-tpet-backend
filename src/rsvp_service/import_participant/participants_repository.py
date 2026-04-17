@@ -20,7 +20,7 @@ class ParticipantsRepository:
 
     def __init__(self):
         self.dynamodb = boto3.resource("dynamodb")
-        self.table = self.dynamodb.Table(os.environ["DYNAMODB_TABLE_PARTICIPANTS"])
+        self.table = self.dynamodb.Table(os.environ["PARTICIPANT_TABLE"])
 
     def find_existing_participant_id(
         self, campaign_participant_uniq_handle: str

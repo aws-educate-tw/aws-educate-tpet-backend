@@ -65,10 +65,9 @@ module "update_rsvp_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "Campaigns"
+    "PARTICIPANT_TABLE"  = "participant",
+    "CAMPAIGN_RUN_TABLE" = "campaign_run",
+    "CAMPAIGN_TABLE"     = "campaign"
   }
 
   allowed_triggers = {
@@ -175,10 +174,9 @@ module "get_rsvp_status_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "Campaigns"
+    "PARTICIPANT_TABLE"  = "participant",
+    "CAMPAIGN_RUN_TABLE" = "campaign_run",
+    "CAMPAIGN_TABLE"     = "campaign"
   }
 
   allowed_triggers = {
@@ -285,8 +283,8 @@ module "verify_campaign_lambda" {
   environment_variables = {
     "ENVIRONMENT"        = var.environment,
     "SERVICE"            = var.service_underscore,
-    "DYNAMODB_TABLE"     = var.dynamodb_table,
-    "DYNAMODB_TABLE_RUN" = var.dynamodb_table_run,
+    "CAMPAIGN_TABLE"     = var.campaign_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
     "COHORT"             = var.cohort
   }
 
@@ -394,8 +392,8 @@ module "upsert_run_configuration_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE" = var.dynamodb_table,
-    "DYNAMODB_TABLE_RUN" = var.dynamodb_table_run,
+    "CAMPAIGN_TABLE"     = var.campaign_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
   }
 
   allowed_triggers = {
@@ -502,9 +500,9 @@ module "import_participant_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE" = var.dynamodb_table,
-    "DYNAMODB_TABLE_RUN" = var.dynamodb_table_run,
-    "DYNAMODB_TABLE_PARTICIPANTS" = var.dynamodb_table_participants
+    "CAMPAIGN_TABLE"     = var.campaign_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
+    "PARTICIPANT_TABLE"  = var.participant_table
   }
 
   allowed_triggers = {
@@ -832,8 +830,8 @@ module "create_campaign_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE" = var.dynamodb_table,
-    "DYNAMODB_TABLE_RUN" = var.dynamodb_table_run,
+    "CAMPAIGN_TABLE"     = var.campaign_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
   }
 
   allowed_triggers = {

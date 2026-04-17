@@ -17,7 +17,7 @@ class CampaignRunRepository:
 
     def __init__(self):
         self.dynamodb = boto3.resource("dynamodb")
-        self.table = self.dynamodb.Table(os.environ["DYNAMODB_TABLE_RUN"])
+        self.table = self.dynamodb.Table(os.environ["CAMPAIGN_RUN_TABLE"])
 
     def upsert_run_configuration(
         self, campaign_id: str, run_id: str, config: dict
