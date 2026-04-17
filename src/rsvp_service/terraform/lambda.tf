@@ -615,10 +615,9 @@ module "list_campaigns_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "Campaigns"
+    "PARTICIPANT_TABLE" = "participant",
+    "CAMPAIGN_RUN_TABLE" = "campaign_run",
+    "CAMPAIGN_TABLE" = "campaign"
   }
 
   allowed_triggers = {
@@ -655,7 +654,7 @@ module "list_campaigns_lambda" {
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
@@ -725,10 +724,10 @@ module "get_campaign_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "Campaigns"
+    "PARTICIPANT_TABLE" = "participant",
+    "CAMPAIGN_RUN_TABLE" = "campaign_run",
+    "CAMPAIGN_TABLE" = "campaign"
+    "DOMAIN_NAME" = var.domain_name
   }
 
   allowed_triggers = {
@@ -765,7 +764,7 @@ module "get_campaign_lambda" {
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
