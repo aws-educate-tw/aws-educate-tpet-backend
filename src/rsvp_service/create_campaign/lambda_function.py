@@ -81,7 +81,7 @@ def lambda_handler(event: dict, context: object) -> dict:
 
     item = {
         "cohort": cohort,
-        "campaign_id_created_at": f"{campaign_id}-{now}",
+        "campaign_id_created_at": f"{campaign_id}_{now}",
         "campaign_id": campaign_id,
         "campaign_name": campaign_name,
         "campaign_start_time": body.get("campaign_start_time", ""),

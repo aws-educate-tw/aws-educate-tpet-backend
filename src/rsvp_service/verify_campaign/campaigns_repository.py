@@ -36,7 +36,7 @@ class CampaignsRepository:
         try:
             response = self.table.query(
                 KeyConditionExpression=Key("cohort").eq(self.cohort)
-                & Key("campaign_id_created_at").begins_with(campaign_id),
+                & Key("campaign_id_created_at").begins_with(f"{campaign_id}_"),
                 ProjectionExpression="campaign_id, campaign_name, is_active",
                 Limit=1,
             )

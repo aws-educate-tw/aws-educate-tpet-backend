@@ -80,7 +80,7 @@ def lambda_handler(event: dict, context: object) -> dict:
     email = body["email"]
     campaign_id = body["campaign_id"]
     name = body["name"]
-    campaign_participant_uniq_handle = f"{campaign_id}-{email}"
+    campaign_participant_uniq_handle = f"{campaign_id}_{email}"
 
     # Step 1 & 2: Check GSI — reuse participant_id if this email already
     # exists under this campaign in a previous run, otherwise generate a new one.

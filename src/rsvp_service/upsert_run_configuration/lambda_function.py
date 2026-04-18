@@ -25,22 +25,29 @@ def lambda_handler(event: dict, context: object) -> dict:
         )
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
-    # Parse composite path param: "{campaign_id}-{run_id}"
+    # Parse composite path param: "{campaign_id}_{run_id}"
+    # campaign_id = "evt_" (4 chars) + uuid4().hex (32 chars) = 36 chars total.
+    # Split by index rather than split("_") because campaign_id contains "_".
+    CAMPAIGN_ID_LEN = 36
     raw_path_param = (event.get("pathParameters") or {}).get("campaign_id_run_id", "")
-    parts = raw_path_param.split("-", 1)
-    if len(parts) != 2 or not parts[0] or not parts[1]:
+    if (
+        len(raw_path_param) <= CAMPAIGN_ID_LEN + 1
+        or not raw_path_param.startswith("evt_")
+        or raw_path_param[CAMPAIGN_ID_LEN] != "_"
+    ):
         return {
             "statusCode": 400,
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps(
                 {
-                    "message": "Path parameter must be in the format '{campaign_id}-{run_id}'.",
+                    "message": "Path parameter must be in the format '{campaign_id}_{run_id}'.",
                     "error": "MISSING_FIELDS",
                     "request_id": aws_request_id,
                 }
             ),
         }
-    campaign_id, run_id = parts
+    campaign_id = raw_path_param[:CAMPAIGN_ID_LEN]
+    run_id = raw_path_param[CAMPAIGN_ID_LEN + 1 :]
 
     try:
         body = json.loads(event.get("body", "{}"))
