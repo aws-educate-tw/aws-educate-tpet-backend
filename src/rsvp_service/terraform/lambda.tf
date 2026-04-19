@@ -65,10 +65,9 @@ module "update_rsvp_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "Campaigns"
+    "PARTICIPANT_TABLE"  = var.participant_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
+    "CAMPAIGN_TABLE"     = var.campaign_table
   }
 
   allowed_triggers = {
@@ -105,7 +104,7 @@ module "update_rsvp_lambda" {
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
@@ -175,10 +174,9 @@ module "get_rsvp_status_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "Campaigns"
+    "PARTICIPANT_TABLE"  = var.participant_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
+    "CAMPAIGN_TABLE"     = var.campaign_table
   }
 
   allowed_triggers = {
@@ -215,7 +213,7 @@ module "get_rsvp_status_lambda" {
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
@@ -283,12 +281,11 @@ module "verify_campaign_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"     = var.environment,
-    "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "Campaigns"
+    "ENVIRONMENT"        = var.environment,
+    "SERVICE"            = var.service_underscore,
+    "CAMPAIGN_TABLE"     = var.campaign_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
+    "COHORT"             = var.cohort
   }
 
   allowed_triggers = {
@@ -325,7 +322,7 @@ module "verify_campaign_lambda" {
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
@@ -395,10 +392,8 @@ module "upsert_run_configuration_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "Campaigns"
+    "CAMPAIGN_TABLE"     = var.campaign_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
   }
 
   allowed_triggers = {
@@ -435,7 +430,7 @@ module "upsert_run_configuration_lambda" {
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
@@ -505,10 +500,9 @@ module "import_participant_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "Campaigns"
+    "CAMPAIGN_TABLE"     = var.campaign_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
+    "PARTICIPANT_TABLE"  = var.participant_table
   }
 
   allowed_triggers = {
@@ -545,7 +539,7 @@ module "import_participant_lambda" {
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }
@@ -613,11 +607,12 @@ module "list_campaigns_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"     = var.environment,
-    "SERVICE"         = var.service_underscore,
-    "PARTICIPANT_TABLE" = "participant",
-    "CAMPAIGN_RUN_TABLE" = "campaign_run",
-    "CAMPAIGN_TABLE" = "campaign"
+    "ENVIRONMENT"        = var.environment,
+    "SERVICE"            = var.service_underscore,
+    "PARTICIPANT_TABLE"  = var.participant_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
+    "CAMPAIGN_TABLE"     = var.campaign_table,
+    "COHORT"             = var.cohort
   }
 
   allowed_triggers = {
@@ -722,12 +717,13 @@ module "get_campaign_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"     = var.environment,
-    "SERVICE"         = var.service_underscore,
-    "PARTICIPANT_TABLE" = "participant",
-    "CAMPAIGN_RUN_TABLE" = "campaign_run",
-    "CAMPAIGN_TABLE" = "campaign"
-    "DOMAIN_NAME" = var.domain_name
+    "ENVIRONMENT"        = var.environment,
+    "SERVICE"            = var.service_underscore,
+    "PARTICIPANT_TABLE"  = var.participant_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
+    "CAMPAIGN_TABLE"     = var.campaign_table,
+    "DOMAIN_NAME"        = var.domain_name,
+    "COHORT"             = var.cohort
   }
 
   allowed_triggers = {
@@ -834,10 +830,8 @@ module "create_campaign_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "DYNAMODB_TABLE"  = "participant",
-    "PARTICIPANTS_TABLE" = "participant",
-    "RUNS_CAMPAIGNS_MAPPING_TABLE" = "campaign_run",
-    "CAMPAIGNS_TABLE" = "Campaigns"
+    "CAMPAIGN_TABLE"     = var.campaign_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
   }
 
   allowed_triggers = {
@@ -874,7 +868,7 @@ module "create_campaign_lambda" {
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/Campaigns",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
       ]
     }

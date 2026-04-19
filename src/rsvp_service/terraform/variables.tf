@@ -35,9 +35,6 @@ variable "lambda_architecture" {
   default     = "x86_64"
 }
 
-
-
-
 variable "bucket_name" {
   description = "S3 bucket name for TPET (without environment prefix)"
   type        = string
@@ -48,4 +45,21 @@ variable "private_bucket_name" {
   description = "S3 private bucket name for TPET (without environment prefix)"
   type        = string
   default     = "aws-educate-tpet-private-bucket"
+}
+
+variable "campaign_table" {
+  description = "Current service's DynamoDB table for campaigns"
+}
+
+variable "campaign_run_table" {
+  description = "Current service's DynamoDB table for campaign runs"
+}
+
+variable "participant_table" {
+  description = "Current service's DynamoDB table for participants"
+}
+
+variable "cohort" {
+  description = "Current AWS Educate ambassador cohort number"
+  type        = string
 }
