@@ -16,4 +16,4 @@ class RunType(Enum):
     """
 
     WEBHOOK = "WEBHOOK"
-    EMAIL = "EMAIL"
+    RSVP = "RSVP"
