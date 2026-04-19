@@ -88,13 +88,8 @@ def lambda_handler(event: dict, context: object) -> dict:
     config = {
         "registration_deadline": body["registration_deadline"],
         "max_participants": body["max_participants"],
-        "campaign_location": body["campaign_location"],
         "is_active": body.get("is_active", True),
     }
-    if body.get("campaign_start_time"):
-        config["campaign_start_time"] = body["campaign_start_time"]
-    if body.get("campaign_end_time"):
-        config["campaign_end_time"] = body["campaign_end_time"]
 
     try:
         campaign_run_repo.upsert_run_configuration(campaign_id, run_id, config)
@@ -129,13 +124,8 @@ def lambda_handler(event: dict, context: object) -> dict:
         "run_id": run_id,
         "registration_deadline": config["registration_deadline"],
         "max_participants": config["max_participants"],
-        "campaign_location": config["campaign_location"],
         "is_active": config["is_active"],
     }
-    if config.get("campaign_start_time"):
-        response_data["campaign_start_time"] = config["campaign_start_time"]
-    if config.get("campaign_end_time"):
-        response_data["campaign_end_time"] = config["campaign_end_time"]
 
     return {
         "statusCode": 200,
