@@ -7,6 +7,7 @@ from current_user_util import current_user_util
 from data_util import convert_float_to_decimal
 from recipient_source_enum import RecipientSource
 from requests.exceptions import RequestException
+from rsvp_service import RSVPService
 from run_repository import RunRepository
 from run_type_enum import RunType
 from sqs import get_sqs_message, send_message_to_queue
@@ -29,7 +30,6 @@ DEFAULT_DISPLAY_NAME = "AWS Educate 雲端大使"
 DEFAULT_REPLY_TO = "awseducate.cloudambassador@gmail.com"
 DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
 DEFAULT_RECIPIENT_SOURCE = RecipientSource.SPREADSHEET.value
-DEFAULT_RUN_TYPE = RunType.EMAIL.value
 EMAIL_PATTERN = r"[^@]+@[^@]+\.[^@]+"
 
 # Initialize repositories
@@ -169,6 +169,48 @@ def process_record(record: dict[str, Any], aws_request_id: str) -> None:
 
     if not run_repository.upsert_run(run_item):
         raise RuntimeError(f"Failed to save run: {run_item['run_id']}")
+
+    # For RSVP run type, call RSVP service to upsert run configuration
+    if run_type == RunType.RSVP.value:
+        campaign_id = sqs_message.get("campaign_id")
+
+        # Since the usage of `registration_deadline` is not yet fully defined,
+        # we temporarily omit passing this value to the RSVP service.
+        # Instead, a default value will be set on the RSVP service side
+        # to prevent potential issues.
+
+        # TODO: Finalize the design and integrate `registration_deadline` handling.
+
+        max_participants = sqs_message.get("expected_email_send_count", 0)
+
+        if campaign_id and max_participants:
+            try:
+                rsvp_service = RSVPService()
+                rsvp_service.upsert_run_configuration(
+                    campaign_id=campaign_id,
+                    run_id=run_id,
+                    max_participants=max_participants,
+                    registration_deadline=None,
+                    is_active=True
+                )
+                logger.info(
+                    "Successfully synchronized run configuration to RSVP service: campaign_id=%s, run_id=%s",
+                    campaign_id,
+                    run_id,
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to sync run configuration to RSVP service: %s (campaign_id=%s, run_id=%s)",
+                    e,
+                    campaign_id,
+                    run_id,
+                )
+        else:
+            logger.warning(
+                "Missing required RSVP fields for run configuration sync: campaign_id=%s, run_id=%s",
+                campaign_id,
+                run_id,
+            )
 
     # Forward the message to upsert_run SQS queue
     forward_message = {
