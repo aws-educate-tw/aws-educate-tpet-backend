@@ -65,9 +65,9 @@ module "update_rsvp_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "PARTICIPANT_TABLE"  = "participant",
-    "CAMPAIGN_RUN_TABLE" = "campaign_run",
-    "CAMPAIGN_TABLE"     = "campaign"
+    "PARTICIPANT_TABLE"  = var.participant_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
+    "CAMPAIGN_TABLE"     = var.campaign_table
   }
 
   allowed_triggers = {
@@ -174,9 +174,9 @@ module "get_rsvp_status_lambda" {
   environment_variables = {
     "ENVIRONMENT"     = var.environment,
     "SERVICE"         = var.service_underscore,
-    "PARTICIPANT_TABLE"  = "participant",
-    "CAMPAIGN_RUN_TABLE" = "campaign_run",
-    "CAMPAIGN_TABLE"     = "campaign"
+    "PARTICIPANT_TABLE"  = var.participant_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
+    "CAMPAIGN_TABLE"     = var.campaign_table
   }
 
   allowed_triggers = {
@@ -609,9 +609,9 @@ module "list_campaigns_lambda" {
   environment_variables = {
     "ENVIRONMENT"        = var.environment,
     "SERVICE"            = var.service_underscore,
-    "PARTICIPANT_TABLE"  = "participant",
-    "CAMPAIGN_RUN_TABLE" = "campaign_run",
-    "CAMPAIGN_TABLE"     = "campaign",
+    "PARTICIPANT_TABLE"  = var.participant_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
+    "CAMPAIGN_TABLE"     = var.campaign_table,
     "COHORT"             = var.cohort
   }
 
@@ -719,9 +719,9 @@ module "get_campaign_lambda" {
   environment_variables = {
     "ENVIRONMENT"        = var.environment,
     "SERVICE"            = var.service_underscore,
-    "PARTICIPANT_TABLE"  = "participant",
-    "CAMPAIGN_RUN_TABLE" = "campaign_run",
-    "CAMPAIGN_TABLE"     = "campaign",
+    "PARTICIPANT_TABLE"  = var.participant_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
+    "CAMPAIGN_TABLE"     = var.campaign_table,
     "DOMAIN_NAME"        = var.domain_name,
     "COHORT"             = var.cohort
   }
