@@ -88,7 +88,7 @@ def lambda_handler(event: dict, context: object) -> dict:
         "campaign_end_time": body.get("campaign_end_time", ""),
         "campaign_location": body.get("campaign_location", ""),
         "created_at": now,
-        "is_active": False,
+        "is_active": True,
     }
 
     try:
