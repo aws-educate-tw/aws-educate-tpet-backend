@@ -10,13 +10,13 @@ logger.setLevel(logging.INFO)
 
 class RSVPService:
     def __init__(self):
-        environment = os.environ.get("ENVIRONMENT")
-        self.base_url = f"https://{environment}-rsvp-service-internal-api-tpet.aws-educate.tw/{environment}"
+        self.environment = os.environ.get("ENVIRONMENT")
+        self.base_url = f"https://{self.environment}-rsvp-service-internal-api-tpet.aws-educate.tw"
 
     def verify_campaign(self, campaign_id):
         """Verify the validity of a campaign ID by calling the RSVP service API."""
         try:
-            url = f"{self.base_url}/rsvp-service/internal/campaign/{campaign_id}/check"
+            url = f"{self.base_url}/rsvp-service/{self.environment}/internal/campaign/{campaign_id}/check"
             response = requests.get(url, timeout=29)
             response.raise_for_status()
             return response.json()
