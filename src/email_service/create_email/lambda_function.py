@@ -1,11 +1,17 @@
+import io
 import logging
 import os
 import uuid
 
+import boto3
+import pandas as pd
 import time_util
 from current_user_util import current_user_util
 from data_util import convert_float_to_decimal
 from email_repository import EmailRepository
+from jwt_util import generate_rsvp_token
+from rsvp_service import RSVPService
+from run_type_enum import RunType
 from s3 import read_sheet_data_from_s3
 from sqs import delete_sqs_message, get_sqs_message, send_message_to_queue
 from template_variable_db_column_mapping_util import map_recipient_name
@@ -29,6 +35,7 @@ DEFAULT_RUN_TYPE = "EMAIL"
 # Initialize services
 file_service = FileService()
 email_repository = EmailRepository()
+rsvp_service = RSVPService()
 
 
 def prepare_email_item(run_id: str, email_data: dict, row_data: dict) -> dict:
@@ -162,6 +169,138 @@ def upsert_emails_and_enqueue_emails_to_send_email_sqs_queue(sqs_message: dict) 
     )
 
 
+def process_rsvp_emails_and_update_spreadsheet(sqs_message: dict) -> None:
+    """
+    Process RSVP emails: import participants to RSVP service, generate tokens,
+    and update spreadsheet with participant_id, email_id, and token.
+
+    :param sqs_message: The SQS message containing run and recipient data.
+    """
+    run_id = sqs_message["run_id"]
+    campaign_id = sqs_message.get("campaign_id")
+    spreadsheet_file_id = sqs_message.get("spreadsheet_file_id")
+    registration_deadline = sqs_message.get("registration_deadline")
+
+    if not registration_deadline:
+        logger.error("registration_deadline is missing for RSVP run_type")
+        raise ValueError("registration_deadline is required for RSVP run_type")
+
+    # Read spreadsheet data
+    spreadsheet_info = file_service.get_file_info(
+        spreadsheet_file_id,
+        current_user_util.get_current_user_access_token(),
+    )
+    spreadsheet_s3_object_key = spreadsheet_info["s3_object_key"]
+    sheet_data, columns = read_sheet_data_from_s3(spreadsheet_s3_object_key)
+
+    logger.info("Processing RSVP emails for run_id: %s, campaign_id: %s", run_id, campaign_id)
+
+    # Process each row
+    updated_sheet_data = []
+    for row_data in sheet_data:
+        email = row_data.get("Email")
+        name = row_data.get("Name", row_data.get("姓名", email))  # Fallback to email if no name
+
+        # Generate participant_id and email_id for tracking
+        participant_id = str(uuid.uuid4())
+        email_id = str(uuid.uuid4().hex)
+
+        # Import participant to RSVP service
+        try:
+            response = rsvp_service.import_participant(
+                run_id=run_id,
+                participant_id=participant_id,
+                email=email,
+                campaign_id=campaign_id,
+                name=name,
+            )
+
+            if response.get("status") != "SUCCESS":
+                logger.error("Failed to import participant to RSVP service: %s", response)
+                raise ValueError("Failed to import participant to RSVP service")
+
+            logger.info(
+                "Imported participant: email=%s, participant_id=%s, email_id=%s",
+                email,
+                participant_id,
+                email_id,
+            )
+        except Exception as e:
+            logger.error("Failed to import participant %s: %s", email, e)
+            raise
+
+        # Generate JWT token
+        try:
+            token = generate_rsvp_token(
+                run_id=run_id,
+                participant_id=participant_id,
+                email_id=email_id,
+                campaign_id=campaign_id,
+                name=name,
+                expiration_datetime=registration_deadline,
+            )
+            logger.info("Generated JWT token for participant_id: %s", participant_id)
+        except Exception as e:
+            logger.error("Failed to generate JWT token for participant %s: %s", participant_id, e)
+            raise
+
+        # Update row with participant_id, email_id, and token
+        updated_row = {
+            **row_data,
+            "participant_id": participant_id,
+            "email_id": email_id,
+            "jwt_token": token,
+        }
+        updated_sheet_data.append(updated_row)
+
+        # Create and save email item
+        email_item = prepare_email_item(run_id, sqs_message, row_data)
+        # Override email_id with the one we generated
+        email_item["email_id"] = email_id
+        email_repository.upsert_email(email_item)
+
+        # Enqueue the email for sending
+        enqueue_email_to_send_email_sqs_queue(email_item)
+
+    # Write updated data back to spreadsheet
+    try:
+        # Create DataFrame from updated data
+        df = pd.DataFrame(updated_sheet_data)
+        
+        # Reorder columns: original columns first, then new columns
+        existing_cols = [col for col in columns if col in df.columns]
+        new_cols = [col for col in df.columns if col not in columns]
+        df = df[existing_cols + new_cols]
+        
+        # Write to Excel in memory
+        excel_buffer = io.BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Sheet1")
+        
+        # Upload to S3
+        excel_buffer.seek(0)
+        s3 = boto3.client("s3")
+        bucket_name = os.getenv("BUCKET_NAME")
+        s3.put_object(
+            Bucket=bucket_name,
+            Key=spreadsheet_s3_object_key,
+            Body=excel_buffer.getvalue()
+        )
+        
+        logger.info(
+            "Successfully updated spreadsheet with participant_id, email_id, and tokens for run_id: %s",
+            run_id,
+        )
+    except Exception as e:
+        logger.error("Failed to write updated spreadsheet data to S3: %s", e)
+        raise
+
+    logger.info(
+        "Successfully processed all RSVP participants for run_id: %s",
+        run_id,
+    )
+
+
 def lambda_handler(event, context):
     """
     AWS Lambda handler function to process email creation requests.
@@ -185,7 +324,7 @@ def lambda_handler(event, context):
             # Set the current user information
             current_user_util.set_current_user_by_access_token(access_token)
 
-            if run_type == "WEBHOOK":
+            if run_type == RunType.WEBHOOK.value:
                 # For WEBHOOK, append emails without checking for existence.
                 # The SQS message from validate_input contains only the new recipients.
                 logger.info(
@@ -193,7 +332,7 @@ def lambda_handler(event, context):
                 )
                 upsert_emails_and_enqueue_emails_to_send_email_sqs_queue(sqs_message)
             else:
-                # For other run_types (like EMAIL), maintain idempotency check
+                # For other run_types (like RSVP), maintain idempotency check
                 # to prevent reprocessing the entire spreadsheet.
                 existing_emails = email_repository.list_emails(
                     {
@@ -203,6 +342,9 @@ def lambda_handler(event, context):
                 )
 
                 if not existing_emails:
+                    if run_type == RunType.RSVP.value:
+                        process_rsvp_emails_and_update_spreadsheet(sqs_message)
+
                     upsert_emails_and_enqueue_emails_to_send_email_sqs_queue(
                         sqs_message
                     )
