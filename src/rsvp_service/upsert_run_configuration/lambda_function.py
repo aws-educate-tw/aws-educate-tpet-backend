@@ -9,7 +9,7 @@ logger.setLevel(logging.INFO)
 
 campaign_run_repo = CampaignRunRepository()
 
-REQUIRED_FIELDS = ["registration_deadline", "max_participants", "campaign_location"]
+REQUIRED_FIELDS = ["registration_deadline", "max_participants"]
 
 
 def lambda_handler(event: dict, context: object) -> dict:
