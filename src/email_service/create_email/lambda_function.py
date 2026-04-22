@@ -10,13 +10,13 @@ from current_user_util import current_user_util
 from data_util import convert_float_to_decimal
 from email_repository import EmailRepository
 from jwt_util import generate_rsvp_token
-from rsvp_service import RSVPService
 from run_type_enum import RunType
 from s3 import read_sheet_data_from_s3
 from sqs import delete_sqs_message, get_sqs_message, send_message_to_queue
 from template_variable_db_column_mapping_util import map_recipient_name
 
 from file_service import FileService
+from rsvp_service import RSVPService
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -193,13 +193,17 @@ def process_rsvp_emails_and_update_spreadsheet(sqs_message: dict) -> None:
     spreadsheet_s3_object_key = spreadsheet_info["s3_object_key"]
     sheet_data, columns = read_sheet_data_from_s3(spreadsheet_s3_object_key)
 
-    logger.info("Processing RSVP emails for run_id: %s, campaign_id: %s", run_id, campaign_id)
+    logger.info(
+        "Processing RSVP emails for run_id: %s, campaign_id: %s", run_id, campaign_id
+    )
 
     # Process each row
     updated_sheet_data = []
     for row_data in sheet_data:
         email = row_data.get("Email")
-        name = row_data.get("Name", row_data.get("姓名", email))  # Fallback to email if no name
+        name = row_data.get(
+            "Name", row_data.get("姓名", email)
+        )  # Fallback to email if no name
 
         # Generate participant_id and email_id for tracking
         participant_id = str(uuid.uuid4())
@@ -216,7 +220,9 @@ def process_rsvp_emails_and_update_spreadsheet(sqs_message: dict) -> None:
             )
 
             if response.get("status") != "SUCCESS":
-                logger.error("Failed to import participant to RSVP service: %s", response)
+                logger.error(
+                    "Failed to import participant to RSVP service: %s", response
+                )
                 raise ValueError("Failed to import participant to RSVP service")
 
             logger.info(
@@ -241,7 +247,9 @@ def process_rsvp_emails_and_update_spreadsheet(sqs_message: dict) -> None:
             )
             logger.info("Generated JWT token for participant_id: %s", participant_id)
         except Exception as e:
-            logger.error("Failed to generate JWT token for participant %s: %s", participant_id, e)
+            logger.error(
+                "Failed to generate JWT token for participant %s: %s", participant_id, e
+            )
             raise
 
         # Update row with participant_id, email_id, and token
@@ -266,17 +274,17 @@ def process_rsvp_emails_and_update_spreadsheet(sqs_message: dict) -> None:
     try:
         # Create DataFrame from updated data
         df = pd.DataFrame(updated_sheet_data)
-        
+
         # Reorder columns: original columns first, then new columns
         existing_cols = [col for col in columns if col in df.columns]
         new_cols = [col for col in df.columns if col not in columns]
         df = df[existing_cols + new_cols]
-        
+
         # Write to Excel in memory
         excel_buffer = io.BytesIO()
         with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
             df.to_excel(writer, index=False, sheet_name="Sheet1")
-        
+
         # Upload to S3
         excel_buffer.seek(0)
         s3 = boto3.client("s3")
@@ -284,9 +292,9 @@ def process_rsvp_emails_and_update_spreadsheet(sqs_message: dict) -> None:
         s3.put_object(
             Bucket=bucket_name,
             Key=spreadsheet_s3_object_key,
-            Body=excel_buffer.getvalue()
+            Body=excel_buffer.getvalue(),
         )
-        
+
         logger.info(
             "Successfully updated spreadsheet with participant_id, email_id, and tokens for run_id: %s",
             run_id,

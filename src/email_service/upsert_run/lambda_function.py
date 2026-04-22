@@ -7,11 +7,12 @@ from current_user_util import current_user_util
 from data_util import convert_float_to_decimal
 from recipient_source_enum import RecipientSource
 from requests.exceptions import RequestException
-from rsvp_service import RSVPService
 from run_repository import RunRepository
 from run_type_enum import RunType
 from sqs import get_sqs_message, send_message_to_queue
 from time_util import get_current_utc_time
+
+from rsvp_service import RSVPService
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -191,12 +192,16 @@ def process_record(record: dict[str, Any], aws_request_id: str) -> None:
                     run_id=run_id,
                     max_participants=max_participants,
                     registration_deadline=None,
-                    is_active=True
+                    is_active=True,
                 )
 
                 # Persist the generated/normalized deadline into message for downstream create_email.
                 if isinstance(response, dict):
-                    response_data = response.get("data") if isinstance(response.get("data"), dict) else response
+                    response_data = (
+                        response.get("data")
+                        if isinstance(response.get("data"), dict)
+                        else response
+                    )
                     resolved_deadline = response_data.get("registration_deadline")
                     if resolved_deadline:
                         sqs_message["registration_deadline"] = resolved_deadline

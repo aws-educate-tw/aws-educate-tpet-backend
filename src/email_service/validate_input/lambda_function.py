@@ -19,6 +19,7 @@ from run_type_enum import RunType
 from sqs import send_message_to_queue
 from time_util import get_current_utc_time
 from validation_exceptions import ValidationError, ValidationErrorCollector
+
 from rsvp_service import RSVPService
 
 # Set up logging
