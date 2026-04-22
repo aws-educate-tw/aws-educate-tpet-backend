@@ -186,13 +186,21 @@ def process_record(record: dict[str, Any], aws_request_id: str) -> None:
         if campaign_id and max_participants:
             try:
                 rsvp_service = RSVPService()
-                rsvp_service.upsert_run_configuration(
+                response = rsvp_service.upsert_run_configuration(
                     campaign_id=campaign_id,
                     run_id=run_id,
                     max_participants=max_participants,
                     registration_deadline=None,
                     is_active=True
                 )
+
+                # Persist the generated/normalized deadline into message for downstream create_email.
+                if isinstance(response, dict):
+                    response_data = response.get("data") if isinstance(response.get("data"), dict) else response
+                    resolved_deadline = response_data.get("registration_deadline")
+                    if resolved_deadline:
+                        sqs_message["registration_deadline"] = resolved_deadline
+
                 logger.info(
                     "Successfully synchronized run configuration to RSVP service: campaign_id=%s, run_id=%s",
                     campaign_id,

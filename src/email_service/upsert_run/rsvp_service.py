@@ -1,6 +1,5 @@
 import logging
 import os
-
 import requests
 
 # Initialize logger
@@ -10,8 +9,8 @@ logger.setLevel(logging.INFO)
 
 class RSVPService:
     def __init__(self):
-        environment = os.environ.get("ENVIRONMENT")
-        self.base_url = f"https://{environment}-rsvp-service-internal-api-tpet.aws-educate.tw/{environment}"
+        self.environment = os.environ.get("ENVIRONMENT")
+        self.base_url = f"https://{self.environment}-rsvp-service-internal-api-tpet.aws-educate.tw"
 
     def upsert_run_configuration(
         self,
@@ -36,7 +35,7 @@ class RSVPService:
         try:
             # Construct composite path parameter: {campaign_id}_{run_id}
             composite_param = f"{campaign_id}_{run_id}"
-            url = f"{self.base_url}/rsvp-service/internal/campaign-runs/{composite_param}"
+            url = f"{self.base_url}/rsvp-service/{self.environment}/internal/campaign-runs/{composite_param}"
 
             # Use default registration_deadline if not provided
             if not registration_deadline:
