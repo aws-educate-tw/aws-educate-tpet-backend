@@ -666,6 +666,7 @@ module "create_email_lambda" {
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+    "JWT_SECRET"                         = data.aws_secretsmanager_secret_version.jwt_secret.secret_string
   }
 
   allowed_triggers = {
@@ -706,7 +707,8 @@ module "create_email_lambda" {
         "secretsmanager:GetSecretValue"
       ],
       resources = [
-        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"],
+        aws_secretsmanager_secret.jwt_secret.arn
       ]
     },
 
