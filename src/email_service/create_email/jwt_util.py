@@ -43,11 +43,11 @@ def generate_rsvp_token(
         iat = int(now.timestamp())
 
         if not expiration_datetime:
-            raise ValueError("expiration_datetime is required for RSVP token generation")
+            raise ValueError(
+                "expiration_datetime is required for RSVP token generation"
+            )
 
-        exp_dt = datetime.fromisoformat(
-            expiration_datetime.replace("Z", "+00:00")
-        )
+        exp_dt = datetime.fromisoformat(expiration_datetime.replace("Z", "+00:00"))
         if exp_dt.tzinfo is None:
             exp_dt = exp_dt.replace(tzinfo=UTC)
         else:

@@ -1,5 +1,6 @@
 import logging
 import os
+
 import requests
 
 # Initialize logger
@@ -10,7 +11,9 @@ logger.setLevel(logging.INFO)
 class RSVPService:
     def __init__(self):
         self.environment = os.environ.get("ENVIRONMENT")
-        self.base_url = f"https://{self.environment}-rsvp-service-internal-api-tpet.aws-educate.tw"
+        self.base_url = (
+            f"https://{self.environment}-rsvp-service-internal-api-tpet.aws-educate.tw"
+        )
 
     def upsert_run_configuration(
         self,
@@ -21,14 +24,14 @@ class RSVPService:
         is_active: bool = True,
     ) -> dict:
         """Upsert run configuration by calling the RSVP service API.
-        
+
         Args:
             campaign_id: Campaign ID
             run_id: Run ID
             max_participants: Maximum number of participants
             registration_deadline: Registration deadline (ISO 8601 timestamp, optional)
             is_active: Whether the campaign run is active (default: True)
-            
+
         Returns:
             Response JSON from the RSVP service
         """

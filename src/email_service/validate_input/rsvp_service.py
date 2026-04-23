@@ -11,7 +11,9 @@ logger.setLevel(logging.INFO)
 class RSVPService:
     def __init__(self):
         self.environment = os.environ.get("ENVIRONMENT")
-        self.base_url = f"https://{self.environment}-rsvp-service-internal-api-tpet.aws-educate.tw"
+        self.base_url = (
+            f"https://{self.environment}-rsvp-service-internal-api-tpet.aws-educate.tw"
+        )
 
     def verify_campaign(self, campaign_id):
         """Verify the validity of a campaign ID by calling the RSVP service API."""
