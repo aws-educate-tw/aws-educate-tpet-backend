@@ -9,7 +9,287 @@
 	},
 	"item": [
 		{
-			"name": "Send email",
+			"name": "Send email (RSVP)",
+			"event": [
+				{
+				"listen": "prerequest",
+				"script": {
+					"exec": [
+					"// Step 1: Get HTML file\r",
+					"const fileServiceUrl = `https://${pm.environment.get(\"environment\")}-file-service-internal-api-tpet.aws-educate.tw/${pm.environment.get(\"environment\")}/files?file_extension=html&limit=1`;\r",
+					"\r",
+					"pm.sendRequest({\r",
+					"    url: fileServiceUrl,\r",
+					"    method: \"GET\",\r",
+					"    header: {\r",
+					"        \"Authorization\": `Bearer ${pm.environment.get(\"access_token\")}`\r",
+					"    }\r",
+					"}, function (err, response) {\r",
+					"    if (err) {\r",
+					"        throw new Error(\"Failed to fetch file list.\");\r",
+					"    }\r",
+					"\r",
+					"    const responseData = response.json();\r",
+					"\r",
+					"    if (responseData.data && responseData.data.length > 0) {\r",
+					"        const file = responseData.data[0];\r",
+					"        pm.environment.set(\"template_file_id\", file.file_id);\r",
+					"        pm.environment.set(\"template_file_name\", file.file_name);\r",
+					"        pm.environment.set(\"template_file_url\", file.file_url);\r",
+					"        console.log(\"HTML file_id set:\", file.file_id);\r",
+					"        console.log(\"HTML file_name set:\", file.file_name);\r",
+					"        console.log(\"HTML file_url set:\", file.file_url);\r",
+					"    } else {\r",
+					"        throw new Error(\"No HTML file found in the file service.\");\r",
+					"    }\r",
+					"});\r",
+					"\r",
+					"// Step 2: Create campaign\r",
+					"const campaignUrl = `https://${pm.environment.get(\"environment\")}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/${pm.environment.get(\"environment\")}/campaigns`;\r",
+					"\r",
+					"pm.sendRequest({\r",
+					"    url: campaignUrl,\r",
+					"    method: \"POST\",\r",
+					"    header: {\r",
+					"        \"Authorization\": `Bearer ${pm.environment.get(\"access_token\")}`,\r",
+					"        \"Content-Type\": \"application/json\"\r",
+					"    },\r",
+					"    body: {\r",
+					"        mode: \"raw\",\r",
+					"        raw: JSON.stringify({\r",
+					"            \"campaign_name\": \"Campaign Created for regression test\",\r",
+					"            \"cohort\": \"8\",\r",
+					"            \"campaign_start_time\": \"2026-04-20T09:00:00Z\",\r",
+					"            \"campaign_end_time\": \"2028-05-20T17:00:00Z\",\r",
+					"            \"campaign_location\": \"Taipei 101\"\r",
+					"        })\r",
+					"    }\r",
+					"}, function (err, campaignResponse) {\r",
+					"    if (err) {\r",
+					"        throw new Error(\"Failed to create campaign.\");\r",
+					"    }\r",
+					"\r",
+					"    const campaignData = campaignResponse.json();\r",
+					"    console.log(\"create_campaign response:\", JSON.stringify(campaignData));\r",
+					"\r",
+					"    if (campaignData.campaign_id) {\r",
+					"        pm.environment.set(\"campaign_id\", campaignData.campaign_id);\r",
+					"        console.log(\"campaign_id set:\", campaignData.campaign_id);\r",
+					"    } else {\r",
+					"        throw new Error(\"Failed to retrieve campaign_id from create_campaign API.\");\r",
+					"    }\r",
+					"});"
+					],
+					"type": "text/javascript",
+					"packages": {},
+					"requests": {}
+				}
+				},
+				{
+				"listen": "test",
+				"script": {
+					"exec": [
+					"pm.test(\"Status code is 202\", function () {\r",
+					"    pm.response.to.have.status(202);\r",
+					"});\r",
+					"\r",
+					"const responseData = pm.response.json();\r",
+					"\r",
+					"pm.test(\"Response contains all required fields\", function () {\r",
+					"    pm.expect(responseData).to.have.property(\"status\");\r",
+					"    pm.expect(responseData).to.have.property(\"message\");\r",
+					"    pm.expect(responseData).to.have.property(\"recipient_source\");\r",
+					"    pm.expect(responseData).to.have.property(\"run_id\");\r",
+					"    pm.expect(responseData).to.have.property(\"template_file_id\");\r",
+					"    pm.expect(responseData).to.have.property(\"subject\");\r",
+					"    pm.expect(responseData).to.have.property(\"display_name\");\r",
+					"    pm.expect(responseData).to.have.property(\"attachment_file_ids\");\r",
+					"    pm.expect(responseData).to.have.property(\"is_generate_certificate\");\r",
+					"    pm.expect(responseData).to.have.property(\"sender_id\");\r",
+					"    pm.expect(responseData).to.have.property(\"reply_to\");\r",
+					"    pm.expect(responseData).to.have.property(\"sender_local_part\");\r",
+					"    pm.expect(responseData).to.have.property(\"cc\");\r",
+					"    pm.expect(responseData).to.have.property(\"bcc\");\r",
+					"    pm.expect(responseData).to.have.property(\"recipients\");\r",
+					"    pm.expect(responseData).to.have.property(\"success_email_count\");\r",
+					"    pm.expect(responseData).to.have.property(\"expected_email_send_count\");\r",
+					"    pm.expect(responseData).to.have.property(\"run_type\");\r",
+					"    pm.expect(responseData).to.have.property(\"campaign_id\");\r",
+					"});\r",
+					"\r",
+					"pm.test(\"Status is SUCCESS\", function () {\r",
+					"    pm.expect(responseData.status).to.eql(\"SUCCESS\");\r",
+					"});\r",
+					"\r",
+					"pm.test(\"Run ID is present\", function () {\r",
+					"    pm.expect(responseData.run_id).to.not.be.null;\r",
+					"});\r",
+					"\r",
+					"pm.test(\"run_type is RSVP\", function () {\r",
+					"    pm.expect(responseData.run_type).to.eql(\"RSVP\");\r",
+					"});\r",
+					"\r",
+					"pm.test(\"campaign_id matches\", function () {\r",
+					"    pm.expect(responseData.campaign_id).to.eql(pm.environment.get(\"campaign_id\"));\r",
+					"});\r",
+					"\r",
+					"if (responseData.run_id) {\r",
+					"    pm.environment.set(\"run_id_from_send_email_api\", responseData.run_id);\r",
+					"    console.log(\"Saved run_id to environment: \" + responseData.run_id);\r",
+					"}"
+					],
+					"type": "text/javascript",
+					"packages": {},
+					"requests": {}
+				}
+				}
+			],
+			"request": {
+				"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+					"key": "token",
+					"value": "{{access_token}}",
+					"type": "string"
+					}
+				]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+				"mode": "raw",
+				"raw": "{\n    \"recipient_source\": \"DIRECT\",\n    \"run_type\": \"RSVP\",\n    \"campaign_id\" : \"{{campaign_id}}\", \n    \"subject\": \"[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}\",\n    \"display_name\": \"GitHub Actions - PR{{pull_request_number}} - API Regression Test\",\n    \"template_file_id\": \"{{template_file_id}}\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\", \n    \"sender_local_part\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"harry鍾\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"{{template_file_id}}\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\",\n        \"dev@aws-educate.tw\"\n    ]\n}",
+				"options": {
+					"raw": {
+					"language": "json"
+					}
+				}
+				},
+				"url": {
+				"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email",
+				"protocol": "https",
+				"host": [
+					"{{environment}}-email-service-internal-api-tpet",
+					"aws-educate",
+					"tw"
+				],
+				"path": [
+					"{{environment}}",
+					"send-email"
+				]
+				}
+			},
+			"response": [
+				{
+				"name": "202 (SPREADSHEET, RSVP)",
+				"originalRequest": {
+					"method": "POST",
+					"header": [],
+					"body": {
+					"mode": "raw",
+					"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_type\": \"RSVP\",\n    \"campaign_id\" : \"evt_e4d82a9121ad46a1ae39d8a9823751f6\",\n    \"spreadsheet_file_id\": \"dd0a7dc01af34687b2fc254f59fd0f82\",\n    \"subject\": \"【SCRUM-583】test by kiki\",\n    \"display_name\": \"參與證明\",\n    \"template_file_id\": \"110497578d8642dba3f7c3ab00529fc7\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"dev\",\n    // \"recipients\": [\n    //     {\n    //         \"email\": \"h830519h@yahoo.com.tw\",\n    //         \"template_variables\": {\n    //             \"Name\": \"harry鍾\",\n    //             \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n    //         }\n    //     }\n    // ],\n    \"attachment_file_ids\": [],\n    \"bcc\": [],\n    \"cc\": []\n}",
+					"options": {
+						"raw": {
+						"language": "json"
+						}
+					}
+					},
+					"url": {
+					"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email",
+					"protocol": "https",
+					"host": [
+						"{{environment}}-email-service-internal-api-tpet",
+						"aws-educate",
+						"tw"
+					],
+					"path": [
+						"{{environment}}",
+						"send-email"
+					]
+					}
+				},
+				"status": "Accepted",
+				"code": 202,
+				"_postman_previewlanguage": null,
+				"header": null,
+				"cookie": [],
+				"body": ""
+				},
+				{
+				"name": "400 (invalid campaign_id)",
+				"originalRequest": {
+					"method": "POST",
+					"header": [],
+					"body": {
+					"mode": "raw",
+					"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_type\": \"RSVP\",\n    \"campaign_id\" : \"evt_123\",\n    \"spreadsheet_file_id\": \"dd0a7dc01af34687b2fc254f59fd0f82\",\n    \"subject\": \"【SCRUM-583】test by kiki\",\n    \"display_name\": \"參與證明\",\n    \"template_file_id\": \"110497578d8642dba3f7c3ab00529fc7\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"dev\",\n    // \"recipients\": [\n    //     {\n    //         \"email\": \"h830519h@yahoo.com.tw\",\n    //         \"template_variables\": {\n    //             \"Name\": \"harry鍾\",\n    //             \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n    //         }\n    //     }\n    // ],\n    \"attachment_file_ids\": [],\n    \"bcc\": [],\n    \"cc\": []\n}",
+					"options": {
+						"raw": {
+						"language": "json"
+						}
+					}
+					},
+					"url": {
+					"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email",
+					"protocol": "https",
+					"host": [
+						"{{environment}}-email-service-internal-api-tpet",
+						"aws-educate",
+						"tw"
+					],
+					"path": [
+						"{{environment}}",
+						"send-email"
+					]
+					}
+				},
+				"status": "Bad Request",
+				"code": 400,
+				"_postman_previewlanguage": null,
+				"header": null,
+				"cookie": [],
+				"body": ""
+				},
+				{
+				"name": "400 (missing campaign_id)",
+				"originalRequest": {
+					"method": "POST",
+					"header": [],
+					"body": {
+					"mode": "raw",
+					"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_type\": \"RSVP\",\n    \"spreadsheet_file_id\": \"dd0a7dc01af34687b2fc254f59fd0f82\",\n    \"subject\": \"【SCRUM-583】test by kiki\",\n    \"display_name\": \"參與證明\",\n    \"template_file_id\": \"110497578d8642dba3f7c3ab00529fc7\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"dev\",\n    // \"recipients\": [\n    //     {\n    //         \"email\": \"h830519h@yahoo.com.tw\",\n    //         \"template_variables\": {\n    //             \"Name\": \"harry鍾\",\n    //             \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n    //         }\n    //     }\n    // ],\n    \"attachment_file_ids\": [],\n    \"bcc\": [],\n    \"cc\": []\n}",
+					"options": {
+						"raw": {
+						"language": "json"
+						}
+					}
+					},
+					"url": {
+					"raw": "https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email",
+					"protocol": "https",
+					"host": [
+						"{{environment}}-email-service-internal-api-tpet",
+						"aws-educate",
+						"tw"
+					],
+					"path": [
+						"{{environment}}",
+						"send-email"
+					]
+					}
+				},
+				"status": "Bad Request",
+				"code": 400,
+				"_postman_previewlanguage": null,
+				"header": null,
+				"cookie": [],
+				"body": ""
+				}
+			]
+		},
+		{
+			"name": "Send email (non-RSVP)",
 			"event": [
 				{
 					"listen": "prerequest",
