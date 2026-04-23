@@ -134,7 +134,7 @@
 					"});\r",
 					"\r",
 					"if (responseData.run_id) {\r",
-					"    pm.environment.set(\"run_id_from_send_email_api\", responseData.run_id);\r",
+					"    pm.environment.set(\"run_id_from_send_rsvp_email_api\", responseData.run_id);\r",
 					"    console.log(\"Saved run_id to environment: \" + responseData.run_id);\r",
 					"}"
 					],
