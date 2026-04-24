@@ -2,7 +2,7 @@ import json
 import logging
 import os
 <<<<<<< HEAD
-from datetime import datetime, timezone  
+from datetime import datetime, timezone
 from rsvp_repository import RSVPRepository
 
 logger = logging.getLogger()
@@ -15,14 +15,14 @@ def lambda_handler(event, context):
         authorizer = event.get("requestContext", {}).get("authorizer", {}).get("lambda", {})
         if not authorizer:
             logger.warning("Authorizer data is missing, check API Gateway configuration.")
-        
+
         email = authorizer.get("email", "unknown_user")
-        
+
         path_params = event.get("pathParameters", {})
         raw_id = path_params.get("run_id_participant_id", "")
         if "_" not in raw_id:
             return build_response(400, {"code": "INVALID_PATH_FORMAT", "message": "Invalid ID format"})
-        
+
         run_id, participant_id = raw_id.rsplit("_", 1)
 
         item = repo.get_rsvp_record(run_id, participant_id)

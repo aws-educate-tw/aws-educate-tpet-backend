@@ -18,7 +18,7 @@ def lambda_handler(event, context):
         path_params = event.get('pathParameters', {})
         run_id_participant_id = path_params.get('run_id_participant_id', '')
         parts = run_id_participant_id.rsplit('_', 1)
-        
+
         if len(parts) < 2:
             return {"statusCode": 400, "body": json.dumps({"message": "Invalid ID format"})}
         run_id, participant_id = parts[0], parts[1]
@@ -87,7 +87,7 @@ def lambda_handler(event, context):
             user_item = future_user.result()
 
             final_campaign_id = campaign_id_from_token or (user_item.get('campaign_id') if user_item else None)
-            
+
             if final_campaign_id:
                 run_item = run_repo.get_run(final_campaign_id, run_id)
             else:
@@ -140,7 +140,7 @@ def lambda_handler(event, context):
                     "event_time": run_item.get('event_time'),
                     "location": run_item.get('location'),
                     "registration_deadline": deadline,
-                    "is_registration_closed": is_registration_closed 
+                    "is_registration_closed": is_registration_closed
                 }
             }
         }
