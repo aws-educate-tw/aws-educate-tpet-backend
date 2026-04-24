@@ -636,6 +636,16 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             validate_run_type(run_type, error_collector)
 
             if run_type == RunType.RSVP.value:
+                if recipient_source == RecipientSource.DIRECT.value:
+                    error_collector.add_error(
+                        message="RSVP run_type does not support DIRECT recipient source",
+                        error_code=ValidationErrorCode.INVALID_RECIPIENT_SOURCE_RSVP,
+                        details={
+                            "provided": recipient_source,
+                            "required": RecipientSource.SPREADSHEET.value,
+                        },
+                    )
+
                 campaign_id = body.get("campaign_id")
                 if not campaign_id:
                     error_collector.add_error(
