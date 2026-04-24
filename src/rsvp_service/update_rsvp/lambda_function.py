@@ -1,6 +1,7 @@
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from rsvp_repository import RSVPRepository
 
 logger = logging.getLogger()
@@ -35,7 +36,7 @@ def lambda_handler(event, context):
             return build_response(
                 404, {"status": "error", "message": "Activity not found"}
             )
-        _now = datetime.now(timezone.utc).isoformat()
+        _now = datetime.now(UTC).isoformat()
         return build_response(
             200, {"status": "SUCCESS", "data": {"current_status": "ATTEND"}}
         )
