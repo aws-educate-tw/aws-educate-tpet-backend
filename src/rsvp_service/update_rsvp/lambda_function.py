@@ -1,6 +1,10 @@
 import json
 import logging
+<<<<<<< HEAD
 from datetime import datetime
+=======
+from datetime import UTC, datetime, timezone
+>>>>>>> a6cfa33 (Fix: import timezone to resolve F821 undefined name)
 
 from rsvp_repository import RSVPRepository
 
