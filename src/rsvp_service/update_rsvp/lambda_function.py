@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 
 from rsvp_repository import RSVPRepository
 
@@ -16,10 +16,12 @@ def lambda_handler(event, context):
             event.get("requestContext", {}).get("authorizer", {}).get("lambda", {})
         )
         if not authorizer:
-            logger.warning("Authorizer data is missing, check API Gateway configuration.")
-        
+            logger.warning(
+                "Authorizer data is missing, check API Gateway configuration."
+            )
+
         _email = authorizer.get("email", "unknown_user")
-        
+
         path_params = event.get("pathParameters", {})
         raw_id = path_params.get("run_id_participant_id", "")
         if "_" not in raw_id:
@@ -31,9 +33,13 @@ def lambda_handler(event, context):
 
         item = repo.get_rsvp_record(run_id, participant_id)
         if not item:
-            return build_response(404, {"status": "error", "message": "Activity not found"})
+            return build_response(
+                404, {"status": "error", "message": "Activity not found"}
+            )
         _now = datetime.now(timezone.utc).isoformat()
-        return build_response(200, {"status": "SUCCESS", "data": {"current_status": "ATTEND"}})
+        return build_response(
+            200, {"status": "SUCCESS", "data": {"current_status": "ATTEND"}}
+        )
 
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
