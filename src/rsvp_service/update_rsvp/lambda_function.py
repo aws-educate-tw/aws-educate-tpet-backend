@@ -15,7 +15,7 @@ def lambda_handler(event, context):
         if not authorizer:
             logger.warning("Authorizer data is missing, check API Gateway configuration.")
         
-        email = authorizer.get("email", "unknown_user")
+        _email = authorizer.get("email", "unknown_user")
         
         path_params = event.get("pathParameters", {})
         raw_id = path_params.get("run_id_participant_id", "")
@@ -27,7 +27,7 @@ def lambda_handler(event, context):
         item = repo.get_rsvp_record(run_id, participant_id)
         if not item:
             return build_response(404, {"status": "error", "message": "Activity not found"})
-        now = datetime.now(timezone.utc).isoformat()
+        _now = datetime.now(timezone.utc).isoformat()
         return build_response(200, {"status": "SUCCESS", "data": {"current_status": "ATTEND"}})
 
     except Exception as e:
