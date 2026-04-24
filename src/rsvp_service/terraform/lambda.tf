@@ -63,8 +63,8 @@ module "update_rsvp_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"     = var.environment,
-    "SERVICE"         = var.service_underscore,
+    "ENVIRONMENT"      = var.environment,
+    "SERVICE"          = var.service_underscore,
     "PARTICIPANT_TABLE"  = var.participant_table,
     "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
     "CAMPAIGN_TABLE"     = var.campaign_table
@@ -99,7 +99,8 @@ module "update_rsvp_lambda" {
         "dynamodb:PutItem",
         "dynamodb:Query",
         "dynamodb:Scan",
-        "dynamodb:UpdateItem"
+        "dynamodb:UpdateItem",
+        "dynamodb:TransactWriteItems"
       ],
       resources = [
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
