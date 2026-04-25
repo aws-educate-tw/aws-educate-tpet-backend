@@ -47,7 +47,8 @@ def prepare_email_item(run_id: str, email_data: dict, row_data: dict) -> dict:
     :param row_data: Dictionary containing recipient data and template variables
     :return: Created email item dictionary
     """
-    email_id = str(uuid.uuid4().hex)
+    # Reuse RSVP-generated email_id when present to keep token linkage consistent.
+    email_id = row_data.get("email_id") or str(uuid.uuid4().hex)
     row_data = convert_float_to_decimal(row_data)
     created_at = time_util.get_current_utc_time()
 
@@ -147,7 +148,9 @@ def build_recipient_list_from_sqs_message(sqs_message: dict) -> list[dict]:
         return sheet_data
 
 
-def upsert_emails_and_enqueue_emails_to_send_email_sqs_queue(sqs_message: dict) -> None:
+def upsert_emails_and_enqueue_emails_to_send_email_sqs_queue(
+    sqs_message: dict,
+) -> None:
     """
     Processes recipients from the SQS message and creates corresponding email items.
 
@@ -169,12 +172,13 @@ def upsert_emails_and_enqueue_emails_to_send_email_sqs_queue(sqs_message: dict) 
     )
 
 
-def process_rsvp_emails_and_update_spreadsheet(sqs_message: dict) -> None:
+def process_rsvp_emails_and_update_spreadsheet(sqs_message: dict) -> list[dict]:
     """
     Process RSVP emails: import participants to RSVP service, generate tokens,
     and update spreadsheet with participant_id, email_id, and token.
 
     :param sqs_message: The SQS message containing run and recipient data.
+    :return: Updated recipient rows for downstream email upsert/enqueue.
     """
     run_id = sqs_message["run_id"]
     campaign_id = sqs_message.get("campaign_id")
@@ -261,15 +265,6 @@ def process_rsvp_emails_and_update_spreadsheet(sqs_message: dict) -> None:
         }
         updated_sheet_data.append(updated_row)
 
-        # Create and save email item
-        email_item = prepare_email_item(run_id, sqs_message, row_data)
-        # Override email_id with the one we generated
-        email_item["email_id"] = email_id
-        email_repository.upsert_email(email_item)
-
-        # Enqueue the email for sending
-        enqueue_email_to_send_email_sqs_queue(email_item)
-
     # Write updated data back to spreadsheet
     try:
         # Create DataFrame from updated data
@@ -307,6 +302,7 @@ def process_rsvp_emails_and_update_spreadsheet(sqs_message: dict) -> None:
         "Successfully processed all RSVP participants for run_id: %s",
         run_id,
     )
+    return updated_sheet_data
 
 
 def lambda_handler(event, context):
@@ -354,7 +350,7 @@ def lambda_handler(event, context):
                         process_rsvp_emails_and_update_spreadsheet(sqs_message)
 
                     upsert_emails_and_enqueue_emails_to_send_email_sqs_queue(
-                        sqs_message
+                        sqs_message,
                     )
                 else:
                     logger.info(
