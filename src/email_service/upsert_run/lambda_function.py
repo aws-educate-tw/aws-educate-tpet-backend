@@ -181,6 +181,10 @@ def process_record(record: dict[str, Any], aws_request_id: str) -> None:
         # to prevent potential issues.
 
         # TODO: Finalize the design and integrate `registration_deadline` handling.
+        registration_deadline = sqs_message.get(
+            "registration_deadline", "2099-12-31T23:59:59Z"
+        )
+        sqs_message["registration_deadline"] = registration_deadline
 
         max_participants = sqs_message.get("expected_email_send_count", 0)
 
@@ -191,7 +195,7 @@ def process_record(record: dict[str, Any], aws_request_id: str) -> None:
                     campaign_id=campaign_id,
                     run_id=run_id,
                     max_participants=max_participants,
-                    registration_deadline=None,
+                    registration_deadline=registration_deadline,
                     is_active=True,
                 )
 
