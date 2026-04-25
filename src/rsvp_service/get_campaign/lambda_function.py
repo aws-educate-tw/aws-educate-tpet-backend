@@ -127,6 +127,93 @@ def _get_campaign_runs(
     return runs
 
 
+def _normalize_email(email):
+    """Normalize email for stable lookup."""
+    if not isinstance(email, str):
+        return None
+    normalized_email = email.strip().lower()
+    return normalized_email or None
+
+
+def _get_run_email_id_by_recipient_email(
+    email_service, run_id, max_retries=4, initial_retry_delay=2
+):
+    """Build a recipient_email -> email_id lookup for a run."""
+    for attempt in range(max_retries):
+        try:
+            payload = email_service.list_emails(run_id=run_id, page=1, limit="ALL")
+            break
+        except HTTPError as error:
+            if attempt < max_retries - 1:
+                retry_delay = initial_retry_delay * (2**attempt)
+                logger.warning(
+                    "Attempt %d/%d failed to get emails for run %s with HTTP %d. Retrying in %d seconds...",
+                    attempt + 1,
+                    max_retries,
+                    run_id,
+                    error.code,
+                    retry_delay,
+                )
+                time.sleep(retry_delay)
+            else:
+                logger.error(
+                    "Failed to get emails for run %s after %d attempts. Last error: HTTP %d",
+                    run_id,
+                    max_retries,
+                    error.code,
+                )
+                raise
+        except (URLError, TimeoutError) as error:
+            if attempt < max_retries - 1:
+                retry_delay = initial_retry_delay * (2**attempt)
+                logger.warning(
+                    "Attempt %d/%d failed to get emails for run %s due to network issue: %s. Retrying in %d seconds...",
+                    attempt + 1,
+                    max_retries,
+                    run_id,
+                    error,
+                    retry_delay,
+                )
+                time.sleep(retry_delay)
+            else:
+                logger.error(
+                    "Failed to get emails for run %s after %d attempts: %s",
+                    run_id,
+                    max_retries,
+                    error,
+                )
+                raise
+
+    email_lookup = {}
+    for email_item in payload.get("data", []):
+        normalized_recipient_email = _normalize_email(email_item.get("recipient_email"))
+        email_id = email_item.get("email_id")
+
+        if (
+            normalized_recipient_email
+            and email_id
+            and normalized_recipient_email not in email_lookup
+        ):
+            email_lookup[normalized_recipient_email] = email_id
+
+    return email_lookup
+
+
+def _build_participant_response(participant_item, email_lookup):
+    """Build participant response and resolve email_id from email service."""
+    normalized_email = _normalize_email(participant_item.get("email"))
+    email_id = email_lookup.get(normalized_email) if normalized_email else None
+
+    return {
+        "participant_id": participant_item.get("participant_id"),
+        "email_id": email_id,
+        "rsvp_status": participant_item.get("rsvp_status"),
+        "name": participant_item.get("name"),
+        "created_at": participant_item.get("created_at"),
+        "updated_at": participant_item.get("updated_at"),
+    }
+
+
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for retrieving campaign details with runs and participants."""
     aws_request_id = getattr(context, "aws_request_id", None)
@@ -184,12 +271,32 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                 run_id = futures[future]
                 runs_with_participants[run_id] = {"participants": future.result()}
 
-        # Step 4: Merge run data with configurations and participant statistics
+        # Step 4: Query emails for each run in parallel to resolve participant email_id
+        run_email_id_lookup = {}
+        with ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(
+                    _get_run_email_id_by_recipient_email, email_service, run_id
+                ): run_id
+                for run_id in runs_with_participants
+                if run_id
+            }
+
+            for future in as_completed(futures):
+                run_id = futures[future]
+                run_email_id_lookup[run_id] = future.result()
+
+        # Step 5: Merge run data with configurations and participant statistics
         runs = []
         for run_item in run_items_from_email_service:
             run_id = run_item.get("run_id")
             campaign_run_item = campaign_run_by_run_id.get(run_id, {})
             participants_info = runs_with_participants.get(run_id, {"participants": []})
+            email_lookup = run_email_id_lookup.get(run_id, {})
+            participants = [
+                _build_participant_response(participant_item, email_lookup)
+                for participant_item in participants_info["participants"]
+            ]
 
             runs.append(
                 {
@@ -202,7 +309,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                         campaign_run_item.get("max_participants")
                     ),
                     "is_active": bool(campaign_run_item.get("is_active", False)),
-                    "participants": participants_info["participants"],
+                    "participants": participants,
                 }
             )
 
@@ -223,18 +330,18 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             "Propagating upstream error from email service: HTTP %d", error.code
         )
 
-        error_body = {"message": "Failed to get runs from email service"}
+        error_body = {"message": "Failed to get data from email service"}
         try:
             response_text = error.read().decode("utf-8", errors="replace")
             if response_text:
                 parsed_error = json.loads(response_text)
                 if isinstance(parsed_error, dict) and "message" in parsed_error:
                     error_body["message"] = (
-                        f"Failed to get runs from email service: {parsed_error['message']}"
+                        f"Failed to get data from email service: {parsed_error['message']}"
                     )
                 else:
                     error_body["message"] = (
-                        f"Failed to get runs from email service: {response_text}"
+                        f"Failed to get data from email service: {response_text}"
                     )
         except Exception:
             logger.exception("Failed to parse error response from email service")
