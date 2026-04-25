@@ -209,9 +209,11 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         response_body = {
             "campaign_id": campaign_item.get("campaign_id"),
             "campaign_name": campaign_item.get("campaign_name"),
-            "description": campaign_item.get("description"),
-            "created_at": campaign_item.get("created_at"),
-            "is_active": bool(campaign_item.get("is_active", False)),
+            "campaign_start_time": campaign_item.get("campaign_start_time"),
+            "campaign_end_time": campaign_item.get("campaign_end_time"),
+            "campaign_location": campaign_item.get("campaign_location"),
+            "campaign_created_at": campaign_item.get("created_at"),
+            "is_active": bool(campaign_item.get("is_active")),
             "runs": runs,
         }
         return _response(200, response_body)
