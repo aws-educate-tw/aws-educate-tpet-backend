@@ -1,10 +1,8 @@
 import logging
-
 import boto3
 from boto3.dynamodb.conditions import Attr
 
 logger = logging.getLogger()
-
 
 class CampaignRepository:
     def __init__(self, table_name):
@@ -18,7 +16,7 @@ class CampaignRepository:
             )
             return response.get("Item")
         except Exception as e:
-            logger.error(f"Error fetching run: {str(e)}")
+            logger.error("Error fetching run: %s", e)
             raise e
 
     def scan_run_by_id(self, run_id):
@@ -27,5 +25,5 @@ class CampaignRepository:
             items = response.get("Items", [])
             return items[0] if items else None
         except Exception as e:
-            logger.error(f"Error scanning run: {str(e)}")
+            logger.error("Error scanning run: %s", e)
             raise e

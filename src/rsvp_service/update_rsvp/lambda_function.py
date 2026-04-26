@@ -42,7 +42,7 @@ def lambda_handler(event, context):
         )
 
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
+        logger.error("Unexpected error: %s", e)
         return build_response(
             500, {"status": "error", "message": "Internal server error"}
         )

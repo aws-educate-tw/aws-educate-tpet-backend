@@ -21,12 +21,12 @@ class RSVPRepository:
             )
             return response.get("Item")
         except ClientError as e:
-            logger.error(f"Error fetching record: {e}")
+            logger.error("Error fetching record: %s", e)
             raise
 
     def update_rsvp_transaction(self, transact_items):
         try:
             return self.dynamodb.transact_write_items(TransactItems=transact_items)
         except ClientError as e:
-            logger.error(f"Transaction failed: {e}")
+            logger.error("Transaction failed: %s", e)
             raise

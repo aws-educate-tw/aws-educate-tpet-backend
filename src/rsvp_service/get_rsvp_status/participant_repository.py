@@ -1,9 +1,7 @@
 import logging
-
 import boto3
 
 logger = logging.getLogger()
-
 
 class ParticipantRepository:
     def __init__(self, table_name):
@@ -17,5 +15,5 @@ class ParticipantRepository:
             )
             return response.get("Item")
         except Exception as e:
-            logger.error(f"Error fetching participant: {str(e)}")
+            logger.error("Error fetching participant: %s", e)
             raise e

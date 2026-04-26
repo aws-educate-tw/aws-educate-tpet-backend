@@ -81,7 +81,7 @@ def lambda_handler(event, context):
         return {"statusCode": 200, "body": json.dumps(response_data)}
 
     except Exception as e:
-        logger.error(f"System Error: {str(e)}")
+        logger.error("System Error: %s", e)
         return {
             "statusCode": 500,
             "body": json.dumps({"status": "error", "message": "System busy"}),
