@@ -1,8 +1,10 @@
 import logging
+
 import boto3
 from boto3.dynamodb.conditions import Attr
 
 logger = logging.getLogger()
+
 
 class CampaignRepository:
     def __init__(self, table_name):

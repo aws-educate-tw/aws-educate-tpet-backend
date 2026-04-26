@@ -1,7 +1,9 @@
 import logging
+
 import boto3
 
 logger = logging.getLogger()
+
 
 class ParticipantRepository:
     def __init__(self, table_name):
