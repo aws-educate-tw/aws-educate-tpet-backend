@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
 from campaign_repository import CampaignRepository
-from campaign_run_repository import CampaignRunRepository 
+from campaign_run_repository import CampaignRunRepository
 from participant_repository import ParticipantRepository
 
 logger = logging.getLogger()
