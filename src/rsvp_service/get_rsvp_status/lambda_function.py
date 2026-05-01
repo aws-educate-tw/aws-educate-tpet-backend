@@ -5,14 +5,15 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
 from campaign_repository import CampaignRepository
+from campaign_run_repository import CampaignRunRepository 
 from participant_repository import ParticipantRepository
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-camp_master_repo = CampaignRepository(os.environ.get("CAMPAIGN_TABLE"))
-run_meta_repo = CampaignRepository(os.environ.get("CAMPAIGN_RUN_TABLE"))
-part_repo = ParticipantRepository(os.environ.get("PARTICIPANT_TABLE"))
+campaign_repository = CampaignRepository(os.environ.get("CAMPAIGN_TABLE"))
+campaign_run_repository = CampaignRunRepository(os.environ.get("CAMPAIGN_RUN_TABLE"))
+participant_repository = ParticipantRepository(os.environ.get("PARTICIPANT_TABLE"))
 
 
 def lambda_handler(event, context):
@@ -33,7 +34,7 @@ def lambda_handler(event, context):
         campaign_id_from_token = authorizer.get("campaign_id")
         token_name = authorizer.get("name", "Unknown User")
 
-        user_item = part_repo.get_participant(run_id, participant_id)
+        user_item = participant_repository.get_participant(run_id, participant_id)
         final_campaign_id = campaign_id_from_token or (
             user_item.get("campaign_id") if user_item else None
         )
@@ -44,10 +45,10 @@ def lambda_handler(event, context):
         if final_campaign_id:
             with ThreadPoolExecutor() as executor:
                 future_run = executor.submit(
-                    run_meta_repo.get_run, final_campaign_id, run_id
+                    campaign_run_repository.get_run, final_campaign_id, run_id
                 )
                 future_camp = executor.submit(
-                    camp_master_repo.get_campaign_by_id, final_campaign_id
+                    campaign_repository.get_campaign_by_id, final_campaign_id
                 )
 
                 run_item = future_run.result()
