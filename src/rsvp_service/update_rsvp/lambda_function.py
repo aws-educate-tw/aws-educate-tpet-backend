@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from participant_repository import ParticipantRepository
 
@@ -9,11 +9,12 @@ logger.setLevel(logging.INFO)
 
 participant_repository = ParticipantRepository()
 
+
 def lambda_handler(event, context):
     try:
         path_params = event.get("pathParameters", {})
         raw_id = path_params.get("run_id_participant_id", "")
-        
+
         if "_" not in raw_id:
             return build_response(
                 400, {"code": "INVALID_PATH_FORMAT", "message": "Invalid ID format"}
@@ -36,16 +37,14 @@ def lambda_handler(event, context):
                     "TableName": participant_repository.table_name,
                     "Key": {
                         "run_id": {"S": run_id},
-                        "participant_id": {"S": participant_id}
+                        "participant_id": {"S": participant_id},
                     },
                     "UpdateExpression": "SET #s = :s, updated_at = :u",
-                    "ExpressionAttributeNames": {
-                        "#s": "status"  
-                    },
+                    "ExpressionAttributeNames": {"#s": "status"},
                     "ExpressionAttributeValues": {
                         ":s": {"S": new_status},
-                        ":u": {"S": datetime.now(timezone.utc).isoformat()}
-                    }
+                        ":u": {"S": datetime.now(UTC).isoformat()},
+                    },
                 }
             }
         ]
@@ -62,12 +61,13 @@ def lambda_handler(event, context):
             500, {"status": "error", "message": "Internal server error"}
         )
 
+
 def build_response(status_code, body):
     return {
         "statusCode": status_code,
         "headers": {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*"
+            "Access-Control-Allow-Origin": "*",
         },
         "body": json.dumps(body),
     }
