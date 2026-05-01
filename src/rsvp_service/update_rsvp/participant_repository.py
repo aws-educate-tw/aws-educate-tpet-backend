@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 logger = logging.getLogger()
 
 
-class RSVPRepository:
+class ParticipantRepository:
     def __init__(self):
         region = os.environ.get("AWS_REGION", "us-west-2")
         self.dynamodb = boto3.client("dynamodb", region_name=region)
