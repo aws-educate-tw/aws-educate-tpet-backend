@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
