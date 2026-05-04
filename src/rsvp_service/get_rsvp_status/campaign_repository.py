@@ -1,14 +1,20 @@
 import logging
 
 import boto3
+import os  
 from boto3.dynamodb.conditions import Key
 
 logger = logging.getLogger()
 
 
 class CampaignRepository:
-    def __init__(self, table_name):
+    def __init__(self): 
         self.dynamodb = boto3.resource("dynamodb")
+        table_name = os.environ.get("CAMPAIGN_TABLE")
+        if not table_name:
+            logger.error("CAMPAIGN_TABLE environment variable is not set")
+            raise ValueError("CAMPAIGN_TABLE not set")
+            
         self.table = self.dynamodb.Table(table_name)
 
     def get_campaign_by_id(self, campaign_id, cohort="8"):

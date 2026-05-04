@@ -11,9 +11,9 @@ from participant_repository import ParticipantRepository
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-campaign_repository = CampaignRepository(os.environ.get("CAMPAIGN_TABLE"))
-campaign_run_repository = CampaignRunRepository(os.environ.get("CAMPAIGN_RUN_TABLE"))
-participant_repository = ParticipantRepository(os.environ.get("PARTICIPANT_TABLE"))
+campaign_repository = CampaignRepository()
+campaign_run_repository = CampaignRunRepository()
+participant_repository = ParticipantRepository()
 
 
 def lambda_handler(event, context):
