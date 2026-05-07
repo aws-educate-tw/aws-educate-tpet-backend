@@ -81,6 +81,7 @@ module "update_rsvp_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
 
   ######################
@@ -190,6 +191,7 @@ module "get_rsvp_status_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
 
   ######################
@@ -299,6 +301,7 @@ module "verify_campaign_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
 
   ######################
@@ -407,6 +410,7 @@ module "upsert_run_configuration_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
 
   ######################
@@ -516,6 +520,7 @@ module "import_participant_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
 
   ######################
@@ -626,6 +631,7 @@ module "list_campaigns_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
 
   ######################
@@ -737,6 +743,7 @@ module "get_campaign_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
 
   ######################
@@ -845,6 +852,7 @@ module "create_campaign_lambda" {
     "Terraform"   = "true",
     "Environment" = var.environment,
     "Service"     = var.service_underscore
+    "Prewarm"     = "true"
   }
 
   ######################
