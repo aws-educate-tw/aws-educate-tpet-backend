@@ -33,7 +33,7 @@ class ParticipantRepository:
                     participants.append(
                         {
                             "participant_id": item.get("participant_id"),
-                            "email_id": item.get("email_id"),
+                            "email": item.get("email"),
                             "rsvp_status": item.get("rsvp_status"),
                             "name": item.get("name"),
                             "created_at": item.get("created_at"),

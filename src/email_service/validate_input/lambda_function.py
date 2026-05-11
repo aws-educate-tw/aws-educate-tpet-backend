@@ -20,6 +20,8 @@ from sqs import send_message_to_queue
 from time_util import get_current_utc_time
 from validation_exceptions import ValidationError, ValidationErrorCollector
 
+from rsvp_service import RSVPService
+
 # Set up logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -633,6 +635,47 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             # Validate run_type
             validate_run_type(run_type, error_collector)
 
+            if run_type == RunType.RSVP.value:
+                if recipient_source == RecipientSource.DIRECT.value:
+                    error_collector.add_error(
+                        message="RSVP run_type does not support DIRECT recipient source",
+                        error_code=ValidationErrorCode.INVALID_RECIPIENT_SOURCE_RSVP,
+                        details={
+                            "provided": recipient_source,
+                            "required": RecipientSource.SPREADSHEET.value,
+                        },
+                    )
+
+                campaign_id = body.get("campaign_id")
+                if not campaign_id:
+                    error_collector.add_error(
+                        message="campaign_id is required for RSVP run_type",
+                        error_code=ValidationErrorCode.MISSING_CAMPAIGN_ID,
+                    )
+
+                try:
+                    rsvp_service = RSVPService()
+                    campaign_info = rsvp_service.verify_campaign(campaign_id)
+                    logger.info("Campaign verified: %s", campaign_info)
+                except requests.exceptions.HTTPError as e:
+                    logger.error("Campaign verification failed: %s", e)
+                    if e.response.status_code == 404:
+                        error_collector.add_error(
+                            message=f"Campaign not found: {campaign_id}",
+                            error_code=ValidationErrorCode.CAMPAIGN_NOT_FOUND,
+                        )
+                    else:
+                        error_collector.add_error(
+                            message="Failed to verify campaign",
+                            error_code=ValidationErrorCode.CAMPAIGN_VERIFICATION_ERROR,
+                        )
+                except Exception as e:
+                    logger.error("Error verifying campaign: %s", e)
+                    error_collector.add_error(
+                        message="Failed to verify campaign",
+                        error_code=ValidationErrorCode.CAMPAIGN_VERIFICATION_ERROR,
+                    )
+
             # Generate a new run_id
             run_id = uuid.uuid4().hex
 
@@ -736,6 +779,10 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "expected_email_send_count": expected_email_send_count,
             "template_variables": template_variables,
         }
+
+        # Add campaign_id for RSVP run type
+        if run_type == RunType.RSVP.value:
+            common_data["campaign_id"] = body.get("campaign_id")
 
         # Send message to SQS
         message_body = {**common_data, "access_token": access_token}
