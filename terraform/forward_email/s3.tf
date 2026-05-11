@@ -1,6 +1,34 @@
+<<<<<<< HEAD
 # event trigger for s3 bucket
 resource "aws_s3_bucket_notification" "s3_event_trigger" {
   bucket = local.bucket_name
+=======
+resource "aws_s3_bucket" "aws_educate_tpet_email_bucket" {
+  bucket = "${var.environment}-${var.bucket_name}"
+}
+
+# Use bucket ownership controls instead of ACL
+resource "aws_s3_bucket_ownership_controls" "aws_educate_tpet_email_bucket" {
+  bucket = aws_s3_bucket.aws_educate_tpet_email_bucket.id
+
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "aws_educate_tpet_email_bucket" {
+  bucket = aws_s3_bucket.aws_educate_tpet_email_bucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# event trigger for s3 bucket
+resource "aws_s3_bucket_notification" "s3_event_trigger" {
+  bucket = aws_s3_bucket.aws_educate_tpet_email_bucket.id
+>>>>>>> 07ee99ddc50c88df75abe3a9e9167d3055c0542d
 
   lambda_function {
     id                  = "forward_email"
@@ -13,11 +41,42 @@ resource "aws_s3_bucket_notification" "s3_event_trigger" {
   ]
 }
 
+<<<<<<< HEAD
+=======
+# allow ses to put object in s3 bucket
+resource "aws_s3_bucket_policy" "ses_put_object" {
+  bucket = aws_s3_bucket.aws_educate_tpet_email_bucket.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowSESPutObject"
+        Effect = "Allow"
+        Principal = {
+          Service = "ses.amazonaws.com"
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.aws_educate_tpet_email_bucket.arn}/*" # "arn:aws:s3:::prod-aws-educate-tpet-email-bucket/*"
+        Condition = {
+          StringEquals = {
+            "aws:Referer" = data.aws_caller_identity.this.account_id
+          }
+        }
+      }
+    ]
+  })
+}
+
+>>>>>>> 07ee99ddc50c88df75abe3a9e9167d3055c0542d
 # allow s3 to invoke lambda
 resource "aws_lambda_permission" "allow_s3_invoke_aws_educate_tpet_lambda" {
   statement_id  = "AllowS3InvokeLambda"
   action        = "lambda:InvokeFunction"
   function_name = module.forward_email_lambda.lambda_function_name
   principal     = "s3.amazonaws.com"
+<<<<<<< HEAD
   source_arn    = "arn:aws:s3:::${local.bucket_name}"
+=======
+  source_arn    = aws_s3_bucket.aws_educate_tpet_email_bucket.arn
+>>>>>>> 07ee99ddc50c88df75abe3a9e9167d3055c0542d
 }
