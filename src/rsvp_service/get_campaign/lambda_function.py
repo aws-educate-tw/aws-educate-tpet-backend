@@ -206,6 +206,7 @@ def _build_participant_response(participant_item, email_lookup):
 
     return {
         "participant_id": participant_item.get("participant_id"),
+        "email": participant_item.get("email"),
         "email_id": email_id,
         "rsvp_status": participant_item.get("rsvp_status"),
         "name": participant_item.get("name"),
