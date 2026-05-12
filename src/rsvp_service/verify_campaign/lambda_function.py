@@ -12,16 +12,12 @@ campaigns_repo = CampaignsRepository()
 
 def lambda_handler(event: dict, context: object) -> dict:
     """Lambda handler for GET /rsvp-service/internal/campaign/{campaign_id}/check."""
+    if event.get("action") == "PREWARM":
+        logger.info("Received a prewarm request. Skipping business logic.")
+        return {"statusCode": 200, "body": "Successfully warmed up"}
 
     aws_request_id = getattr(context, "aws_request_id", None)
     logger.info("Received event: %s", event)
-
-    if event.get("action") == "PREWARM":
-        logger.info(
-            "Received a prewarm request. Skipping business logic. Request ID: %s",
-            aws_request_id,
-        )
-        return {"statusCode": 200, "body": "Successfully warmed up"}
 
     campaign_id = (event.get("pathParameters") or {}).get("campaign_id")
     if not campaign_id:

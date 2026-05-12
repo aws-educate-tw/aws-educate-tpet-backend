@@ -216,15 +216,11 @@ def _build_participant_response(participant_item, email_lookup):
 
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for retrieving campaign details with runs and participants."""
-    aws_request_id = getattr(context, "aws_request_id", None)
-    logger.info("Received event metadata: %s", _safe_event_log_fields(event))
-
     if event.get("action") == "PREWARM":
-        logger.info(
-            "Received a prewarm request. Skipping business logic. Request ID: %s",
-            aws_request_id,
-        )
+        logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
+    
+    logger.info("Received event metadata: %s", _safe_event_log_fields(event))
 
     campaign_id = event.get("pathParameters", {}).get("campaign_id")
     campaign_repository = CampaignRepository()
