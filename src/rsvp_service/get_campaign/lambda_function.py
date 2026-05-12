@@ -220,7 +220,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     if event.get("action") == "PREWARM":
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
-    
+
     logger.info("Received event metadata: %s", _safe_event_log_fields(event))
 
     campaign_id = event.get("pathParameters", {}).get("campaign_id")
