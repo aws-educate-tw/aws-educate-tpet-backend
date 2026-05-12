@@ -14,16 +14,12 @@ REQUIRED_FIELDS = ["registration_deadline", "max_participants"]
 
 def lambda_handler(event: dict, context: object) -> dict:
     """Lambda handler for PUT /rsvp-service/internal/campaign-runs/{campaign_id_run_id}."""
+    if event.get("action") == "PREWARM":
+        logger.info("Received a prewarm request. Skipping business logic.")
+        return {"statusCode": 200, "body": "Successfully warmed up"}
 
     aws_request_id = getattr(context, "aws_request_id", None)
     logger.info("Received event: %s", event)
-
-    if event.get("action") == "PREWARM":
-        logger.info(
-            "Received a prewarm request. Skipping business logic. Request ID: %s",
-            aws_request_id,
-        )
-        return {"statusCode": 200, "body": "Successfully warmed up"}
 
     # Parse composite path param: "{campaign_id}_{run_id}"
     # campaign_id = "evt_" (4 chars) + uuid4().hex (32 chars) = 36 chars total.

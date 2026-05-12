@@ -55,15 +55,11 @@ def _safe_event_log_fields(event):
 
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for listing all campaign summaries."""
-    aws_request_id = getattr(context, "aws_request_id", None)
-    logger.info("Received event metadata: %s", _safe_event_log_fields(event))
-
     if event.get("action") == "PREWARM":
-        logger.info(
-            "Received a prewarm request. Skipping business logic. Request ID: %s",
-            aws_request_id,
-        )
+        logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
+
+    logger.info("Received event metadata: %s", _safe_event_log_fields(event))
 
     campaign_repository = CampaignRepository()
 
