@@ -16,6 +16,16 @@ participant_repository = ParticipantRepository()
 
 
 def lambda_handler(event, context):
+    aws_request_id = getattr(context, "aws_request_id", None)
+    logger.info("Received event: %s. Request ID: %s", event, aws_request_id)
+
+    if event.get("action") == "PREWARM":
+        logger.info(
+            "Received a prewarm request. Skipping business logic. Request ID: %s",
+            aws_request_id,
+        )
+        return {"statusCode": 200, "body": "Successfully warmed up"}
+    
     try:
         path_params = event.get("pathParameters", {})
         run_id_participant_id = path_params.get("run_id_participant_id", "")
