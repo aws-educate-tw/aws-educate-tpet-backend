@@ -30,7 +30,7 @@ def lambda_handler(event, context):
             aws_request_id,
         )
         return {"statusCode": 200, "body": "Successfully warmed up"}
-    
+
     try:
         path_params = event.get("pathParameters", {})
         raw_id = path_params.get("run_id_participant_id", "")
