@@ -45,7 +45,9 @@ def lambda_handler(event, context):
 
         run_item = campaign_run_repository.get_run(campaign_id, run_id)
         if not run_item:
-            return build_response(500, {"code": "INTERNAL_ERROR", "message": "Internal server error"})
+            return build_response(
+                500, {"code": "INTERNAL_ERROR", "message": "Internal server error"}
+            )
 
         deadline = run_item.get("registration_deadline")
         if deadline and _iso_utc_now() > deadline:
@@ -102,9 +104,7 @@ def lambda_handler(event, context):
 
     except AuthenticationError as e:
         logger.warning("Authentication failed: %s", e)
-        return build_response(
-            401, {"code": "INVALID_TOKEN", "message": str(e)}
-        )
+        return build_response(401, {"code": "INVALID_TOKEN", "message": str(e)})
     except ClientError as e:
         logger.error("DynamoDB error: %s", e)
         return build_response(
