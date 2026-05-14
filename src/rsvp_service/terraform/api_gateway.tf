@@ -199,6 +199,22 @@ module "api_gateway" {
         timeout_milliseconds   = 29000
       }
     }
+
+    "PATCH /campaigns/{campaign_id}" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+
+      authorization_type = "CUSTOM"
+      authorizer_key     = "lambda_authorizer"
+
+      integration = {
+        uri                    = module.update_campaign_lambda.lambda_function_arn
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
   }
 
   tags = local.tags
