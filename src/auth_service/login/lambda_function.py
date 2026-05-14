@@ -115,7 +115,7 @@ def lambda_handler(event, context):
         ]
 
         # Trigger prewarm for aurora in email_service to reduce cold start latency after login
-        email_service.trigger_prewarm()
+        email_service.health_check()
 
         # Return successful response with the access token set in cookies
         return {
