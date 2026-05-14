@@ -124,7 +124,7 @@ def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
     if event.get("action") == "PREWARM":
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
-    
+
     # sync mode: if no Records key, just ensure database is awake and return
     if "Records" not in event:
         logger.info(

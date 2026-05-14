@@ -1,10 +1,10 @@
 import json
 import logging
 import math  # Added
-import boto3
 import os
 from decimal import Decimal
 
+import boto3
 from botocore.exceptions import ClientError
 from email_repository import EmailRepository
 
@@ -20,6 +20,7 @@ lambda_client = boto3.client("lambda")
 # Calculate batch size to avoid RDS Data API 1MB limit
 RDS_DATA_API_SAFE_BATCH_SIZE = 500  # Safe limit to avoid 1MB response size
 AUTO_RESUME_AURORA_LAMBDA_NAME = os.getenv("AUTO_RESUME_AURORA_LAMBDA_NAME")
+
 
 class DecimalEncoder(json.JSONEncoder):
     """Custom JSON encoder for Decimal objects."""
@@ -86,6 +87,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
         "sort_order": sort_order,
     }
 
+
 def ensure_db_ready() -> None:
     """Sync invoke auto_resume Lambda to ensure Aurora is awake before DB access."""
     response = lambda_client.invoke(
@@ -96,7 +98,8 @@ def ensure_db_ready() -> None:
     if response["StatusCode"] != 200 or "FunctionError" in response:
         logger.error("auto_resume invocation failed: %s", response)
         raise RuntimeError("Database wake-up failed")
-    
+
+
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     """Lambda function handler for listing emails."""
     aws_request_id = context.aws_request_id
@@ -104,7 +107,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     if event.get("action") == "PREWARM":
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
-    
+
     ensure_db_ready()
 
     extracted_params = extract_query_params(event)

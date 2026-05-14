@@ -8,6 +8,7 @@ DOMAIN_NAME = os.getenv("DOMAIN_NAME")
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+
 class EmailService:
     """Service class for interacting with the email service API."""
 
