@@ -25,7 +25,7 @@ def ensure_database_awake() -> bool:
     """
     health_check_url = f"https://{ENVIRONMENT}-email-service-internal-api-tpet.{DOMAIN_NAME}/{ENVIRONMENT}/email-service/health"
     max_retries = 10
-    retry_delay = 7  # seconds
+    retry_delay = 5  # seconds
 
     for attempt in range(max_retries):
         try:
