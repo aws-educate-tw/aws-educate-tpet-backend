@@ -124,7 +124,18 @@ def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
     if event.get("action") == "PREWARM":
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
+    
+    # sync mode: if no Records key, just ensure database is awake and return
+    if "Records" not in event:
+        logger.info(
+            "Sync mode: ensuring database is awake. Request ID: %s",
+            context.aws_request_id,
+        )
+        if not ensure_database_awake():
+            raise RuntimeError("Aurora DB unavailable")
+        return {"statusCode": 200, "body": "Database is awake"}
 
+    # async mode: process each SQS message and track failures for batch response
     batch_item_failures = []
 
     for record in event["Records"]:

@@ -1,6 +1,8 @@
 import json
 import logging
 import math  # Added for math.ceil
+import boto3
+import os
 
 from botocore.exceptions import ClientError
 from run_repository import RunRepository
@@ -12,8 +14,20 @@ from run_type_enum import RunType
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# DecimalEncoder is removed as RunRepository handles Decimal to float for PostgreSQL JSONB.
+# Initialize auto_resume Lambda client
+lambda_client = boto3.client("lambda")
+AUTO_RESUME_AURORA_LAMBDA_NAME = os.getenv("AUTO_RESUME_AURORA_LAMBDA_NAME")
 
+def ensure_db_ready() -> None:
+    """Sync invoke auto_resume Lambda to ensure Aurora is awake before DB access."""
+    response = lambda_client.invoke(
+        FunctionName=AUTO_RESUME_AURORA_LAMBDA_NAME,
+        InvocationType="RequestResponse",
+        Payload=b"{}",
+    )
+    if response["StatusCode"] != 200 or "FunctionError" in response:
+        logger.error("auto_resume invocation failed: %s", response)
+        raise RuntimeError("Database wake-up failed")
 
 def extract_query_params(event: dict[str, any]) -> dict[str, any]:
     """Extract and validate query parameters from the API Gateway event."""
@@ -104,6 +118,8 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
     if event.get("action") == "PREWARM":
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
+    
+    ensure_db_ready()
 
     # Extract and validate query parameters
     query_params_result = extract_query_params(event)
