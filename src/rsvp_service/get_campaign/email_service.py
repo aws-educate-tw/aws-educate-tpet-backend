@@ -35,6 +35,20 @@ class EmailService:
             body = response.read().decode("utf-8")
             return json.loads(body)
 
+    def auto_resume(self):
+        """Call email service auto-resume to ensure Aurora is awake."""
+        url = f"{self.base_url}/auto-resume"
+
+        request_headers = {"Content-Type": "application/json"}
+        if self.authorization_header:
+            request_headers["authorization"] = self.authorization_header
+
+        req = request.Request(url, data=b"{}", headers=request_headers, method="POST")
+
+        with request.urlopen(req, timeout=60) as response:
+            body = response.read().decode("utf-8")
+            return json.loads(body)
+
     def list_emails(self, run_id, page, limit, status=None):
         """List emails for a run."""
         query_params = {
