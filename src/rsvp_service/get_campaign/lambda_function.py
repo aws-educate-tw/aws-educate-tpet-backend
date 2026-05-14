@@ -167,11 +167,8 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
         authorization_header = _extract_auth_header(event.get("headers", {}))
 
-        # Ensure Aurora is awake before calling email_service APIs
-        email_service = EmailService(authorization_header)
-        email_service.auto_resume()
-
         # Step 1: Get run_id and subject from GET /runs with RSVP + campaign_id
+        email_service = EmailService(authorization_header)
         run_items_from_email_service = _get_campaign_runs(email_service, campaign_id)
 
         # Step 2: Query campaign run for registration_deadline and is_active
