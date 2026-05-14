@@ -4,6 +4,7 @@ import os
 
 import boto3
 from botocore.exceptions import ClientError
+
 from email_service import EmailService
 
 # Initialize logger
@@ -24,6 +25,7 @@ ALLOWED_ORIGINS = [
 ]
 
 email_service = EmailService()
+
 
 def lambda_handler(event, context):
     """

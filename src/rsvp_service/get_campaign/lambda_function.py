@@ -108,7 +108,9 @@ def _get_run_email_id_by_recipient_email(email_service, run_id):
         logger.error("Failed to get emails for run %s: HTTP %d", run_id, error.code)
         raise
     except (URLError, TimeoutError) as error:
-        logger.error("Failed to get emails for run %s due to network issue: %s", run_id, error)
+        logger.error(
+            "Failed to get emails for run %s due to network issue: %s", run_id, error
+        )
         raise
 
     email_lookup = {}
