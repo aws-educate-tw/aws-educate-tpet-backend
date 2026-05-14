@@ -90,6 +90,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
 
 def ensure_db_ready() -> None:
     """Sync invoke auto_resume Lambda to ensure Aurora is awake before DB access."""
+    logger.info("Start invoke auto_resume Lambda to ensure Aurora is awake.")
     response = lambda_client.invoke(
         FunctionName=AUTO_RESUME_AURORA_LAMBDA_NAME,
         InvocationType="RequestResponse",

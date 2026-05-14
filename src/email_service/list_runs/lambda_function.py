@@ -21,6 +21,7 @@ AUTO_RESUME_AURORA_LAMBDA_NAME = os.getenv("AUTO_RESUME_AURORA_LAMBDA_NAME")
 
 def ensure_db_ready() -> None:
     """Sync invoke auto_resume Lambda to ensure Aurora is awake before DB access."""
+    logger.info("Start invoke auto_resume Lambda to ensure Aurora is awake.")
     response = lambda_client.invoke(
         FunctionName=AUTO_RESUME_AURORA_LAMBDA_NAME,
         InvocationType="RequestResponse",
