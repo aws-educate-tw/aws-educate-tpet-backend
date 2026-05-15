@@ -49,7 +49,18 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
     try:
         ensure_db_ready()
+    except Exception as e:
+        logger.error(
+            "Error ensuring database is ready: %s. Request ID: %s", e, aws_request_id
+        )
+        return {
+            "statusCode": 500,
+            "body": json.dumps(
+                {"message": f"Error ensuring database is ready: {e}. Request ID: {aws_request_id}"}
+            ),
+        }
 
+    try:
         run_id = event.get("pathParameters", {}).get("run_id")
         if not run_id:
             logger.error(
