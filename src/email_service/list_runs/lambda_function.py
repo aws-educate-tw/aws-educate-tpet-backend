@@ -127,7 +127,9 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
         # Extract and validate query parameters
         query_params_result = extract_query_params(event)
-        if isinstance(query_params_result, dict) and query_params_result.get("statusCode"):
+        if isinstance(query_params_result, dict) and query_params_result.get(
+            "statusCode"
+        ):
             return query_params_result
 
         # Ensure all expected keys are present, providing defaults if necessary
@@ -141,7 +143,9 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             filters["run_type"] = query_params_result["run_type"]
         if query_params_result.get("created_year"):
             filters["created_year"] = query_params_result["created_year"]
-        if query_params_result.get("sender_id"):  # Assuming sender_id is a direct filter
+        if query_params_result.get(
+            "sender_id"
+        ):  # Assuming sender_id is a direct filter
             filters["sender_id"] = query_params_result["sender_id"]
         if query_params_result.get("campaign_id"):
             filters["campaign_id"] = query_params_result["campaign_id"]
@@ -153,7 +157,9 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         if not authorization_header or not authorization_header.startswith("Bearer "):
             return {
                 "statusCode": 401,
-                "body": json.dumps({"message": "Missing or invalid Authorization header"}),
+                "body": json.dumps(
+                    {"message": "Missing or invalid Authorization header"}
+                ),
             }
         # access_token = authorization_header.split(" ")[1]
         # user_id = CurrentUserUtil().get_user_id_from_access_token(access_token)
