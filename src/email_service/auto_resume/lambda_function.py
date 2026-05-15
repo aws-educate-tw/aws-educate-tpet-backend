@@ -111,13 +111,20 @@ def process_sqs_message(
 
 def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
     """
-    Lambda handler for auto-resumer SQS.
-    Triggered by auto-resumer SQS, ensures Aurora database is awake,
-    then forwards messages to upsert_run SQS queue.
+    Lambda handler for auto-resume.
 
-    :param event: The event from SQS trigger
+    Supports two modes:
+    - Sync mode (no Records key): invoked directly by other Lambdas
+      (e.g. list_runs, get_run, create_run, list_emails) to ensure
+      Aurora is awake before executing DB queries. Uses shorter retries
+      to fit within the API Gateway 29s timeout.
+    - Async mode (Records key present): triggered by auto-resumer SQS,
+      ensures Aurora is awake, then forwards each message to the
+      upsert_run SQS queue. Tracks and returns batch item failures.
+
+    :param event: SQS event or direct invocation payload
     :param context: Lambda context
-    :return: Response with batch item failures if any
+    :return: {"statusCode": 200} in sync mode, {"batchItemFailures": [...]} in async mode
     """
     logger.info("Lambda triggered with event: %s", event)
 
