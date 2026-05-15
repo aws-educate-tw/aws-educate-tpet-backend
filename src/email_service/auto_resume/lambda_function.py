@@ -17,15 +17,15 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT")
 DOMAIN_NAME = os.getenv("DOMAIN_NAME")
 
 
-def ensure_database_awake() -> bool:
+def ensure_database_awake(max_retries: int = 10, retry_delay: int = 5) -> bool:
     """
     Call health check API to ensure Aurora Serverless v2 is awake.
 
+    :param max_retries: Maximum number of retry attempts
+    :param retry_delay: Seconds to wait between retries
     :return: True if database is confirmed awake, False otherwise
     """
     health_check_url = f"https://{ENVIRONMENT}-email-service-internal-api-tpet.{DOMAIN_NAME}/{ENVIRONMENT}/email-service/health"
-    max_retries = 10
-    retry_delay = 5  # seconds
 
     for attempt in range(max_retries):
         try:
@@ -34,7 +34,7 @@ def ensure_database_awake() -> bool:
                 attempt + 1,
                 max_retries,
             )
-            response = requests.get(health_check_url, timeout=5)
+            response = requests.get(health_check_url, timeout=retry_delay + 2)
             response.raise_for_status()
             health_check_api_response_json = response.json()
 
@@ -131,7 +131,9 @@ def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
             "Sync mode: ensuring database is awake. Request ID: %s",
             context.aws_request_id,
         )
-        if not ensure_database_awake():
+        # Use shorter retries to fit within API GW 29s timeout:
+        # 4 attempts × (4s health check timeout + 2s sleep) = 24s max
+        if not ensure_database_awake(max_retries=4, retry_delay=2):
             raise RuntimeError("Aurora DB unavailable")
         return {"statusCode": 200, "body": "Database is awake"}
 
