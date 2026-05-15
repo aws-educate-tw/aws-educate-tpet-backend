@@ -7,6 +7,7 @@ from campaign_repository import CampaignRepository
 from campaign_run_repository import CampaignRunRepository
 from jwt_util import AuthenticationError, decode_rsvp_token
 from participant_repository import ParticipantRepository
+from rsvp_status_enum import RsvpStatus
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -98,7 +99,7 @@ def lambda_handler(event, context):
 
         response_data = {
             "status": "SUCCESS",
-            "rsvp_status": user_item.get("rsvp_status", "PENDING"),
+            "rsvp_status": user_item.get("rsvp_status", RsvpStatus.PENDING),
             "participant_name": user_item.get("name", token_name),
             "campaign_name": camp_master_item.get("campaign_name", ""),
             "campaign_start_time": camp_master_item.get("campaign_start_time", ""),

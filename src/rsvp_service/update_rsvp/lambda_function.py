@@ -6,11 +6,12 @@ from botocore.exceptions import ClientError
 from campaign_run_repository import CampaignRunRepository
 from jwt_util import AuthenticationError, decode_rsvp_token
 from participant_repository import ParticipantRepository
+from rsvp_status_enum import RsvpStatus
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-ALLOWED_ACTIONS = {"ATTEND", "NOT_ATTEND"}
+ALLOWED_ACTIONS = (RsvpStatus.ATTEND, RsvpStatus.NOT_ATTEND)
 
 participant_repository = ParticipantRepository()
 campaign_run_repository = CampaignRunRepository()
@@ -74,13 +75,23 @@ def lambda_handler(event, context):
                 {"code": "INVALID_REQUEST", "message": "Invalid JSON request body"},
             )
 
-        new_status = body.get("action")
+        try:
+            new_status = RsvpStatus(body.get("action"))
+        except ValueError:
+            return build_response(
+                400,
+                {
+                    "code": "INVALID_ACTION",
+                    "message": f"action must be {' or '.join(ALLOWED_ACTIONS)}",
+                },
+            )
+
         if new_status not in ALLOWED_ACTIONS:
             return build_response(
                 400,
                 {
                     "code": "INVALID_ACTION",
-                    "message": "action must be ATTEND or NOT_ATTEND",
+                    "message": f"action must be {' or '.join(ALLOWED_ACTIONS)}",
                 },
             )
 
@@ -95,7 +106,7 @@ def lambda_handler(event, context):
                     "UpdateExpression": "SET #r = :r, updated_at = :u",
                     "ExpressionAttributeNames": {"#r": "rsvp_status"},
                     "ExpressionAttributeValues": {
-                        ":r": {"S": new_status},
+                        ":r": {"S": str(new_status)},
                         ":u": {"S": _iso_utc_now()},
                     },
                     "ConditionExpression": "attribute_exists(run_id) AND attribute_exists(participant_id)",
@@ -106,7 +117,7 @@ def lambda_handler(event, context):
         participant_repository.update_rsvp_transaction(transact_items)
 
         return build_response(
-            200, {"status": "SUCCESS", "data": {"currentStatus": new_status}}
+            200, {"status": "SUCCESS", "data": {"currentStatus": str(new_status)}}
         )
 
     except AuthenticationError as e:
