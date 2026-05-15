@@ -21,7 +21,7 @@ class EmailService:
         try:
             logger.info("Triggering email_service prewarm by calling health endpoint")
             request.urlopen(f"{self.base_url}/email-service/health", timeout=timeout)
-        except socket.timeout:
+        except TimeoutError:
             pass  # Request sent successfully, Aurora is resuming - timeout is expected
         except error.URLError as e:
             if isinstance(e.reason, socket.timeout):
