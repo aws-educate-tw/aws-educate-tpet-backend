@@ -49,9 +49,9 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         )
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
-    ensure_db_ready()
-
     try:
+        ensure_db_ready()
+
         body = json.loads(event.get("body", "{}"))
         run_type = body.get("run_type")
         recipient_source = body.get("recipient_source", "DIRECT")

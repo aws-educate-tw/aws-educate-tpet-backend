@@ -47,9 +47,9 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         )
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
-    ensure_db_ready()
-
     try:
+        ensure_db_ready()
+
         run_id = event.get("pathParameters", {}).get("run_id")
         if not run_id:
             logger.error(

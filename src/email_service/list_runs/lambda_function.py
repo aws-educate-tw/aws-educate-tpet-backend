@@ -122,46 +122,46 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
-    ensure_db_ready()
-
-    # Extract and validate query parameters
-    query_params_result = extract_query_params(event)
-    if isinstance(query_params_result, dict) and query_params_result.get("statusCode"):
-        return query_params_result
-
-    # Ensure all expected keys are present, providing defaults if necessary
-    page = query_params_result.get("page", 1)
-    limit = query_params_result.get("limit", 100)
-    sort_by = query_params_result.get("sort_by", "created_at")
-    sort_order = query_params_result.get("sort_order", "DESC")
-    # Filters for the repository
-    filters = {}
-    if query_params_result.get("run_type"):
-        filters["run_type"] = query_params_result["run_type"]
-    if query_params_result.get("created_year"):
-        filters["created_year"] = query_params_result["created_year"]
-    if query_params_result.get("sender_id"):  # Assuming sender_id is a direct filter
-        filters["sender_id"] = query_params_result["sender_id"]
-    if query_params_result.get("campaign_id"):
-        filters["campaign_id"] = query_params_result["campaign_id"]
-
-    # Get access token from headers (user_id might be needed for filtering by sender_id if not passed directly)
-    # For now, assuming sender_id can be an optional filter from query params.
-    # If runs should always be scoped to the current user, this logic would need adjustment.
-    authorization_header = event["headers"].get("authorization")
-    if not authorization_header or not authorization_header.startswith("Bearer "):
-        return {
-            "statusCode": 401,
-            "body": json.dumps({"message": "Missing or invalid Authorization header"}),
-        }
-    # access_token = authorization_header.split(" ")[1]
-    # user_id = CurrentUserUtil().get_user_id_from_access_token(access_token)
-    # If filtering by current user is mandatory, add user_id to filters:
-    # filters["sender_id"] = user_id
-
-    run_repo = RunRepository()
-
     try:
+        ensure_db_ready()
+
+        # Extract and validate query parameters
+        query_params_result = extract_query_params(event)
+        if isinstance(query_params_result, dict) and query_params_result.get("statusCode"):
+            return query_params_result
+
+        # Ensure all expected keys are present, providing defaults if necessary
+        page = query_params_result.get("page", 1)
+        limit = query_params_result.get("limit", 100)
+        sort_by = query_params_result.get("sort_by", "created_at")
+        sort_order = query_params_result.get("sort_order", "DESC")
+        # Filters for the repository
+        filters = {}
+        if query_params_result.get("run_type"):
+            filters["run_type"] = query_params_result["run_type"]
+        if query_params_result.get("created_year"):
+            filters["created_year"] = query_params_result["created_year"]
+        if query_params_result.get("sender_id"):  # Assuming sender_id is a direct filter
+            filters["sender_id"] = query_params_result["sender_id"]
+        if query_params_result.get("campaign_id"):
+            filters["campaign_id"] = query_params_result["campaign_id"]
+
+        # Get access token from headers (user_id might be needed for filtering by sender_id if not passed directly)
+        # For now, assuming sender_id can be an optional filter from query params.
+        # If runs should always be scoped to the current user, this logic would need adjustment.
+        authorization_header = event["headers"].get("authorization")
+        if not authorization_header or not authorization_header.startswith("Bearer "):
+            return {
+                "statusCode": 401,
+                "body": json.dumps({"message": "Missing or invalid Authorization header"}),
+            }
+        # access_token = authorization_header.split(" ")[1]
+        # user_id = CurrentUserUtil().get_user_id_from_access_token(access_token)
+        # If filtering by current user is mandatory, add user_id to filters:
+        # filters["sender_id"] = user_id
+
+        run_repo = RunRepository()
+
         # Prepare params for repository methods
         repo_params = {
             "page": page,

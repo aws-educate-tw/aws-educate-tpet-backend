@@ -109,52 +109,52 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
-    ensure_db_ready()
-
-    extracted_params = extract_query_params(event)
-    if isinstance(extracted_params, dict) and extracted_params.get("statusCode"):
-        return extracted_params
-
-    limit: int | str = extracted_params["limit"]
-    page: int = extracted_params["page"]
-    status: str | None = extracted_params["status"]
-    sort_by: str = extracted_params["sort_by"]
-    sort_order: str = extracted_params["sort_order"]
-
-    path_parameters = event.get("pathParameters", {})
-    run_id: str | None = path_parameters.get("run_id")
-
-    if not run_id:
-        logger.error("Missing run_id in path parameters")
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"message": "Missing run_id in path parameters"}),
-        }
-
-    email_repo = EmailRepository()
-
-    filter_criteria = {
-        "run_id": run_id,  # run_id is now mandatory
-        "page": page,
-        "limit": limit,
-        "sort_by": sort_by,
-        "sort_order": sort_order,
-    }
-    if status:
-        filter_criteria["status"] = status
-
-    # Support limit=ALL: count total items and override pagination
-    if limit == "ALL":
-        count_filter = {"run_id": run_id}
-        if status:
-            count_filter["status"] = status
-        total_items = email_repo.count_emails(count_filter)  # support count first
-        limit = total_items  # override limit for fetching
-        page = 1  # reset to first page
-        filter_criteria["limit"] = limit
-        filter_criteria["page"] = page
-
     try:
+        ensure_db_ready()
+
+        extracted_params = extract_query_params(event)
+        if isinstance(extracted_params, dict) and extracted_params.get("statusCode"):
+            return extracted_params
+
+        limit: int | str = extracted_params["limit"]
+        page: int = extracted_params["page"]
+        status: str | None = extracted_params["status"]
+        sort_by: str = extracted_params["sort_by"]
+        sort_order: str = extracted_params["sort_order"]
+
+        path_parameters = event.get("pathParameters", {})
+        run_id: str | None = path_parameters.get("run_id")
+
+        if not run_id:
+            logger.error("Missing run_id in path parameters")
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": "Missing run_id in path parameters"}),
+            }
+
+        email_repo = EmailRepository()
+
+        filter_criteria = {
+            "run_id": run_id,  # run_id is now mandatory
+            "page": page,
+            "limit": limit,
+            "sort_by": sort_by,
+            "sort_order": sort_order,
+        }
+        if status:
+            filter_criteria["status"] = status
+
+        # Support limit=ALL: count total items and override pagination
+        if limit == "ALL":
+            count_filter = {"run_id": run_id}
+            if status:
+                count_filter["status"] = status
+            total_items = email_repo.count_emails(count_filter)  # support count first
+            limit = total_items  # override limit for fetching
+            page = 1  # reset to first page
+            filter_criteria["limit"] = limit
+            filter_criteria["page"] = page
+
         logger.info("Fetching emails with criteria: %s", filter_criteria)
 
         requested_limit = limit
