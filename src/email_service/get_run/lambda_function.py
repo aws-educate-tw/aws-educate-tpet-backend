@@ -56,7 +56,9 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         return {
             "statusCode": 500,
             "body": json.dumps(
-                {"message": f"Error ensuring database is ready: {e}. Request ID: {aws_request_id}"}
+                {
+                    "message": f"Error ensuring database is ready: {e}. Request ID: {aws_request_id}"
+                }
             ),
         }
 
