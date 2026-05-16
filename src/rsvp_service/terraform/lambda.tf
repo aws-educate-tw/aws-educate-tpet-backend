@@ -7,10 +7,6 @@ data "aws_secretsmanager_secret" "jwt_secret" {
   name = "aws-educate-tpet/${var.environment}/jwt-hs256-secret"
 }
 
-data "aws_secretsmanager_secret_version" "jwt_secret" {
-  secret_id = data.aws_secretsmanager_secret.jwt_secret.id
-}
-
 resource "random_string" "this" {
   length  = 4
   special = false
@@ -76,7 +72,7 @@ module "update_rsvp_lambda" {
     "PARTICIPANT_TABLE"  = var.participant_table,
     "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
     "CAMPAIGN_TABLE"     = var.campaign_table,
-    "JWT_SECRET"         = data.aws_secretsmanager_secret_version.jwt_secret.secret_string
+    "JWT_SECRET_ARN"     = data.aws_secretsmanager_secret.jwt_secret.arn
   }
 
   allowed_triggers = {
@@ -117,6 +113,15 @@ module "update_rsvp_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
+      ]
+    }
+    secretsmanager_read = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        data.aws_secretsmanager_secret.jwt_secret.arn
       ]
     }
   }
@@ -188,7 +193,7 @@ module "get_rsvp_status_lambda" {
     "PARTICIPANT_TABLE"  = var.participant_table,
     "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
     "CAMPAIGN_TABLE"     = var.campaign_table,
-    "JWT_SECRET"         = data.aws_secretsmanager_secret_version.jwt_secret.secret_string
+    "JWT_SECRET_ARN"     = data.aws_secretsmanager_secret.jwt_secret.arn
   }
 
   allowed_triggers = {
@@ -228,6 +233,15 @@ module "get_rsvp_status_lambda" {
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign",
         "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
+      ]
+    }
+    secretsmanager_read = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        data.aws_secretsmanager_secret.jwt_secret.arn
       ]
     }
   }
