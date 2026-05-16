@@ -12,6 +12,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 ALLOWED_ACTIONS = (RsvpStatus.ATTEND, RsvpStatus.NOT_ATTEND)
+ALLOWED_ACTION_VALUES = tuple(action.value for action in ALLOWED_ACTIONS)
 
 participant_repository = ParticipantRepository()
 campaign_run_repository = CampaignRunRepository()
@@ -19,6 +20,17 @@ campaign_run_repository = CampaignRunRepository()
 
 def _iso_utc_now():
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _parse_iso_datetime(value):
+    if not value:
+        return None
+
+    normalized = value.replace("Z", "+00:00")
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def lambda_handler(event, context):
@@ -51,22 +63,6 @@ def lambda_handler(event, context):
         if run_id != path_run_id or participant_id != path_participant_id:
             raise AuthenticationError("Token does not match requested participant")
 
-        run_item = campaign_run_repository.get_run(campaign_id, run_id)
-        if not run_item:
-            return build_response(
-                500, {"code": "INTERNAL_ERROR", "message": "Internal server error"}
-            )
-
-        deadline = run_item.get("registration_deadline")
-        if deadline and _iso_utc_now() > deadline:
-            return build_response(
-                403,
-                {
-                    "code": "REGISTRATION_CLOSED",
-                    "message": "Registration is closed",
-                },
-            )
-
         try:
             body = json.loads(event.get("body", "{}"))
         except json.JSONDecodeError:
@@ -77,21 +73,31 @@ def lambda_handler(event, context):
 
         try:
             new_status = RsvpStatus(body.get("action"))
+            if new_status not in ALLOWED_ACTIONS:
+                raise ValueError
         except ValueError:
             return build_response(
                 400,
                 {
                     "code": "INVALID_ACTION",
-                    "message": f"action must be {' or '.join(ALLOWED_ACTIONS)}",
+                    "message": f"action must be {' or '.join(ALLOWED_ACTION_VALUES)}",
                 },
             )
 
-        if new_status not in ALLOWED_ACTIONS:
+        run_item = campaign_run_repository.get_run(campaign_id, run_id)
+        if not run_item:
             return build_response(
-                400,
+                500, {"code": "INTERNAL_ERROR", "message": "Internal server error"}
+            )
+
+        deadline = run_item.get("registration_deadline")
+        deadline_dt = _parse_iso_datetime(deadline)
+        if deadline_dt and datetime.now(UTC) > deadline_dt:
+            return build_response(
+                403,
                 {
-                    "code": "INVALID_ACTION",
-                    "message": f"action must be {' or '.join(ALLOWED_ACTIONS)}",
+                    "code": "REGISTRATION_CLOSED",
+                    "message": "Registration is closed",
                 },
             )
 
