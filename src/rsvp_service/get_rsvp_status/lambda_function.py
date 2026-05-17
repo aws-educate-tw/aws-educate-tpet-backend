@@ -5,7 +5,9 @@ from datetime import UTC, datetime
 
 from campaign_repository import CampaignRepository
 from campaign_run_repository import CampaignRunRepository
+from jwt_util import AuthenticationError, decode_rsvp_token
 from participant_repository import ParticipantRepository
+from rsvp_status_enum import RsvpStatus
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -13,6 +15,17 @@ logger.setLevel(logging.INFO)
 campaign_repository = CampaignRepository()
 campaign_run_repository = CampaignRunRepository()
 participant_repository = ParticipantRepository()
+
+
+def _parse_iso_datetime(value):
+    if not value:
+        return None
+
+    normalized = value.replace("Z", "+00:00")
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def lambda_handler(event, context):
@@ -32,37 +45,43 @@ def lambda_handler(event, context):
                 "statusCode": 400,
                 "body": json.dumps({"message": "Invalid ID format"}),
             }
-        run_id, participant_id = parts[0], parts[1]
+        path_run_id, path_participant_id = parts[0], parts[1]
 
-        authorizer = (
-            event.get("requestContext", {}).get("authorizer", {}).get("lambda", {})
-        )
-        campaign_id_from_token = authorizer.get("campaign_id")
-        token_name = authorizer.get("name", "Unknown User")
+        token_payload = decode_rsvp_token(event.get("headers"))
+        run_id = token_payload.get("run_id")
+        participant_id = token_payload.get("participant_id")
+        campaign_id = token_payload.get("campaign_id")
+        token_name = token_payload.get("name", "Unknown User")
 
-        user_item = participant_repository.get_participant(run_id, participant_id)
-        final_campaign_id = campaign_id_from_token or (
-            user_item.get("campaign_id") if user_item else None
-        )
+        if not run_id or not participant_id or not campaign_id:
+            raise AuthenticationError("Token payload is incomplete")
 
+        if run_id != path_run_id or participant_id != path_participant_id:
+            raise AuthenticationError("Token does not match requested participant")
+
+        user_item = None
         run_item = None
         camp_master_item = None
 
-        if final_campaign_id:
-            with ThreadPoolExecutor() as executor:
-                future_run = executor.submit(
-                    campaign_run_repository.get_run, final_campaign_id, run_id
-                )
-                future_camp = executor.submit(
-                    campaign_repository.get_campaign_by_id, final_campaign_id
-                )
+        with ThreadPoolExecutor() as executor:
+            future_participant = executor.submit(
+                participant_repository.get_participant, run_id, participant_id
+            )
+            future_run = executor.submit(
+                campaign_run_repository.get_run, campaign_id, run_id
+            )
+            future_camp = executor.submit(
+                campaign_repository.get_campaign_by_id, campaign_id
+            )
 
-                run_item = future_run.result()
-                camp_master_item = future_camp.result()
+            user_item = future_participant.result()
+            run_item = future_run.result()
+            camp_master_item = future_camp.result()
 
-        if not run_item or not camp_master_item:
+        if not user_item or not run_item or not camp_master_item:
             logger.error(
-                "Data missing - Run: %s, Camp: %s",
+                "Data missing - Participant: %s, Run: %s, Camp: %s",
+                bool(user_item),
                 bool(run_item),
                 bool(camp_master_item),
             )
@@ -73,18 +92,15 @@ def lambda_handler(event, context):
                 ),
             }
 
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(UTC)
         deadline = run_item.get("registration_deadline")
-        is_registration_closed = now > deadline if deadline else False
+        deadline_dt = _parse_iso_datetime(deadline)
+        is_registration_closed = now > deadline_dt if deadline_dt else False
 
         response_data = {
             "status": "SUCCESS",
-            "rsvp_status": user_item.get("rsvp_status", "PENDING")
-            if user_item
-            else "PENDING",
-            "participant_name": user_item.get("name", token_name)
-            if user_item
-            else token_name,
+            "rsvp_status": user_item.get("rsvp_status", RsvpStatus.PENDING),
+            "participant_name": user_item.get("name", token_name),
             "campaign_name": camp_master_item.get("campaign_name", ""),
             "campaign_start_time": camp_master_item.get("campaign_start_time", ""),
             "campaign_location": camp_master_item.get("campaign_location", ""),
@@ -94,9 +110,17 @@ def lambda_handler(event, context):
 
         return {"statusCode": 200, "body": json.dumps(response_data)}
 
+    except AuthenticationError as e:
+        logger.warning("Authentication failed: %s", e)
+        return {
+            "statusCode": 401,
+            "body": json.dumps({"code": "INVALID_TOKEN", "message": str(e)}),
+        }
     except Exception as e:
         logger.error("System Error: %s", e)
         return {
             "statusCode": 500,
-            "body": json.dumps({"status": "ERROR", "message": "System busy"}),
+            "body": json.dumps(
+                {"code": "INTERNAL_ERROR", "message": "Internal server error"}
+            ),
         }
