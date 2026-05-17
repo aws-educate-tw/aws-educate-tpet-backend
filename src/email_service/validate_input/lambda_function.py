@@ -787,8 +787,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             registration_deadline = body.get("registration_deadline")
             if registration_deadline is None:
                 registration_deadline = (
-                    datetime.datetime.now(datetime.UTC)
-                    + datetime.timedelta(days=14)
+                    datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=14)
                 ).strftime("%Y-%m-%dT%H:%M:%SZ")
             common_data["registration_deadline"] = registration_deadline
 
