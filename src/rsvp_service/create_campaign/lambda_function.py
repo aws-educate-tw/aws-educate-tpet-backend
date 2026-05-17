@@ -57,26 +57,11 @@ def lambda_handler(event: dict, context: object) -> dict:
             ),
         }
 
-    cohort = body.get("cohort")
-    if not cohort:
-        logger.error("Missing required field 'cohort'. Request ID: %s", aws_request_id)
-        return {
-            "statusCode": 400,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps(
-                {
-                    "message": "'cohort' is required and cannot be empty.",
-                    "error": "INVALID_FIELDS",
-                    "request_id": aws_request_id,
-                }
-            ),
-        }
-
     campaign_id = f"evt_{uuid.uuid4().hex}"
     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     item = {
-        "cohort": cohort,
+        "cohort": 8,
         "campaign_id_created_at": f"{campaign_id}_{now}",
         "campaign_id": campaign_id,
         "campaign_name": campaign_name,
