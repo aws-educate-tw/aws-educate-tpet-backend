@@ -40,10 +40,6 @@ class RSVPService:
             composite_param = f"{campaign_id}_{run_id}"
             url = f"{self.base_url}/rsvp-service/{self.environment}/internal/campaign-runs/{composite_param}"
 
-            # Use default registration_deadline if not provided
-            if not registration_deadline:
-                registration_deadline = "2099-12-31T23:59:59Z"
-
             # Prepare request body
             body = {
                 "registration_deadline": registration_deadline,

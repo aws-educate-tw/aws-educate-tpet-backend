@@ -1,3 +1,4 @@
+import datetime
 import io
 import json
 import logging
@@ -783,6 +784,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Add campaign_id for RSVP run type
         if run_type == RunType.RSVP.value:
             common_data["campaign_id"] = body.get("campaign_id")
+            registration_deadline = body.get("registration_deadline")
+            if registration_deadline is None:
+                registration_deadline = (
+                    datetime.datetime.now(datetime.UTC)
+                    + datetime.timedelta(days=14)
+                ).strftime("%Y-%m-%dT%H:%M:%SZ")
+            common_data["registration_deadline"] = registration_deadline
 
         # Send message to SQS
         message_body = {**common_data, "access_token": access_token}
