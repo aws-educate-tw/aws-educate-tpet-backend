@@ -18,7 +18,7 @@ from recipient_source_enum import RecipientSource
 from requests.exceptions import RequestException
 from run_type_enum import RunType
 from sqs import send_message_to_queue
-from time_util import get_current_utc_time
+from time_util import format_time_to_iso8601, get_current_utc_time, parse_iso8601_to_datetime
 from validation_exceptions import ValidationError, ValidationErrorCollector
 
 from rsvp_service import RSVPService
@@ -654,6 +654,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                         error_code=ValidationErrorCode.MISSING_CAMPAIGN_ID,
                     )
 
+                campaign_start_time = body.get("campaign_start_time")
+                if not campaign_start_time:
+                    error_collector.add_error(
+                        message="campaign_start_time is required for RSVP run_type",
+                        error_code=ValidationErrorCode.MISSING_CAMPAIGN_START_TIME,
+                    )
+
                 try:
                     rsvp_service = RSVPService()
                     campaign_info = rsvp_service.verify_campaign(campaign_id)
@@ -783,12 +790,47 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Add campaign_id for RSVP run type
         if run_type == RunType.RSVP.value:
-            common_data["campaign_id"] = body.get("campaign_id")
+            common_data["campaign_id"] = campaign_id
+
+            # Validate campaign_start_time and compute deadline_limit
+            deadline_limit_dt = None
+            if campaign_start_time:
+                try:
+                    campaign_start_dt = datetime.datetime.fromisoformat(
+                        campaign_start_time.replace("Z", "+00:00")
+                    )
+                    deadline_limit_dt = (
+                        campaign_start_dt - datetime.timedelta(days=1)
+                    ).replace(hour=0, minute=0, second=0, microsecond=0)
+
+                    today = parse_iso8601_to_datetime(get_current_utc_time()).date()
+                    # if today is on or after the deadline_limit, it means the registration deadline has passed 
+                    # and we should not allow creating the registration
+                    if today >= deadline_limit_dt.date():
+                        error_collector.add_error(
+                            message="Cannot create registration: today is on or after the registration deadline (campaign_start - 2 days)",
+                            error_code=ValidationErrorCode.CAMPAIGN_START_TIME_PASSED,
+                            details={
+                                "campaign_start_time": campaign_start_time,
+                                "deadline_limit": deadline_limit_dt.strftime("%Y-%m-%d"),
+                                "today": today.strftime("%Y-%m-%d"),
+                            },
+                        )
+                except (ValueError, AttributeError) as e:
+                    logger.error(
+                        "Failed to parse campaign_start_time '%s': %s",
+                        campaign_start_time,
+                        e,
+                    )
+
             registration_deadline = body.get("registration_deadline")
             if registration_deadline is None:
-                registration_deadline = (
-                    datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=14)
-                ).strftime("%Y-%m-%dT%H:%M:%SZ")
+                now_plus_14_eod = parse_iso8601_to_datetime(get_current_utc_time()) + datetime.timedelta(days=14)
+                # ensure that registration_deadline is less than campaign_start_time - 1 day
+                if deadline_limit_dt is not None and now_plus_14_eod > deadline_limit_dt:
+                    registration_deadline = format_time_to_iso8601(deadline_limit_dt)
+                else:
+                    registration_deadline = format_time_to_iso8601(now_plus_14_eod)
             common_data["registration_deadline"] = registration_deadline
 
         # Send message to SQS
