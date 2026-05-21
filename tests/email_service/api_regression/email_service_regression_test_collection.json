@@ -1326,7 +1326,10 @@
 				{
 					"listen": "prerequest",
 					"script": {
-						"exec": [],
+						"exec": [
+							"// 因為前置作業是非同步的，在發送此請求前先等待 3000 毫秒（3秒）",
+							"setTimeout(() => {}, 3000);"
+						],
 						"type": "text/javascript"
 					}
 				}
