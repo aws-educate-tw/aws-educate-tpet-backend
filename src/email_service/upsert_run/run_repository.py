@@ -412,9 +412,10 @@ class RunRepository:
                 "typeHint": "JSON",
             }
         # Add specific handling for timestamp columns
-        elif key == "created_at" and isinstance(
-            value, str
-        ):  # Assuming 'created_at' is the target timestamp column
+        elif key in (
+            "created_at",
+            "registration_deadline",
+        ) and isinstance(value, str):
             dt_obj = time_util.parse_iso8601_to_datetime(value)
             formatted_ts = time_util.format_datetime_for_rds(dt_obj)
             return {
