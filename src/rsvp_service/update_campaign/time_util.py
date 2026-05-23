@@ -12,30 +12,6 @@ def get_current_utc_time() -> str:
     return datetime.datetime.now(datetime.UTC).strftime(TIME_FORMAT)
 
 
-def format_time_to_iso8601(dt: datetime.datetime) -> str:
-    """
-    Format a datetime object as ISO 8601.
-
-    :param dt: Datetime object.
-    :return: Formatted time as ISO 8601 string.
-    """
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=datetime.UTC)
-    return dt.strftime(TIME_FORMAT)
-
-
-def parse_iso8601_to_datetime(iso8601_str: str) -> datetime.datetime:
-    """
-    Parse an ISO 8601 string to a datetime object.
-
-    :param iso8601_str: ISO 8601 formatted string.
-    :return: Datetime object.
-    """
-    return datetime.datetime.strptime(iso8601_str, TIME_FORMAT).replace(
-        tzinfo=datetime.UTC
-    )
-
-
 def add_hours_to_time(iso8601_str: str, hours: int) -> str:
     """
     Add a specified number of hours to an ISO 8601 time string.
@@ -48,8 +24,6 @@ def add_hours_to_time(iso8601_str: str, hours: int) -> str:
     new_dt = dt + datetime.timedelta(hours=hours)
     return format_time_to_iso8601(new_dt)
 
-
-# Example usage
 if __name__ == "__main__":
     current_time = get_current_utc_time()
     print("Current UTC Time: ", current_time)

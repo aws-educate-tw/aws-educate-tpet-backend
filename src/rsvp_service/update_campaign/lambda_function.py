@@ -1,11 +1,13 @@
 import json
 import logging
 
-from campaign_repository import get_campaign_by_id, update_campaign
+from campaign_repository import CampaignRepository
 from time_util import get_current_utc_time, parse_iso8601_to_datetime
+from campaign_status_enum import CampaignStatus
 
 logger = logging.getLogger(__name__)
 logger.setLevel("INFO")
+campaign_repo = CampaignRepository()
 
 def get_campaign_status(start_date: str, end_date: str) -> str:
     start_time = parse_iso8601_to_datetime(start_date)
@@ -13,19 +15,27 @@ def get_campaign_status(start_date: str, end_date: str) -> str:
     current_time = parse_iso8601_to_datetime(get_current_utc_time())
 
     if current_time < start_time:
-        return "UPCOMING"
+        return CampaignStatus.UPCOMING.value
     elif current_time <= end_time:
-        return "ACTIVE"
+        return CampaignStatus.ACTIVE.value
     else:
-        return "COMPLETED"
-
+        return CampaignStatus.COMPLETED.value
+    
 def lambda_handler(event, context):
+
+    if event.get("action") == "PREWARM":
+        logger.info("Received a prewarm request. Skipping business logic.")
+        return {"statusCode": 200, "body": "Successfully warmed up"}
+
+    aws_request_id = getattr(context, "aws_request_id", None)
+    logger.info("Received event: %s. Request ID: %s", event, aws_request_id)
+
     try:
         campaign_id = event.get("pathParameters", {}).get("campaign_id")
         if not campaign_id:
             return {
                 "statusCode": 400,
-                "body": json.dumps({"message": "invalid request body"}), 
+                "body": json.dumps({"message": "missing campaign_id"}), 
             }
 
         body = json.loads(event.get("body", "{}"))
@@ -33,10 +43,10 @@ def lambda_handler(event, context):
         if not body:
             return {
                 "statusCode": 400,
-                "body": json.dumps({"message": "invalid request body"}), 
+                "body": json.dumps({"message": "missing campaign_id"}), 
             }
 
-        existing_campaign = get_campaign_by_id(campaign_id)
+        existing_campaign = campaign_repo.get_campaign_by_id(campaign_id)
         if not existing_campaign:
             return {
                 "statusCode": 404,
@@ -58,7 +68,7 @@ def lambda_handler(event, context):
 
             body["status"] = get_campaign_status(start_time_str, end_time_str)
 
-        campaign_details = update_campaign(campaign_id, body)
+        campaign_details = campaign_repo.update_campaign(campaign_id, body, existing_campaign)
 
         return {
             "statusCode": 200,
