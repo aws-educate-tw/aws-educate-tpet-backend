@@ -11,7 +11,6 @@ resource "aws_ses_receipt_rule_set" "ses_receipt_rule_set" {
   rule_set_name = "${var.environment}-forward-email-rule-set"
 }
 
-<<<<<<< HEAD
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_dev" {
   name          = "forward_to_dev" # rule name
   rule_set_name = aws_ses_receipt_rule_set.ses_receipt_rule_set.rule_set_name
@@ -40,8 +39,6 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_contact" {
   }
 }
 
-=======
->>>>>>> 07ee99ddc50c88df75abe3a9e9167d3055c0542d
 # Add a header to the email and store it in S3
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_mkt" {
   name          = "forward_to_mkt" # rule name
@@ -51,23 +48,11 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_mkt" {
   scan_enabled  = true
 
   s3_action {
-<<<<<<< HEAD
     bucket_name       = local.bucket_name
     object_key_prefix = "mkt/"
     position          = 3
   }
 
-=======
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
-    object_key_prefix = "mkt/"
-    position          = 1
-  }
-
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
->>>>>>> 07ee99ddc50c88df75abe3a9e9167d3055c0542d
 }
 
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_tech" {
@@ -78,42 +63,11 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_tech" {
   scan_enabled  = true
 
   s3_action {
-<<<<<<< HEAD
     bucket_name       = local.bucket_name
     object_key_prefix = "tech/"
     position          = 4
   }
 
-=======
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
-    object_key_prefix = "tech/"
-    position          = 1
-  }
-
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
-}
-
-resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_dev" {
-  name          = "forward_to_dev" # rule name
-  rule_set_name = aws_ses_receipt_rule_set.ses_receipt_rule_set.rule_set_name
-  recipients    = [var.dev_email]
-  enabled       = true #  enabled receipt rules within the active rule set.
-  scan_enabled  = true
-
-  s3_action {
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
-    object_key_prefix = "dev/"
-    position          = 1
-  }
-
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
->>>>>>> 07ee99ddc50c88df75abe3a9e9167d3055c0542d
 }
 
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_event" {
@@ -124,22 +78,10 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_event" {
   scan_enabled  = true
 
   s3_action {
-<<<<<<< HEAD
     bucket_name       = local.bucket_name
     object_key_prefix = "event/"
     position          = 5
   }
-=======
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
-    object_key_prefix = "event/"
-    position          = 1
-  }
-
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
->>>>>>> 07ee99ddc50c88df75abe3a9e9167d3055c0542d
 }
 
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group1" {
@@ -150,22 +92,10 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group1" {
   scan_enabled  = true
 
   s3_action {
-<<<<<<< HEAD
     bucket_name       = local.bucket_name
     object_key_prefix = "group1/"
     position          = 6
   }
-=======
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
-    object_key_prefix = "group1/"
-    position          = 1
-  }
-
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
->>>>>>> 07ee99ddc50c88df75abe3a9e9167d3055c0542d
 }
 
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group2" {
@@ -176,27 +106,12 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group2" {
   scan_enabled  = true
 
   s3_action {
-<<<<<<< HEAD
     bucket_name       = local.bucket_name
     object_key_prefix = "group2/"
     position          = 7
   }
 }
 
-=======
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
-    object_key_prefix = "group2/"
-    position          = 1
-  }
-
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
-}
-
-
->>>>>>> 07ee99ddc50c88df75abe3a9e9167d3055c0542d
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group3" {
   name          = "forward_to_group3" # rule name
   rule_set_name = aws_ses_receipt_rule_set.ses_receipt_rule_set.rule_set_name
@@ -205,22 +120,10 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_group3" {
   scan_enabled  = true
 
   s3_action {
-<<<<<<< HEAD
     bucket_name       = local.bucket_name
     object_key_prefix = "group3/"
     position          = 8
   }
-=======
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
-    object_key_prefix = "group3/"
-    position          = 1
-  }
-
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
-  ]
->>>>>>> 07ee99ddc50c88df75abe3a9e9167d3055c0542d
 }
 
 resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_default" {
@@ -231,7 +134,6 @@ resource "aws_ses_receipt_rule" "ses_receipt_rule_forward_to_default" {
   scan_enabled  = true
 
   s3_action {
-<<<<<<< HEAD
     bucket_name       = local.bucket_name
     object_key_prefix = "default/"
     position          = 9
@@ -251,15 +153,5 @@ resource "aws_ses_active_receipt_rule_set" "ses_active_receipt_rule_set" {
     aws_ses_receipt_rule.ses_receipt_rule_forward_to_group2,
     aws_ses_receipt_rule.ses_receipt_rule_forward_to_group3,
     aws_ses_receipt_rule.ses_receipt_rule_forward_to_default
-=======
-    bucket_name       = aws_s3_bucket.aws_educate_tpet_email_bucket.id
-    object_key_prefix = "default/"
-    position          = 1
-  }
-
-  depends_on = [
-    aws_s3_bucket.aws_educate_tpet_email_bucket,
-    aws_s3_bucket_policy.ses_put_object
->>>>>>> 07ee99ddc50c88df75abe3a9e9167d3055c0542d
   ]
 }

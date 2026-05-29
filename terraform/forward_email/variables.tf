@@ -47,15 +47,12 @@ variable "dev_email" {
   default     = "dev@aws-educate.tw"
 }
 
-<<<<<<< HEAD
 variable "contact_email" {
   description = "The email address for contact"
   type        = string
   default     = "awseducate.cloudambassador@gmail.com"
 }
 
-=======
->>>>>>> 07ee99ddc50c88df75abe3a9e9167d3055c0542d
 variable "mkt_email" {
   description = "The email address for mkt"
   type        = string

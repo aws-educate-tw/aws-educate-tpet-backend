@@ -21,6 +21,10 @@
     ],
     "sender_local_part": "dev"
   },
+  "contact@aws-educate.tw": {
+    "recipients": ["awseducate.cloudambassador@gmail.com"],
+    "sender_local_part": "contact"
+  },
   "tech@aws-educate.tw": {
     "recipients": [
       "271yeye@gmail.com",
