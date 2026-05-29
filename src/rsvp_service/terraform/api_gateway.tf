@@ -205,8 +205,9 @@ module "api_gateway" {
       throttling_rate_limit    = 80
       throttling_burst_limit   = 40
 
-      authorization_type = "CUSTOM"
-      authorizer_key     = "lambda_authorizer"
+      # TODO: Re-enable authorizer after auth flow is ready
+      # authorization_type = "CUSTOM"
+      # authorizer_key     = "lambda_authorizer"
 
       integration = {
         uri                    = module.update_campaign_lambda.lambda_function_arn

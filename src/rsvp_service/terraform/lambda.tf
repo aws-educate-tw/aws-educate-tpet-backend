@@ -956,7 +956,8 @@ module "update_campaign_lambda" {
   tags = {
     "Terraform"   = "true",
     "Environment" = var.environment,
-    "Service"     = var.service_underscore
+    "Service"     = var.service_underscore,
+    "Prewarm"     = "true"
   }
 
   ######################
@@ -968,13 +969,7 @@ module "update_campaign_lambda" {
     dynamodb_crud = {
       effect = "Allow",
       actions = [
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
         "dynamodb:Query",
-        "dynamodb:Scan",
         "dynamodb:UpdateItem"
       ],
       resources = [
