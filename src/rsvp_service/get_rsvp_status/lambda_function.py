@@ -101,6 +101,7 @@ def lambda_handler(event, context):
             "status": "SUCCESS",
             "rsvp_status": user_item.get("rsvp_status", RsvpStatus.PENDING),
             "participant_name": user_item.get("name", token_name),
+            "last_edited_time": user_item.get("updated_at"),
             "campaign_name": camp_master_item.get("campaign_name", ""),
             "campaign_start_time": camp_master_item.get("campaign_start_time", ""),
             "campaign_location": camp_master_item.get("campaign_location", ""),
