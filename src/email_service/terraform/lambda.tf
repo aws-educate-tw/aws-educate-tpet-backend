@@ -708,7 +708,7 @@ module "create_email_lambda" {
       ],
       resources = [
         module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"],
-        aws_secretsmanager_secret.jwt_secret.arn
+        data.aws_secretsmanager_secret.jwt_secret.arn
       ]
     },
 
