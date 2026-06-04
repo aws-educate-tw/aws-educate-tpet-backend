@@ -216,6 +216,21 @@ module "api_gateway" {
         timeout_milliseconds   = 29000
       }
     }
+
+    "PATCH /rsvp/{campaign_id}" = {
+      detailed_metrics_enabled = true
+      throttling_rate_limit    = 80
+      throttling_burst_limit   = 40
+
+      authorization_type = "AWS_IAM"  # 註：如果妳們要用 IAM 驗證就維持 AWS_IAM，如果不用驗證就寫 "NONE"
+      
+      integration = {
+        uri                    = module.update_campaign_lambda.lambda_function_arn # ⚠️ 這裡要改成妳這支 Lambda 的名字
+        type                   = "AWS_PROXY"
+        payload_format_version = "1.0"
+        timeout_milliseconds   = 29000
+      }
+    }
   }
 
   tags = local.tags

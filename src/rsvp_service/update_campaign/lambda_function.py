@@ -7,9 +7,11 @@ from campaign_status_enum import CampaignStatus
 
 logger = logging.getLogger(__name__)
 logger.setLevel("INFO")
+
 campaign_repo = CampaignRepository()
 
 def get_campaign_status(start_date: str, end_date: str) -> str:
+    """根據當前時間計算活動狀態"""
     start_time = parse_iso8601_to_datetime(start_date)
     end_time = parse_iso8601_to_datetime(end_date)
     current_time = parse_iso8601_to_datetime(get_current_utc_time())
@@ -20,34 +22,40 @@ def get_campaign_status(start_date: str, end_date: str) -> str:
         return CampaignStatus.ACTIVE.value
     else:
         return CampaignStatus.COMPLETED.value
-    
-def lambda_handler(event, context):
 
-    if event.get("action") == "PREWARM":
-        logger.info("Received a prewarm request. Skipping business logic.")
+def lambda_handler(event, context):
+    if event.get("action") == "PREWARM" and "httpMethod" not in event:
+        logger.info("Received a valid prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
     aws_request_id = getattr(context, "aws_request_id", None)
-    logger.info("Received event: %s. Request ID: %s", event, aws_request_id)
+    logger.info("Full Event received: %s", json.dumps(event))
+    logger.info("Request ID: %s", aws_request_id)
 
     try:
-        campaign_id = event.get("pathParameters", {}).get("campaign_id")
+        path_params = event.get("pathParameters") or {}
+        campaign_id = path_params.get("campaign_id")
+
         if not campaign_id:
+            logger.warning("Request failed: Missing campaign_id in path")
             return {
                 "statusCode": 400,
-                "body": json.dumps({"message": "missing campaign_id"}), 
+                "body": json.dumps({"message": "missing campaign_id in path"}), 
             }
 
-        body = json.loads(event.get("body", "{}"))
+        body_str = event.get("body") or "{}"
+        body = json.loads(body_str)
 
         if not body:
+            logger.warning("Request failed: Empty request body")
             return {
                 "statusCode": 400,
-                "body": json.dumps({"message": "missing campaign_id"}), 
+                "body": json.dumps({"message": "missing request body"}), 
             }
 
         existing_campaign = campaign_repo.get_campaign_by_id(campaign_id)
         if not existing_campaign:
+            logger.warning("Request failed: Campaign ID %s not found", campaign_id)
             return {
                 "statusCode": 404,
                 "body": json.dumps({"message": "campaign not found"}), 
@@ -63,15 +71,20 @@ def lambda_handler(event, context):
             if end_dt <= start_dt:
                 return {
                     "statusCode": 400,
-                    "body": json.dumps({"message": "invalid request body"}),
+                    "body": json.dumps({"message": "invalid request body: end_time must be after start_time"}),
                 }
 
             body["status"] = get_campaign_status(start_time_str, end_time_str)
 
+        logger.info("Attempting to update campaign: %s", campaign_id)
         campaign_details = campaign_repo.update_campaign(campaign_id, body, existing_campaign)
 
         return {
             "statusCode": 200,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*" 
+            },
             "body": json.dumps(
                 {
                     "message": "campaign updated successfully", 
@@ -81,20 +94,20 @@ def lambda_handler(event, context):
         }
 
     except json.JSONDecodeError:
-        logger.error("JSONDecodeError: Invalid JSON format")
+        logger.error("JSONDecodeError: Invalid JSON format in body")
         return {
             "statusCode": 400,
-            "body": json.dumps({"message": "invalid request body"}), 
+            "body": json.dumps({"message": "invalid JSON format"}), 
         }
     except ValueError as e:
-        logger.error("ValueError: %s", str(e))
+        logger.error("ValueError encountered: %s", str(e))
         return {
             "statusCode": 400,
-            "body": json.dumps({"message": "invalid request body"}), 
+            "body": json.dumps({"message": str(e)}), 
         }
     except Exception as e:
-        logger.error("Exception: %s", str(e), exc_info=True)
+        logger.error("Unexpected Exception: %s", str(e), exc_info=True)
         return {
             "statusCode": 500,
-            "body": json.dumps({"message": "failed to update campaign"}), 
+            "body": json.dumps({"message": "failed to update campaign", "error": str(e)}), 
         }
