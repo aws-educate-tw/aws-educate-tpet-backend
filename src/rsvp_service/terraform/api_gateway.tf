@@ -202,7 +202,7 @@ module "api_gateway" {
 
     "PATCH /campaigns/{campaign_id}" = {
       detailed_metrics_enabled = true
-      throttling_rate_limit    = 806
+      throttling_rate_limit    = 80
       throttling_burst_limit   = 40
 
       # TODO: Re-enable authorizer after auth flow is ready
