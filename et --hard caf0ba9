@@ -1,0 +1,110 @@
+[33m37ec498[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mSCRUM-598-add-update-campaign-api[m[33m, [m[1;31morigin/SCRUM-598-add-update-campaign-api[m[33m)[m HEAD@{0}: rebase (finish): returning to refs/heads/SCRUM-598-add-update-campaign-api
+[33m37ec498[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mSCRUM-598-add-update-campaign-api[m[33m, [m[1;31morigin/SCRUM-598-add-update-campaign-api[m[33m)[m HEAD@{1}: pull origin SCRUM-598-add-update-campaign-api --rebase (start): checkout 37ec498d644af2acc452bfe260b799aeb56dc9c9
+[33mcaf0ba9[m HEAD@{2}: commit: fix: update patch route to /rsvp and fix 500 internal error in lambda
+[33mec0880b[m HEAD@{3}: commit: fix: cleanup time_util and sync infrastructure changes
+[33m38c1222[m HEAD@{4}: commit: fix: add missing time utility functions
+[33m41ae916[m HEAD@{5}: commit: fix: address PR review comments (prewarm, repo pattern, IAM least privilege, and API gateway auth)
+[33m1db38e3[m HEAD@{6}: commit: feat: implement PATCH /campaigns/{campaign_id} API and update IaC (SCRUM-598)
+[33m93ada8c[m HEAD@{7}: commit (merge): merge: resolve modify/delete conflict on versions.tf
+[33m9f26742[m HEAD@{8}: commit (merge): merge: resolve conflicts with dev branch
+[33mf75bd5d[m[33m ([m[1;32mscrum-572-add-list-campaigns-and-get-campaign-api[m[33m)[m HEAD@{9}: checkout: moving from scrum-572-add-list-campaigns-and-get-campaign-api to SCRUM-598-add-update-campaign-api
+[33mf75bd5d[m[33m ([m[1;32mscrum-572-add-list-campaigns-and-get-campaign-api[m[33m)[m HEAD@{10}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (finish): returning to refs/heads/scrum-572-add-list-campaigns-and-get-campaign-api
+[33mf75bd5d[m[33m ([m[1;32mscrum-572-add-list-campaigns-and-get-campaign-api[m[33m)[m HEAD@{11}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (pick): apply PR feedback - split repositories, improve naming, and add environment variable checks
+[33m02a4d27[m HEAD@{12}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (start): checkout 02a4d27a82811547de18d6e226aabc726d36c8b8
+[33m674f38a[m HEAD@{13}: commit: apply PR feedback - split repositories, improve naming, and add environment variable checks
+[33m8957003[m HEAD@{14}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (finish): returning to refs/heads/scrum-572-add-list-campaigns-and-get-campaign-api
+[33m8957003[m HEAD@{15}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (pick): separate campaign_run repository and improve variable naming per PR review
+[33m0b5f131[m HEAD@{16}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (start): checkout 0b5f1319d77be6ade6005121464b9234cb172da2
+[33m175d747[m HEAD@{17}: commit: separate campaign_run repository and improve variable naming per PR review
+[33ma350b3a[m HEAD@{18}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (finish): returning to refs/heads/scrum-572-add-list-campaigns-and-get-campaign-api
+[33ma350b3a[m HEAD@{19}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (pick): rename repository instance and implement rsvp update transaction
+[33m4deac19[m HEAD@{20}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (start): checkout 4deac191a85db0e8621cd796484f79b3e36f0d12
+[33me2925a0[m HEAD@{21}: commit: rename repository instance and implement rsvp update transaction
+[33md0bc120[m HEAD@{22}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (finish): returning to refs/heads/scrum-572-add-list-campaigns-and-get-campaign-api
+[33md0bc120[m HEAD@{23}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (pick): implement flattened rsvp status API with three-table join logic
+[33mc1fa716[m HEAD@{24}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (start): checkout c1fa7164af84584d1a68ebca3dae29ebbd9bef34
+[33ma9c446e[m HEAD@{25}: commit: implement flattened rsvp status API with three-table join logic
+[33mbda16bb[m HEAD@{26}: commit: optimize logging performance
+[33me75d05b[m HEAD@{27}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (finish): returning to refs/heads/scrum-572-add-list-campaigns-and-get-campaign-api
+[33me75d05b[m HEAD@{28}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (pick): Fix: adjust line endings and revert python version to 3.11
+[33m1085364[m HEAD@{29}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (start): checkout 10853648cc6cee4803a42a0e71ca4fa8320ce3a1
+[33me23094e[m HEAD@{30}: commit: Fix: adjust line endings and revert python version to 3.11
+[33m6703acb[m HEAD@{31}: commit: Fix: manual cleanup of merge conflict markers and imports
+[33m92001a4[m HEAD@{32}: rebase (finish): returning to refs/heads/scrum-572-add-list-campaigns-and-get-campaign-api
+[33m92001a4[m HEAD@{33}: rebase (continue): Fix: import timezone to resolve F821 undefined name
+[33m5724e80[m HEAD@{34}: pull --rebase origin scrum-572-add-list-campaigns-and-get-campaign-api (start): checkout 5724e80bdc47d1221925de4ac7d8afb03de13ca6
+[33ma6cfa33[m HEAD@{35}: commit: Fix: import timezone to resolve F821 undefined name
+[33m6afd09a[m HEAD@{36}: commit (merge): Merge remote changes and finalize unused variable removal
+[33medb0a84[m HEAD@{37}: commit: Fix: remove unused variables flagged by ruff
+[33m9d1e7bb[m HEAD@{38}: commit: Fix: resolve merge conflicts and syntax errors in Lambda functions
+[33m3d3ac80[m HEAD@{39}: pull origin scrum-572-add-list-campaigns-and-get-campaign-api: Fast-forward
+[33m0ba1fae[m HEAD@{40}: commit (merge): Fix merge conflicts and integrate remote changes
+[33m8c7dc11[m HEAD@{41}: commit: Move DB logic to repository, switch to logging, and fix timezone/region issues
+[33m36f00f5[m HEAD@{42}: commit: update get_rsvp_status and update_rsvp APIs
+[33m284f7d5[m[33m ([m[1;31morigin/SCRUM-586-RSVP-Service-add-update_rsvp-get_rsvp_status-Github-Action-test[m[33m, [m[1;32mdev[m[33m)[m HEAD@{43}: Branch: renamed refs/heads/add-list-campaigns-and-get-campaign-api to refs/heads/scrum-572-add-list-campaigns-and-get-campaign-api
+[33m284f7d5[m[33m ([m[1;31morigin/SCRUM-586-RSVP-Service-add-update_rsvp-get_rsvp_status-Github-Action-test[m[33m, [m[1;32mdev[m[33m)[m HEAD@{45}: checkout: moving from dev to add-list-campaigns-and-get-campaign-api
+[33m284f7d5[m[33m ([m[1;31morigin/SCRUM-586-RSVP-Service-add-update_rsvp-get_rsvp_status-Github-Action-test[m[33m, [m[1;32mdev[m[33m)[m HEAD@{46}: checkout: moving from feature/add-list-campaigns-and-get-campaign-api to dev
+[33m284f7d5[m[33m ([m[1;31morigin/SCRUM-586-RSVP-Service-add-update_rsvp-get_rsvp_status-Github-Action-test[m[33m, [m[1;32mdev[m[33m)[m HEAD@{47}: checkout: moving from dev to feature/add-list-campaigns-and-get-campaign-api
+[33m284f7d5[m[33m ([m[1;31morigin/SCRUM-586-RSVP-Service-add-update_rsvp-get_rsvp_status-Github-Action-test[m[33m, [m[1;32mdev[m[33m)[m HEAD@{48}: checkout: moving from dev to dev
+[33m284f7d5[m[33m ([m[1;31morigin/SCRUM-586-RSVP-Service-add-update_rsvp-get_rsvp_status-Github-Action-test[m[33m, [m[1;32mdev[m[33m)[m HEAD@{49}: pull: Fast-forward
+[33mbb368d8[m HEAD@{50}: pull origin dev: Fast-forward
+[33m057167a[m HEAD@{51}: checkout: moving from SCRUM-561-update-db-schema-for-rsvp to dev
+[33mc31f094[m[33m ([m[1;31morigin/SCRUM-561-update-db-schema-for-rsvp[m[33m, [m[1;32mSCRUM-561-update-db-schema-for-rsvp[m[33m)[m HEAD@{52}: commit: trigger CI as human to bypass bot bug
+[33mfb81fbe[m HEAD@{53}: pull: Fast-forward
+[33m33049ae[m HEAD@{54}: commit: Revert out of scope changes
+[33maf49b2b[m HEAD@{55}: commit (merge): chore: finish merging remote changes
+[33mf38a6d9[m HEAD@{56}: commit: chore: trigger CI as human to bypass bot approval bug
+[33m7b53521[m HEAD@{57}: commit (merge): chore: resolve merge conflict in dynamodb.tf
+[33m1bd72c4[m HEAD@{58}: commit: add campaign_id to runs table and fix PR out of scope
+[33m3152f00[m HEAD@{59}: commit: update db schema for rsvp system (SCRUM-561)
+[33m057167a[m HEAD@{60}: checkout: moving from dev to SCRUM-561-update-db-schema-for-rsvp
+[33m057167a[m HEAD@{61}: pull: Fast-forward
+[33mbb42659[m HEAD@{62}: reset: moving to HEAD
+[33mbb42659[m HEAD@{63}: checkout: moving from Scrum-486-ariel-onboarding-api to dev
+[33m1e30880[m[33m ([m[1;31morigin/Scrum-486-ariel-onboarding-api[m[33m, [m[1;32mScrum-486-ariel-onboarding-api[m[33m)[m HEAD@{64}: pull origin Scrum-486-ariel-onboarding-api: Merge made by the 'ort' strategy.
+[33mec2fc4d[m HEAD@{65}: commit: chore: resolve merge conflicts
+[33m687e364[m HEAD@{66}: commit: refactor: add backend s3 block and fix postman test assertions #486
+[33m5d53978[m HEAD@{67}: commit: test: update postman environment with shared cloud values #486
+[33m01dd848[m HEAD@{68}: commit: refactor: update code based on code review feedback and version alignment #486
+[33m85df2e0[m HEAD@{69}: commit: test: sync postman collection with cloud variables #486
+[33m2c66633[m HEAD@{70}: commit: test: update postman collection with correct api v2 settings #486
+[33m0ba964d[m HEAD@{71}: commit: refactor: complete onboarding requirements
+[33mfcebc87[m HEAD@{72}: pull origin Scrum-486-ariel-onboarding-api --rebase (finish): returning to refs/heads/Scrum-486-ariel-onboarding-api
+[33mfcebc87[m HEAD@{73}: pull origin Scrum-486-ariel-onboarding-api --rebase (pick): chore: align backend config with team standards and add state locking #486
+[33m206ce98[m HEAD@{74}: pull origin Scrum-486-ariel-onboarding-api --rebase (start): checkout 206ce9843f998f584b48d56752d47570c4366fd3
+[33m7b8d204[m HEAD@{75}: commit: chore: align backend config with team standards and add state locking #486
+[33mcba5860[m HEAD@{76}: pull origin Scrum-486-ariel-onboarding-api: Merge made by the 'ort' strategy.
+[33m74ca323[m HEAD@{77}: commit: add .terraform-version
+[33m3184c5d[m HEAD@{78}: Branch: renamed refs/heads/SCRUM-486-Ariel-開發-Onboarding-API to refs/heads/Scrum-486-ariel-onboarding-api
+[33m3184c5d[m HEAD@{80}: commit: Fix: resolve 409 deployment error and optimize JSON response by removing ensure_ascii
+[33m72e3cdd[m HEAD@{81}: checkout: moving from SCRUM-494-Vincent-Onboarding-API to SCRUM-486-Ariel-開發-Onboarding-API
+[33m0c12bf6[m[33m ([m[1;32mSCRUM-494-Vincent-Onboarding-API[m[33m)[m HEAD@{82}: checkout: moving from SCRUM-486-Ariel-開發-Onboarding-API to SCRUM-494-Vincent-Onboarding-API
+[33m72e3cdd[m HEAD@{83}: checkout: moving from dev to SCRUM-486-Ariel-開發-Onboarding-API
+[33mbb42659[m HEAD@{84}: checkout: moving from SCRUM-494-Vincent-Onboarding-API to dev
+[33m0c12bf6[m[33m ([m[1;32mSCRUM-494-Vincent-Onboarding-API[m[33m)[m HEAD@{85}: checkout: moving from SCRUM-486-Ariel-開發-Onboarding-API to SCRUM-494-Vincent-Onboarding-API
+[33m72e3cdd[m HEAD@{86}: commit: chore: save progress before switching branch
+[33m5f88dc1[m HEAD@{87}: pull: Fast-forward
+[33meb7b812[m HEAD@{88}: pull origin SCRUM-486-Ariel-開發-Onboarding-API: Merge made by the 'ort' strategy.
+[33m0848569[m HEAD@{89}: commit: chore: update postman collection with variables and fixed endpoint
+[33m2167512[m HEAD@{90}: commit (merge): docs: move and rename onboarding test collection to correct directory
+[33m1fef143[m HEAD@{91}: commit: chore: trigger deployment and test report
+[33m27fa01d[m HEAD@{92}: commit: chore: trigger ci update
+[33mb4bba39[m HEAD@{93}: commit (merge): fix: resolve merge conflict by removing get-pip.py
+[33m3f1885d[m HEAD@{94}: commit: style: remove unnecessary files to fix lint errors
+[33m0914734[m HEAD@{95}: commit: test: sync api and test collection for CI pipeline
+[33m766d5d1[m HEAD@{96}: commit: feat: complete onboarding_ariel api and manual deploy to preview
+[33m87715b0[m[33m ([m[1;33mtag: [m[1;33mv2.0.0[m[33m, [m[1;32mmain[m[33m)[m HEAD@{97}: checkout: moving from SCRUM-494-Vincent-Onboarding-API to SCRUM-486-Ariel-開發-Onboarding-API
+[33m0c12bf6[m[33m ([m[1;32mSCRUM-494-Vincent-Onboarding-API[m[33m)[m HEAD@{98}: checkout: moving from SCRUM-486-Ariel-開發-Onboarding-API to SCRUM-494-Vincent-Onboarding-API
+[33m87715b0[m[33m ([m[1;33mtag: [m[1;33mv2.0.0[m[33m, [m[1;32mmain[m[33m)[m HEAD@{99}: checkout: moving from SCRUM-494-Vincent-Onboarding-API to SCRUM-486-Ariel-開發-Onboarding-API
+[33m0c12bf6[m[33m ([m[1;32mSCRUM-494-Vincent-Onboarding-API[m[33m)[m HEAD@{100}: checkout: moving from SCRUM-486-Ariel-開發-Onboarding-API to SCRUM-494-Vincent-Onboarding-API
+[33m87715b0[m[33m ([m[1;33mtag: [m[1;33mv2.0.0[m[33m, [m[1;32mmain[m[33m)[m HEAD@{101}: checkout: moving from SCRUM-494-Vincent-Onboarding-API to SCRUM-486-Ariel-開發-Onboarding-API
+[33m0c12bf6[m[33m ([m[1;32mSCRUM-494-Vincent-Onboarding-API[m[33m)[m HEAD@{102}: checkout: moving from main to SCRUM-494-Vincent-Onboarding-API
+[33m87715b0[m[33m ([m[1;33mtag: [m[1;33mv2.0.0[m[33m, [m[1;32mmain[m[33m)[m HEAD@{103}: checkout: moving from dev to main
+[33mbb42659[m HEAD@{104}: checkout: moving from SCRUM-486-Ariel-開發-Onboarding-API to dev
+[33m0fa2ece[m HEAD@{105}: checkout: moving from SCRUM-486-Ariel-開發-onboarding-API to SCRUM-486-Ariel-開發-Onboarding-API
+[33m0fa2ece[m HEAD@{106}: Branch: renamed refs/heads/SCRUM-487-onboarding-api to refs/heads/SCRUM-486-Ariel-開發-onboarding-API
+[33m0fa2ece[m HEAD@{108}: commit: feat: add onboarding api implementation and test collection
+[33mbb42659[m HEAD@{109}: checkout: moving from dev to SCRUM-487-onboarding-api
+[33mbb42659[m HEAD@{110}: pull: Fast-forward
+[33mbb994d3[m HEAD@{111}: checkout: moving from main to dev
+[33m87715b0[m[33m ([m[1;33mtag: [m[1;33mv2.0.0[m[33m, [m[1;32mmain[m[33m)[m HEAD@{112}: clone: from github.com:aws-educate-tw/aws-educate-tpet-backend.git
