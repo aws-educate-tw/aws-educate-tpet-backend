@@ -27,7 +27,6 @@ class AuthService:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         }
-        print("SCRUM-641-ci-test")
 
         try:
             response = requests.get(f"{self.base_url}/auth/users/me", headers=headers)
