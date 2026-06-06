@@ -682,7 +682,6 @@ jobs:
           set -o pipefail
           terraform destroy -auto-approve -var-file='${{ env.TF_VARS_FILE }}' 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
-        continue-on-error: true
 
       - name: Terraform Plan
         id: plan

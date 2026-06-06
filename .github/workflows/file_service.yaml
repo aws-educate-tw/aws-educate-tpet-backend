@@ -339,7 +339,6 @@ jobs:
         id: destroy
         run: terraform destroy -auto-approve -var-file='${{ env.TF_VARS_FILE }}'
         working-directory: ${{ env.TF_DIR }}
-        continue-on-error: true
 
       - name: Terraform Plan
         id: plan
