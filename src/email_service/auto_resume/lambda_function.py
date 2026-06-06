@@ -17,15 +17,15 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT")
 DOMAIN_NAME = os.getenv("DOMAIN_NAME")
 
 
-def ensure_database_awake() -> bool:
+def ensure_database_awake(max_retries: int = 10, retry_delay: int = 5) -> bool:
     """
     Call health check API to ensure Aurora Serverless v2 is awake.
 
+    :param max_retries: Maximum number of retry attempts
+    :param retry_delay: Seconds to wait between retries
     :return: True if database is confirmed awake, False otherwise
     """
     health_check_url = f"https://{ENVIRONMENT}-email-service-internal-api-tpet.{DOMAIN_NAME}/{ENVIRONMENT}/email-service/health"
-    max_retries = 10
-    retry_delay = 7  # seconds
 
     for attempt in range(max_retries):
         try:
@@ -34,7 +34,7 @@ def ensure_database_awake() -> bool:
                 attempt + 1,
                 max_retries,
             )
-            response = requests.get(health_check_url, timeout=5)
+            response = requests.get(health_check_url, timeout=retry_delay + 2)
             response.raise_for_status()
             health_check_api_response_json = response.json()
 
@@ -111,13 +111,20 @@ def process_sqs_message(
 
 def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
     """
-    Lambda handler for auto-resumer SQS.
-    Triggered by auto-resumer SQS, ensures Aurora database is awake,
-    then forwards messages to upsert_run SQS queue.
+    Lambda handler for auto-resume.
 
-    :param event: The event from SQS trigger
+    Supports two modes:
+    - Sync mode (no Records key): invoked directly by other Lambdas
+      (e.g. list_runs, get_run, create_run, list_emails) to ensure
+      Aurora is awake before executing DB queries. Uses shorter retries
+      to fit within the API Gateway 29s timeout.
+    - Async mode (Records key present): triggered by auto-resumer SQS,
+      ensures Aurora is awake, then forwards each message to the
+      upsert_run SQS queue. Tracks and returns batch item failures.
+
+    :param event: SQS event or direct invocation payload
     :param context: Lambda context
-    :return: Response with batch item failures if any
+    :return: {"statusCode": 200} in sync mode, {"batchItemFailures": [...]} in async mode
     """
     logger.info("Lambda triggered with event: %s", event)
 
@@ -125,6 +132,19 @@ def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
+    # sync mode: if no Records key, just ensure database is awake and return
+    if "Records" not in event:
+        logger.info(
+            "Sync mode: ensuring database is awake. Request ID: %s",
+            context.aws_request_id,
+        )
+        # Use shorter retries to fit within API GW 29s timeout:
+        # 4 attempts × (4s health check timeout + 2s sleep) = 24s max
+        if not ensure_database_awake(max_retries=4, retry_delay=2):
+            raise RuntimeError("Aurora DB unavailable")
+        return {"statusCode": 200, "body": "Database is awake"}
+
+    # async mode: process each SQS message and track failures for batch response
     batch_item_failures = []
 
     for record in event["Records"]:

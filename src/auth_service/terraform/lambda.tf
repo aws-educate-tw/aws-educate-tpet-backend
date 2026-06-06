@@ -159,6 +159,7 @@ module "login_lambda" {
     "SERVICE"           = var.service_underscore
     "DYNAMODB_TABLE"    = var.dynamodb_table
     "COGNITO_CLIENT_ID" = data.aws_ssm_parameter.aws_educate_tpet_cognito_client_id.value
+    "DOMAIN_NAME"       = var.domain_name
   }
 
   allowed_triggers = {

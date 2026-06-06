@@ -31,7 +31,7 @@ class EmailService:
 
         req = request.Request(url, headers=request_headers, method="GET")
 
-        with request.urlopen(req, timeout=10) as response:
+        with request.urlopen(req, timeout=30) as response:
             body = response.read().decode("utf-8")
             return json.loads(body)
 
@@ -53,6 +53,6 @@ class EmailService:
 
         req = request.Request(url, headers=request_headers, method="GET")
 
-        with request.urlopen(req, timeout=10) as response:
+        with request.urlopen(req, timeout=30) as response:
             body = response.read().decode("utf-8")
             return json.loads(body)
