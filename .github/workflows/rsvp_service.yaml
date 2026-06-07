@@ -91,138 +91,138 @@ jobs:
           terraform apply -var-file='preview.tfvars' -parallelism=1 -auto-approve 2>&1 | ${{ env.GREP_FILTER }}
         working-directory: ${{ env.TF_DIR }}
 
-      # - name: Configure AWS credentials
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #     aws-region: us-west-1 # Preview environment region
-      #
-      # # Enhanced security for token handling
-      # - name: Get Postman Service Account Token
-      #   id: get-token
-      #   run: |
-      #     # Mask all outputs
-      #     set +x
-      #
-      #     # Get secret and mask the response
-      #     SECRET_RESPONSE=$(aws secretsmanager get-secret-value \
-      #       --secret-id "aws-educate-tpet/preview/service-accounts/postman/access-token" \
-      #       --query 'SecretString' \
-      #       --output text)
-      #     echo "::add-mask::$SECRET_RESPONSE"
-      #
-      #     # Parse and mask the token
-      #     ACCESS_TOKEN=$(echo $SECRET_RESPONSE | jq -r '.access_token')
-      #     echo "::add-mask::$ACCESS_TOKEN"
-      #
-      #     # Store token securely
-      #     echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
-      #
-      #     # Validate without exposing token
-      #     if [ -z "$ACCESS_TOKEN" ]; then
-      #       echo "Error: Failed to retrieve access token"
-      #       exit 1
-      #     fi
-      #
-      # - name: Setup Node.js
-      #   uses: actions/setup-node@v4
-      #   with:
-      #     node-version: "18"
-      #
-      # - name: Install Newman
-      #   run: npm install -g newman newman-reporter-htmlextra
-      #
-      # - name: Wait for API Gateway Deployment
-      #   run: |
-      #     MAX_RETRIES=10
-      #     RETRY_INTERVAL=5
-      #     COUNTER=0
-      #
-      #     HEALTH_CHECK_URL="https://preview-rsvp-service-internal-api-tpet.aws-educate.tw/preview/rsvp-service/health"
-      #
-      #     echo "Checking health endpoint: ${HEALTH_CHECK_URL}"
-      #
-      #     while [ $COUNTER -lt $MAX_RETRIES ]; do
-      #       HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_CHECK_URL}")
-      #
-      #       if [ "$HTTP_STATUS" -eq 200 ]; then
-      #         echo "✅ API Gateway is ready!"
-      #         exit 0
-      #       fi
-      #
-      #       echo "API not ready yet (Status: ${HTTP_STATUS}). Retrying in ${RETRY_INTERVAL} seconds..."
-      #       sleep $RETRY_INTERVAL
-      #       COUNTER=$((COUNTER + 1))
-      #     done
-      #
-      #     echo "❌ API Gateway failed to become ready within the timeout period"
-      #     exit 1
-      #
-      # # Enhanced security for Newman tests with report naming
-      # - name: Run API Tests
-      #   id: newman
-      #   run: |
-      #     # Create report directory with meaningful name
-      #     REPORT_DIR="newman/pr_${{ env.PULL_REQUEST_NUMBER }}_${{ env.TIMESTAMP }}_${{ env.COMMIT_SHA }}"
-      #     mkdir -p $REPORT_DIR
-      #
-      #     # Create temporary environment file that combines base environment and token
-      #     TEMP_ENV_FILE=$(mktemp)
-      #
-      #     # Merge base environment with token and contextual information
-      #     jq -s '.[0].values + [
-      #       {"key":"access_token", "value":"${{ env.ACCESS_TOKEN }}"},
-      #       {"key":"pull_request_number", "value":"${{ env.PULL_REQUEST_NUMBER }}"},
-      #       {"key":"commit_sha", "value":"${{ env.COMMIT_SHA }}"},
-      #       {"key":"timestamp", "value":"${{ env.TIMESTAMP }}"}
-      #     ] | {values: .}' \
-      #       ./tests/rsvp_service/api_regression/rsvp_service_preview_environment.json \
-      #       > $TEMP_ENV_FILE
-      #
-      #     # Run tests with combined environment file
-      #     newman run ./tests/rsvp_service/api_regression/rsvp_service_regression_test_collection.json \
-      #       --environment $TEMP_ENV_FILE \
-      #       --reporters cli,htmlextra \
-      #       --reporter-htmlextra-skipHeaders Authorization \
-      #       --reporter-htmlextra-export "$REPORT_DIR/report.html" \
-      #       --silent
-      #
-      #     # Cleanup
-      #     rm -f $TEMP_ENV_FILE
-      #   continue-on-error: true
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1 # Preview environment region
 
-      # - name: Check Newman Test Results
-      #   if: always()
-      #   run: |
-      #     if [[ ${{ steps.newman.outcome }} != "success" ]]; then
-      #       echo "❌ Newman tests failed."
-      #       exit 1
-      #     else
-      #       echo "✅ Newman tests passed."
-      #     fi
-      #
-      # - name: Upload Test Results
-      #   if: always()
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}
-      #     path: newman/
-      #
-      # - name: Get Artifact URL
-      #   if: always()
-      #   id: get-artifact-url
-      #   run: |
-      #
-      #     ARTIFACTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-      #     https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)
-      #
-      #
-      #     ARTIFACT_NAME="newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}"
-      #     ARTIFACT_ID=$(echo "$ARTIFACTS" | jq -r --arg name "$ARTIFACT_NAME" '.artifacts[] | select(.name==$name).id')
-      #
-      #
-      #     echo "ARTIFACT_ID=$ARTIFACT_ID" >> $GITHUB_ENV
+      # Enhanced security for token handling
+      - name: Get Postman Service Account Token
+        id: get-token
+        run: |
+          # Mask all outputs
+          set +x
+
+          # Get secret and mask the response
+          SECRET_RESPONSE=$(aws secretsmanager get-secret-value \
+            --secret-id "aws-educate-tpet/preview/service-accounts/postman/access-token" \
+            --query 'SecretString' \
+            --output text)
+          echo "::add-mask::$SECRET_RESPONSE"
+
+          # Parse and mask the token
+          ACCESS_TOKEN=$(echo $SECRET_RESPONSE | jq -r '.access_token')
+          echo "::add-mask::$ACCESS_TOKEN"
+
+          # Store token securely
+          echo "ACCESS_TOKEN=$ACCESS_TOKEN" >> $GITHUB_ENV
+
+          # Validate without exposing token
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "Error: Failed to retrieve access token"
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install Newman
+        run: npm install -g newman newman-reporter-htmlextra
+
+      - name: Wait for API Gateway Deployment
+        run: |
+          MAX_RETRIES=10
+          RETRY_INTERVAL=5
+          COUNTER=0
+
+          HEALTH_CHECK_URL="https://preview-rsvp-service-internal-api-tpet.aws-educate.tw/preview/rsvp-service/health"
+
+          echo "Checking health endpoint: ${HEALTH_CHECK_URL}"
+
+          while [ $COUNTER -lt $MAX_RETRIES ]; do
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_CHECK_URL}")
+
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              echo "✅ API Gateway is ready!"
+              exit 0
+            fi
+
+            echo "API not ready yet (Status: ${HTTP_STATUS}). Retrying in ${RETRY_INTERVAL} seconds..."
+            sleep $RETRY_INTERVAL
+            COUNTER=$((COUNTER + 1))
+          done
+
+          echo "❌ API Gateway failed to become ready within the timeout period"
+          exit 1
+
+      # Enhanced security for Newman tests with report naming
+      - name: Run API Tests
+        id: newman
+        run: |
+          # Create report directory with meaningful name
+          REPORT_DIR="newman/pr_${{ env.PULL_REQUEST_NUMBER }}_${{ env.TIMESTAMP }}_${{ env.COMMIT_SHA }}"
+          mkdir -p $REPORT_DIR
+
+          # Create temporary environment file that combines base environment and token
+          TEMP_ENV_FILE=$(mktemp)
+
+          # Merge base environment with token and contextual information
+          jq -s '.[0].values + [
+            {"key":"access_token", "value":"${{ env.ACCESS_TOKEN }}"},
+            {"key":"pull_request_number", "value":"${{ env.PULL_REQUEST_NUMBER }}"},
+            {"key":"commit_sha", "value":"${{ env.COMMIT_SHA }}"},
+            {"key":"timestamp", "value":"${{ env.TIMESTAMP }}"}
+          ] | {values: .}' \
+            ./tests/rsvp_service/api_regression/rsvp_service_preview_environment.json \
+            > $TEMP_ENV_FILE
+
+          # Run tests with combined environment file
+          newman run ./tests/rsvp_service/api_regression/rsvp_service_regression_test_collection.json \
+            --environment $TEMP_ENV_FILE \
+            --reporters cli,htmlextra \
+            --reporter-htmlextra-skipHeaders Authorization \
+            --reporter-htmlextra-export "$REPORT_DIR/report.html" \
+            --silent
+
+          # Cleanup
+          rm -f $TEMP_ENV_FILE
+        continue-on-error: true
+
+      - name: Check Newman Test Results
+        if: always()
+        run: |
+          if [[ ${{ steps.newman.outcome }} != "success" ]]; then
+            echo "❌ Newman tests failed."
+            exit 1
+          else
+            echo "✅ Newman tests passed."
+          fi
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}
+          path: newman/
+
+      - name: Get Artifact URL
+        if: always()
+        id: get-artifact-url
+        run: |
+
+          ARTIFACTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)
+
+
+          ARTIFACT_NAME="newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}"
+          ARTIFACT_ID=$(echo "$ARTIFACTS" | jq -r --arg name "$ARTIFACT_NAME" '.artifacts[] | select(.name==$name).id')
+
+
+          echo "ARTIFACT_ID=$ARTIFACT_ID" >> $GITHUB_ENV
 
       - uses: actions/github-script@v6
         if: github.event_name == 'pull_request'
@@ -243,11 +243,11 @@ jobs:
             });
 
             const tfExitCode = '${{ steps.apply.outcome }}' === 'success' ? 0 : 1;
-            // const testExitCode = '${{ steps.newman.outcome }}' === 'success' ? 0 : 1;
+            const testExitCode = '${{ steps.newman.outcome }}' === 'success' ? 0 : 1;
 
             // Get short SHA
             const shortSHA = '${{ env.COMMIT_SHA }}'.substring(0, 6);
-            // const artifactUrl = `${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${process.env.ARTIFACT_ID}`;
+            const artifactUrl = `${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${process.env.ARTIFACT_ID}`;
 
             let output = `### [${{ env.SERVICE_NAME }}] Preview Deployment Status\n\n`;
             output += `| Service | Environment | Commit | Status | Details |\n`;
@@ -258,10 +258,10 @@ jobs:
                 : `[Check deployment logs](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
             } |\n`;
 
-            // output += `\n### Test Results\n\n`;
-            // output += `| Test Suite | Status | Report |\n`;
-            // output += `|:-----------|:-------|:--------|\n`;
-            // output += `| API Tests | ${testExitCode === 0 ? '✅' : '❌'} | [Download Report](${artifactUrl}) |\n`;
+            output += `\n### Test Results\n\n`;
+            output += `| Test Suite | Status | Report |\n`;
+            output += `|:-----------|:-------|:--------|\n`;
+            output += `| API Tests | ${testExitCode === 0 ? '✅' : '❌'} | [Download Report](${artifactUrl}) |\n`;
 
             output += `\n---\n`;
             output += `🔍 **Details**\n`;
