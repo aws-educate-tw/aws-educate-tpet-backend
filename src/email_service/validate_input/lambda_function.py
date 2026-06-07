@@ -860,7 +860,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
             registration_deadline = body.get("registration_deadline")
             if registration_deadline is None:
-                now_plus_14_eod = datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=14)
+                now_plus_14_eod = datetime.datetime.now(
+                    datetime.UTC
+                ) + datetime.timedelta(days=14)
                 # ensure that registration_deadline is less than campaign_start_time - 1 day
                 if (
                     deadline_limit_dt is not None
