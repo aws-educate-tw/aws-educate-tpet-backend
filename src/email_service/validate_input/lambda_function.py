@@ -772,9 +772,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             # Validate email addresses
             validate_email_addresses(cc, bcc, reply_to, error_collector)
 
-            # Raise all errors if any were collected
-            error_collector.raise_if_has_errors()
-
         # Get current user info
         current_user_info = current_user_util.get_current_user_info()
         sender_id = current_user_info.get("user_id")
@@ -869,6 +866,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     registration_deadline, deadline_limit_dt, error_collector
                 )
             common_data["registration_deadline"] = registration_deadline
+
+        # Raise all collected errors before sending to SQS
+        error_collector.raise_if_has_errors()
 
         # Send message to SQS
         message_body = {**common_data, "access_token": access_token}
