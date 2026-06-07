@@ -23,7 +23,7 @@ def get_campaign_status(start_date: str, end_date: str) -> str:
         return CampaignStatus.COMPLETED.value
 
 def lambda_handler(event, context):
-    if event.get("action") == "PREWARM" :
+    if event.get("action") == "PREWARM":
         logger.info("Received a valid prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
