@@ -15,21 +15,22 @@ resource "random_string" "this" {
 }
 
 locals {
-  source_path                                           = "${path.module}/.."
-  update_rsvp_function_name_and_ecr_repo_name           = "${var.environment}-${var.service_underscore}-update_rsvp-${random_string.this.result}"
-  get_rsvp_status_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-get_rsvp_status-${random_string.this.result}"
-  verify_campaign_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-verify_campaign-${random_string.this.result}"
+  source_path                                               = "${path.module}/.."
+  update_rsvp_function_name_and_ecr_repo_name               = "${var.environment}-${var.service_underscore}-update_rsvp-${random_string.this.result}"
+  get_rsvp_status_function_name_and_ecr_repo_name           = "${var.environment}-${var.service_underscore}-get_rsvp_status-${random_string.this.result}"
+  verify_campaign_function_name_and_ecr_repo_name           = "${var.environment}-${var.service_underscore}-verify_campaign-${random_string.this.result}"
   upsert_run_configuration_function_name_and_ecr_repo_name  = "${var.environment}-${var.service_underscore}-upsert_run_configuration-${random_string.this.result}"
-  import_participant_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-import_participant-${random_string.this.result}"
-  list_campaigns_function_name_and_ecr_repo_name   = "${var.environment}-${var.service_underscore}-list_campaigns-${random_string.this.result}"
-  get_campaign_function_name_and_ecr_repo_name          = "${var.environment}-${var.service_underscore}-get_campaign-${random_string.this.result}"
-  create_campaign_function_name_and_ecr_repo_name       = "${var.environment}-${var.service_underscore}-create_campaign-${random_string.this.result}"
-  path_include                                      = ["**"]
-  path_exclude                                      = ["**/__pycache__/**"]
-  files_include                                     = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
-  files_exclude                                     = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
-  files                                             = sort(setsubtract(local.files_include, local.files_exclude))
-  dir_sha                                           = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
+  import_participant_function_name_and_ecr_repo_name        = "${var.environment}-${var.service_underscore}-import_participant-${random_string.this.result}"
+  list_campaigns_function_name_and_ecr_repo_name            = "${var.environment}-${var.service_underscore}-list_campaigns-${random_string.this.result}"
+  get_campaign_function_name_and_ecr_repo_name              = "${var.environment}-${var.service_underscore}-get_campaign-${random_string.this.result}"
+  create_campaign_function_name_and_ecr_repo_name           = "${var.environment}-${var.service_underscore}-create_campaign-${random_string.this.result}"
+  update_campaign_function_name_and_ecr_repo_name           = "${var.environment}-${var.service_underscore}-update_campaign-${random_string.this.result}"
+  path_include                                              = ["**"]
+  path_exclude                                              = ["**/__pycache__/**"]
+  files_include                                             = setunion([for f in local.path_include : fileset(local.source_path, f)]...)
+  files_exclude                                             = setunion([for f in local.path_exclude : fileset(local.source_path, f)]...)
+  files                                                     = sort(setsubtract(local.files_include, local.files_exclude))
+  dir_sha                                                   = sha1(join("", [for f in local.files : filesha1("${local.source_path}/${f}")]))
 }
 
 provider "docker" {
@@ -67,8 +68,8 @@ module "update_rsvp_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"      = var.environment,
-    "SERVICE"          = var.service_underscore,
+    "ENVIRONMENT"        = var.environment,
+    "SERVICE"            = var.service_underscore,
     "PARTICIPANT_TABLE"  = var.participant_table,
     "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
     "CAMPAIGN_TABLE"     = var.campaign_table,
@@ -188,8 +189,8 @@ module "get_rsvp_status_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"     = var.environment,
-    "SERVICE"         = var.service_underscore,
+    "ENVIRONMENT"        = var.environment,
+    "SERVICE"            = var.service_underscore,
     "PARTICIPANT_TABLE"  = var.participant_table,
     "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
     "CAMPAIGN_TABLE"     = var.campaign_table,
@@ -418,8 +419,8 @@ module "upsert_run_configuration_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"     = var.environment,
-    "SERVICE"         = var.service_underscore,
+    "ENVIRONMENT"        = var.environment,
+    "SERVICE"            = var.service_underscore,
     "CAMPAIGN_TABLE"     = var.campaign_table,
     "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
   }
@@ -527,8 +528,8 @@ module "import_participant_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"     = var.environment,
-    "SERVICE"         = var.service_underscore,
+    "ENVIRONMENT"        = var.environment,
+    "SERVICE"            = var.service_underscore,
     "CAMPAIGN_TABLE"     = var.campaign_table,
     "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
     "PARTICIPANT_TABLE"  = var.participant_table
@@ -860,8 +861,8 @@ module "create_campaign_lambda" {
   publish = true # Whether to publish creation/change as new Lambda Function Version.
 
   environment_variables = {
-    "ENVIRONMENT"     = var.environment,
-    "SERVICE"         = var.service_underscore,
+    "ENVIRONMENT"        = var.environment,
+    "SERVICE"            = var.service_underscore,
     "CAMPAIGN_TABLE"     = var.campaign_table,
     "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
   }
@@ -937,6 +938,111 @@ module "create_campaign_docker_image" {
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/create_campaign/" # Remember to change
+  triggers = {
+    dir_sha = local.dir_sha
+  }
+}
+
+####################################
+####################################
+####################################
+# PATCH /campaigns/{campaign_id}
+####################################
+####################################
+####################################
+
+module "update_campaign_lambda" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "7.7.0"
+
+  function_name  = local.update_campaign_function_name_and_ecr_repo_name
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: PATCH /campaigns/{campaign_id}"
+  create_package = false
+  timeout        = 30
+
+  ##################
+  # Container Image
+  ##################
+  package_type  = "Image"
+  architectures = [var.lambda_architecture]
+  image_uri     = module.update_campaign_docker_image.image_uri
+
+  publish = true # Whether to publish creation/change as new Lambda Function Version.
+
+  environment_variables = {
+    "ENVIRONMENT"        = var.environment,
+    "SERVICE"            = var.service_underscore,
+    "CAMPAIGN_TABLE"     = var.campaign_table,
+    "CAMPAIGN_RUN_TABLE" = var.campaign_run_table,
+    "DYNAMODB_TABLE"     = var.campaign_table,
+    "COHORT_NAME"        = var.cohort
+  }
+
+  allowed_triggers = {
+    AllowExecutionFromAPIGateway = {
+      service    = "apigateway"
+      source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+    }
+  }
+
+  tags = {
+    "Terraform"   = "true",
+    "Environment" = var.environment,
+    "Service"     = var.service_underscore,
+    "Prewarm"     = "true"
+  }
+
+  ######################
+  # Additional policies
+  ######################
+
+  attach_policy_statements = true
+  policy_statements = {
+    dynamodb_crud = {
+      effect = "Allow",
+      actions = [
+        "dynamodb:Query",
+        "dynamodb:UpdateItem"
+      ],
+      resources = [
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/participant/index/participant-campaign_participant_uniq_handle-created_at-gsi",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.this.account_id}:table/campaign_run"
+      ]
+    }
+  }
+}
+
+module "update_campaign_docker_image" {
+  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version = "7.7.0"
+
+  create_ecr_repo      = true
+  keep_remotely        = true
+  keep_locally         = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = local.update_campaign_function_name_and_ecr_repo_name
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
+  source_path = "${local.source_path}/update_campaign/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }

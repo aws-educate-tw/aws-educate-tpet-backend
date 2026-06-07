@@ -22,9 +22,7 @@
     "sender_local_part": "dev"
   },
   "contact@aws-educate.tw": {
-    "recipients": [
-      "awseducate.cloudambassador@gmail.com"
-    ],
+    "recipients": ["awseducate.cloudambassador@gmail.com"],
     "sender_local_part": "contact"
   },
   "tech@aws-educate.tw": {
@@ -66,21 +64,15 @@
     "sender_local_part": "mkt"
   },
   "group1@aws-educate.tw": {
-    "recipients": [
-      "awseducate.cloudambassador+g1@gmail.com"
-    ],
+    "recipients": ["awseducate.cloudambassador+g1@gmail.com"],
     "sender_local_part": "group1"
   },
   "group2@aws-educate.tw": {
-    "recipients": [
-      "awseducate.cloudambassador+g2@gmail.com"
-    ],
+    "recipients": ["awseducate.cloudambassador+g2@gmail.com"],
     "sender_local_part": "group2"
   },
   "group3@aws-educate.tw": {
-    "recipients": [
-      "awseducate.cloudambassador+g3@gmail.com"
-    ],
+    "recipients": ["awseducate.cloudambassador+g3@gmail.com"],
     "sender_local_part": "group3"
   }
 }
