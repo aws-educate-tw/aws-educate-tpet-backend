@@ -10,7 +10,6 @@ logger.setLevel(logging.INFO)
 
 
 class CampaignRunRepository:
-
     def __init__(self):
         self.dynamodb = boto3.resource("dynamodb")
         self.table = self.dynamodb.Table(os.getenv("CAMPAIGN_RUN_TABLE"))

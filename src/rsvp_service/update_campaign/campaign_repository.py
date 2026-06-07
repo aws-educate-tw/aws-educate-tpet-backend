@@ -8,8 +8,8 @@ from time_util import get_current_utc_time
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-class CampaignRepository:
 
+class CampaignRepository:
     def __init__(self):
         self.dynamodb = boto3.resource("dynamodb")
         self.table = self.dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
@@ -18,7 +18,8 @@ class CampaignRepository:
     def get_campaign_by_id(self, campaign_id: str) -> dict:
         try:
             response = self.table.query(
-                KeyConditionExpression=Key("cohort").eq(self.cohort) & Key("campaign_id_created_at").begins_with(campaign_id)
+                KeyConditionExpression=Key("cohort").eq(self.cohort)
+                & Key("campaign_id_created_at").begins_with(campaign_id)
             )
             items = response.get("Items", [])
             return items[0] if items else None
@@ -26,7 +27,9 @@ class CampaignRepository:
             logger.error("Error querying campaign: %s", str(e))
             raise e
 
-    def update_campaign(self, campaign_id: str, update_data: dict, existing_item: dict) -> dict:
+    def update_campaign(
+        self, campaign_id: str, update_data: dict, existing_item: dict
+    ) -> dict:
         if not existing_item:
             return None
 
@@ -37,9 +40,9 @@ class CampaignRepository:
             "campaign_name": "campaign_name",
             "campaign_start_time": "start_date",
             "campaign_end_time": "end_date",
-            "campaign_location": "locations", 
+            "campaign_location": "locations",
             "is_active": "is_active",
-            "status": "status"
+            "status": "status",
         }
 
         update_expression = "SET updated_at = :val_now"
@@ -50,26 +53,23 @@ class CampaignRepository:
             if api_key in update_data:
                 attr_name = f"#{api_key}"
                 attr_val = f":{api_key}"
-                
+
                 update_expression += f", {attr_name} = {attr_val}"
                 expression_attribute_names[attr_name] = db_key
                 expression_attribute_values[attr_val] = update_data[api_key]
 
         try:
             response = self.table.update_item(
-                Key={
-                    "cohort": pk,
-                    "campaign_id_created_at": sk
-                },
+                Key={"cohort": pk, "campaign_id_created_at": sk},
                 UpdateExpression=update_expression,
                 ExpressionAttributeNames=expression_attribute_names,
                 ExpressionAttributeValues=expression_attribute_values,
-                ReturnValues="ALL_NEW"
+                ReturnValues="ALL_NEW",
             )
 
             updated_item = response.get("Attributes", {})
             logger.info("Campaign %s updated successfully", campaign_id)
-            
+
             return {
                 "message": "campaign updated successfully",
                 "campaign_id": campaign_id,
@@ -79,7 +79,7 @@ class CampaignRepository:
                 "campaign_location": updated_item.get("locations"),
                 "campaign_created_at": updated_item.get("created_at"),
                 "updated_at": updated_item.get("updated_at"),
-                "is_active": updated_item.get("is_active", True)
+                "is_active": updated_item.get("is_active", True),
             }
 
         except Exception as e:
