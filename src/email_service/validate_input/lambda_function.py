@@ -382,6 +382,38 @@ def validate_certificate_requirements(
             )
 
 
+def validate_registration_deadline(
+    registration_deadline: str,
+    deadline_limit_dt: datetime.datetime | None,
+    error_collector: ValidationErrorCollector,
+) -> None:
+    """Validate that a user-provided registration_deadline doesn't exceed the deadline limit."""
+    try:
+        provided_deadline_dt = datetime.datetime.fromisoformat(
+            registration_deadline.replace("Z", "+00:00")
+        ).astimezone(datetime.UTC)
+        if deadline_limit_dt is not None and provided_deadline_dt > deadline_limit_dt:
+            error_collector.add_error(
+                message="registration_deadline must be before campaign_start_time - 1 day",
+                error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
+                details={
+                    "registration_deadline": registration_deadline,
+                    "deadline_limit": deadline_limit_dt.strftime("%Y-%m-%d"),
+                },
+            )
+    except (ValueError, AttributeError) as e:
+        logger.error(
+            "Failed to parse registration_deadline '%s': %s",
+            registration_deadline,
+            e,
+        )
+        error_collector.add_error(
+            message="Invalid registration_deadline format",
+            error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
+            details={"registration_deadline": registration_deadline},
+        )
+
+
 def validate_email_addresses(
     cc: list[str],
     bcc: list[str],
@@ -808,7 +840,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     # and we should not allow creating the registration
                     if today >= deadline_limit_dt.date():
                         error_collector.add_error(
-                            message="Cannot create registration: today is on or after the registration deadline (campaign_start - 2 days)",
+                            message="Cannot create registration: today is on or after the registration deadline (campaign_start time - 1 day).",
                             error_code=ValidationErrorCode.CAMPAIGN_START_TIME_PASSED,
                             details={
                                 "campaign_start_time": campaign_start_time,
@@ -825,12 +857,17 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
             registration_deadline = body.get("registration_deadline")
             if registration_deadline is None:
-                now_plus_14_eod = parse_iso8601_to_datetime(get_current_utc_time()) + datetime.timedelta(days=14)
+                now_plus_14_eod = datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=14)
                 # ensure that registration_deadline is less than campaign_start_time - 1 day
                 if deadline_limit_dt is not None and now_plus_14_eod > deadline_limit_dt:
                     registration_deadline = format_time_to_iso8601(deadline_limit_dt)
                 else:
                     registration_deadline = format_time_to_iso8601(now_plus_14_eod)
+            else:
+                # If user provided a registration_deadline, then validate it doesn't exceed the limit
+                validate_registration_deadline(
+                    registration_deadline, deadline_limit_dt, error_collector
+                )
             common_data["registration_deadline"] = registration_deadline
 
         # Send message to SQS
