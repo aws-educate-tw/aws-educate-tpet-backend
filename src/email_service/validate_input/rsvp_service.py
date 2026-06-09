@@ -11,6 +11,7 @@ logger.setLevel(logging.INFO)
 class RSVPService:
     def __init__(self):
         self.environment = os.environ.get("ENVIRONMENT")
+        # Internal RSVP service endpoint is environment-scoped.
         self.base_url = (
             f"https://{self.environment}-rsvp-service-internal-api-tpet.aws-educate.tw"
         )
