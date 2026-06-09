@@ -675,14 +675,6 @@ jobs:
             echo "::notice::Database migration completed successfully for ${{ env.ENVIRONMENT }}."
           fi
 
-      # Terraform Apply (AFTER DB Migration to ensure schema is ready for new Lambda code)
-      - name: Terraform Destroy (Cleanup)
-        id: destroy
-        run: |
-          set -o pipefail
-          terraform destroy -auto-approve -var-file='${{ env.TF_VARS_FILE }}' 2>&1 | ${{ env.GREP_FILTER }}
-        working-directory: ${{ env.TF_DIR }}
-
       - name: Terraform Plan
         id: plan
         run: |
