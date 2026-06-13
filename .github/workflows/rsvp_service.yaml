@@ -133,31 +133,32 @@ jobs:
       - name: Install Newman
         run: npm install -g newman newman-reporter-htmlextra
 
-      # - name: Wait for API Gateway Deployment
-      #   run: |
-      #     MAX_RETRIES=10
-      #     RETRY_INTERVAL=5
-      #     COUNTER=0
-      #
-      #     HEALTH_CHECK_URL="https://preview-rsvp-service-internal-api-tpet.aws-educate.tw/preview/rsvp-service/health"
-      #
-      #     echo "Checking health endpoint: ${HEALTH_CHECK_URL}"
-      #
-      #     while [ $COUNTER -lt $MAX_RETRIES ]; do
-      #       HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_CHECK_URL}")
-      #
-      #       if [ "$HTTP_STATUS" -eq 200 ]; then
-      #         echo "✅ API Gateway is ready!"
-      #         exit 0
-      #       fi
-      #
-      #       echo "API not ready yet (Status: ${HTTP_STATUS}). Retrying in ${RETRY_INTERVAL} seconds..."
-      #       sleep $RETRY_INTERVAL
-      #       COUNTER=$((COUNTER + 1))
-      #     done
-      #
-      #     echo "❌ API Gateway failed to become ready within the timeout period"
-      #     exit 1
+      - name: Wait for Services
+        run: |
+          MAX_RETRIES=10
+          RETRY_INTERVAL=5
+          COUNTER=0
+
+          CAMPAIGN_ID=$(jq -r '.values[] | select(.key=="campaign_id") | .value' ./tests/rsvp_service/api_regression/rsvp_service_preview_environment.json)
+          GET_CAMPAIGN_URL="https://preview-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/preview/campaigns/${CAMPAIGN_ID}"
+
+          echo "Checking Get Campaign endpoint: ${GET_CAMPAIGN_URL}"
+
+          while [ $COUNTER -lt $MAX_RETRIES ]; do
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${ACCESS_TOKEN}" "${GET_CAMPAIGN_URL}")
+
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              echo "✅ Get Campaign API is ready!"
+              exit 0
+            fi
+
+            echo "API not ready yet (Status: ${HTTP_STATUS}). Retrying in ${RETRY_INTERVAL} seconds..."
+            sleep $RETRY_INTERVAL
+            COUNTER=$((COUNTER + 1))
+          done
+
+          echo "❌ Get Campaign API failed to become ready within the timeout period"
+          exit 1
 
       # Enhanced security for Newman tests with report naming
       - name: Run API Tests
