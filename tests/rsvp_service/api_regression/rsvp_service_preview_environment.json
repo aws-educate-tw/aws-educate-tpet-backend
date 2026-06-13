@@ -1,0 +1,46 @@
+{
+	"id": "fb9edeae-c9d0-484d-9e8c-637c5299fd84",
+	"name": "RSVP Service Preview Environment",
+	"values": [
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "secret",
+			"enabled": true
+		},
+		{
+			"key": "environment",
+			"value": "preview",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "campaign_id",
+			"value": "evt_23c35f62018d42b2936aa01636c5a2cc",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "run_id",
+			"value": "7f7de00552634455884cb4171b9aed4f",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "run_id_participant_id",
+			"value": "7f7de00552634455884cb4171b9aed4f_cb094afb-ca56-47cd-9fed-4083dadfe5b4",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "token",
+			"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJydW5faWQiOiI3ZjdkZTAwNTUyNjM0NDU1ODg0Y2I0MTcxYjlhZWQ0ZiIsInBhcnRpY2lwYW50X2lkIjoiY2IwOTRhZmItY2E1Ni00N2NkLTlmZWQtNDA4M2RhZGZlNWI0IiwiZW1haWxfaWQiOiJmNGY0MWU4NGMyYjI0NTgyYmE3YzFhMDg5MzU2YzE5ZiIsImNhbXBhaWduX2lkIjoiZXZ0XzIzYzM1ZjYyMDE4ZDQyYjI5MzZhYTAxNjM2YzVhMmNjIiwibmFtZSI6IlJlZ3Jlc3Npb24gVGVzdCBVc2VyIiwiaWF0IjoxNzgxMzM3NzU1LCJleHAiOjIwOTY2OTc3NTV9.TI5-XIxtCkQc3dyfHvcV1nMZnBR4ERPNlHe_qU7iLy0",
+			"type": "secret",
+			"enabled": true
+		}
+	],
+	"color": null,
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2026-06-13T08:29:22.766Z",
+	"_postman_exported_using": "Postman/12.14.4"
+}
