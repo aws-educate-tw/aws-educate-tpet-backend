@@ -19,11 +19,10 @@
               "// ============================================================",
               "",
               "const statusCode = pm.response.code;",
-              "const responseTime = pm.response.responseTime;",
               "",
               "// --- Performance baseline ---",
               "pm.test(\"Response time is within 3000ms\", () => {",
-              "    pm.expect(responseTime).to.be.below(3000);",
+              "    pm.expect(pm.response.responseTime).to.be.below(3000);",
               "});",
               "",
               "// ============================================================",
@@ -280,11 +279,10 @@
               "// ============================================================",
               "",
               "const statusCode = pm.response.code;",
-              "const responseTime = pm.response.responseTime;",
               "",
               "// --- Performance baseline ---",
               "pm.test(\"Response time is within 3000ms\", () => {",
-              "    pm.expect(responseTime).to.be.below(3000);",
+              "    pm.expect(pm.response.responseTime).to.be.below(3000);",
               "});",
               "",
               "// ============================================================",
@@ -811,7 +809,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\n    \"registration_deadline\": \"2026-05-15T23:59:59Z\",\n    \"max_participants\": 100,\n    \"campaign_location\": \"Taipei 202\",\n    \"campaign_start_time\": \"2026-05-20T09:00:00Z\",\n    \"campaign_end_time\": \"2026-05-20T17:00:00Z\"\n}",
+          "raw": "{\n    \"registration_deadline\": \"2126-05-15T23:59:59Z\",\n    \"max_participants\": 100,\n    \"campaign_location\": \"Taipei 202\",\n    \"campaign_start_time\": \"2026-05-20T09:00:00Z\",\n    \"campaign_end_time\": \"2126-05-20T17:00:00Z\"\n}",
           "options": {
             "raw": {
               "language": "json"
