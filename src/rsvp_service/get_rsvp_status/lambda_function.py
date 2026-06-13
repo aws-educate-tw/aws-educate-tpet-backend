@@ -43,6 +43,7 @@ def lambda_handler(event, context):
         if len(parts) < 2:
             return {
                 "statusCode": 400,
+                "headers": {"Content-Type": "application/json"},
                 "body": json.dumps({"message": "Invalid ID format"}),
             }
         path_run_id, path_participant_id = parts[0], parts[1]
@@ -87,6 +88,7 @@ def lambda_handler(event, context):
             )
             return {
                 "statusCode": 404,
+                "headers": {"Content-Type": "application/json"},
                 "body": json.dumps(
                     {"status": "error", "message": "Activity not found"}
                 ),
@@ -109,18 +111,24 @@ def lambda_handler(event, context):
             "is_registration_closed": is_registration_closed,
         }
 
-        return {"statusCode": 200, "body": json.dumps(response_data)}
+        return {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps(response_data),
+        }
 
     except AuthenticationError as e:
         logger.warning("Authentication failed: %s", e)
         return {
             "statusCode": 401,
+            "headers": {"Content-Type": "application/json"},
             "body": json.dumps({"code": "INVALID_TOKEN", "message": str(e)}),
         }
     except Exception as e:
         logger.error("System Error: %s", e)
         return {
             "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
             "body": json.dumps(
                 {"code": "INTERNAL_ERROR", "message": "Internal server error"}
             ),
