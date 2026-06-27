@@ -1,15 +1,11 @@
 import os
 
-import boto3
 import jwt
+from aws_lambda_powertools.utilities.parameters import get_secret
 
 
 class AuthenticationError(Exception):
     pass
-
-
-_secretsmanager_client = boto3.client("secretsmanager")
-_jwt_secret_cache = None
 
 
 def _extract_token(headers):
@@ -44,19 +40,12 @@ def decode_rsvp_token(headers):
 
 
 def _get_jwt_secret():
-    global _jwt_secret_cache
-
-    if _jwt_secret_cache is not None:
-        return _jwt_secret_cache
-
     jwt_secret_arn = os.getenv("JWT_SECRET_ARN")
     if not jwt_secret_arn:
         raise RuntimeError("JWT_SECRET_ARN environment variable is not set")
 
-    response = _secretsmanager_client.get_secret_value(SecretId=jwt_secret_arn)
-    secret_string = response.get("SecretString")
-    if not secret_string:
+    secret = get_secret(jwt_secret_arn)
+    if not secret:
         raise RuntimeError("JWT secret is empty")
 
-    _jwt_secret_cache = secret_string
-    return _jwt_secret_cache
+    return secret

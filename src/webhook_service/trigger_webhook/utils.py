@@ -5,7 +5,7 @@ This module contains utility functions that are used by the trigger_webhook modu
 import json
 from decimal import Decimal
 
-import boto3
+from aws_lambda_powertools.utilities.parameters import get_secret
 from config import Config
 from Crypto.Cipher import AES
 
@@ -19,26 +19,14 @@ class DecimalEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-class SecretsManager:
-    """Class to handle the Secrets Manager operations"""
-
-    def __init__(self):
-        self.client = boto3.client("secretsmanager")
-
-    def get_secret_path(self, service_account: str, secret_type: str) -> str:
-        """Get the secret path based on the service account and secret type"""
-        return f"aws-educate-tpet/{Config.ENVIRONMENT}/service-accounts/{service_account}/{secret_type}"
-
-    def get_access_token(self, service_account: str) -> str:
-        """Get the access token from the Secrets Manager"""
-        try:
-            response = self.client.get_secret_value(
-                SecretId=self.get_secret_path(service_account, "access-token")
-            )
-            return json.loads(response["SecretString"])["access_token"]
-        except Exception as e:
-            print(f"Failed to retrieve access token: {str(e)}")
-            raise
+def get_access_token(service_account: str) -> str:
+    # force_fetch=True: access tokens are rotated by auth_service; never serve a stale cached value
+    secret = get_secret(
+        f"aws-educate-tpet/{Config.ENVIRONMENT}/service-accounts/{service_account}/access-token",
+        transform="json",
+        force_fetch=True,
+    )
+    return secret["access_token"]
 
 
 class CryptoHandler:
