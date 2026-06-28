@@ -44,9 +44,6 @@ DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
 DEFAULT_RECIPIENT_SOURCE = RecipientSource.SPREADSHEET.value
 DEFAULT_RUN_TYPE = RunType.EMAIL.value
 EMAIL_PATTERN = r"[^@]+@[^@]+\.[^@]+"
-ISO8601_PATTERN = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$"
-)
 
 
 class ErrorResponder:
@@ -389,18 +386,13 @@ def validate_certificate_requirements(
             )
 
 
-def validate_iso8601(value: Any) -> bool:
-    """Strictly check whether a value is a well-formed ISO 8601 datetime string.
-    Args:
-        value: The value to check. Non-string values are always invalid.
-
-    Returns:
-        True if value is a string matching the strict ISO 8601 pattern.
-    """
-    if not isinstance(value, str):
+def validate_iso8601(date_string: str) -> bool:
+    """Validate if a string is a valid ISO 8601 datetime string."""
+    try:
+        datetime.datetime.fromisoformat(date_string.replace("Z", "+00:00"))
+        return True
+    except ValueError:
         return False
-    return bool(ISO8601_PATTERN.match(value))
-
 
 def validate_registration_deadline(
     registration_deadline: str,
@@ -744,9 +736,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 elif not validate_iso8601(campaign_start_time):
                     error_collector.add_error(
                         message="campaign_start_time must be a valid ISO 8601 datetime string",
-                        error_code=ValidationErrorCode.INVALID_CAMPAIGN_START_TIME,
-                        details={"campaign_start_time": campaign_start_time},
-                    )
+                            error_code=ValidationErrorCode.INVALID_CAMPAIGN_START_TIME,
+                            details={"campaign_start_time": campaign_start_time},
+                        )
 
                 try:
                     rsvp_service = RSVPService()
