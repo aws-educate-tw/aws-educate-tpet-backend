@@ -893,7 +893,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 )
 
             registration_deadline = body.get("registration_deadline")
-            
             # Registration deadline should be set in ios8601 format (YYYY-MM-DDTHH:MM:SSZ).
             if registration_deadline is None:
                 now_utc = datetime.datetime.now(datetime.UTC)
