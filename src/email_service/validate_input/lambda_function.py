@@ -864,7 +864,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                             error_code=ValidationErrorCode.CAMPAIGN_START_TIME_PASSED,
                             details={
                                 "campaign_start_time": campaign_start_time,
-                                "deadline_limit": format_time_to_iso8601(deadline_limit_dt),
+                                "deadline_limit": format_time_to_iso8601(
+                                    deadline_limit_dt
+                                ),
                                 "today": format_time_to_iso8601(today),
                             },
                         )
@@ -890,10 +892,10 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                         message="Invalid campaign_start_time format",
                         error_code=ValidationErrorCode.FAILED_PARSE_CAMPAIGN_START_TIME,
                         details={"campaign_start_time": str(campaign_start_time)},
-                )
+                    )
 
             registration_deadline = body.get("registration_deadline")
-            
+
             # Registration deadline should be set in ios8601 format (YYYY-MM-DDTHH:MM:SSZ).
             if registration_deadline is None:
                 now_utc = datetime.datetime.now(datetime.UTC)
