@@ -1,7 +1,11 @@
+import logging
 import os
 
 import jwt
 from aws_lambda_powertools.utilities.parameters import get_secret
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class AuthenticationError(Exception):
@@ -44,7 +48,12 @@ def _get_jwt_secret():
     if not jwt_secret_arn:
         raise RuntimeError("JWT_SECRET_ARN environment variable is not set")
 
-    secret = get_secret(jwt_secret_arn)
+    try:
+        secret = get_secret(jwt_secret_arn)
+    except Exception as e:
+        logger.exception("Failed to retrieve JWT secret: %s", e)
+        raise
+
     if not secret:
         raise RuntimeError("JWT secret is empty")
 
