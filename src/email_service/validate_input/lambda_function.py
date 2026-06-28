@@ -44,6 +44,9 @@ DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
 DEFAULT_RECIPIENT_SOURCE = RecipientSource.SPREADSHEET.value
 DEFAULT_RUN_TYPE = RunType.EMAIL.value
 EMAIL_PATTERN = r"[^@]+@[^@]+\.[^@]+"
+ISO8601_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$"
+)
 
 
 class ErrorResponder:
@@ -386,6 +389,18 @@ def validate_certificate_requirements(
             )
 
 
+def validate_iso8601(value: Any) -> bool:
+    """Strictly check whether a value is a well-formed ISO 8601 datetime string.
+    Args:
+        value: The value to check. Non-string values are always invalid.
+ 
+    Returns:
+        True if value is a string matching the strict ISO 8601 pattern.
+    """
+    if not isinstance(value, str):
+        return False
+    return bool(ISO8601_PATTERN.match(value))
+
 def validate_registration_deadline(
     registration_deadline: str,
     deadline_limit_dt: datetime.datetime | None,
@@ -393,6 +408,14 @@ def validate_registration_deadline(
 ) -> None:
     """Validate that a user-provided registration_deadline doesn't exceed the deadline limit."""
     try:
+        if not validate_iso8601(registration_deadline):
+            error_collector.add_error(
+                message="registration_deadline must be a valid ISO 8601 datetime string",
+                error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
+                details={"registration_deadline": registration_deadline},
+            )
+            return
+        
         provided_deadline_dt = parse_iso8601_to_datetime(registration_deadline)
 
         now = parse_iso8601_to_datetime(get_current_utc_time())
@@ -717,6 +740,12 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                         message="campaign_start_time is required for RSVP run_type",
                         error_code=ValidationErrorCode.MISSING_CAMPAIGN_START_TIME,
                     )
+                if not validate_iso8601(campaign_start_time):
+                    error_collector.add_error(
+                        message="campaign_start_time must be a valid ISO 8601 datetime string",
+                        error_code=ValidationErrorCode.INVALID_CAMPAIGN_START_TIME,
+                        details={"campaign_start_time": campaign_start_time},
+                    )
 
                 try:
                     rsvp_service = RSVPService()
@@ -864,7 +893,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                             error_code=ValidationErrorCode.CAMPAIGN_START_TIME_PASSED,
                             details={
                                 "campaign_start_time": campaign_start_time,
-                                "deadline_limit": format_time_to_iso8601(deadline_limit_dt),
+                                "deadline_limit": format_time_to_iso8601(
+                                    deadline_limit_dt
+                                ),
                                 "today": format_time_to_iso8601(today),
                             },
                         )
@@ -890,7 +921,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                         message="Invalid campaign_start_time format",
                         error_code=ValidationErrorCode.FAILED_PARSE_CAMPAIGN_START_TIME,
                         details={"campaign_start_time": str(campaign_start_time)},
-                )
+                    )
 
             registration_deadline = body.get("registration_deadline")
             # Registration deadline should be set in ios8601 format (YYYY-MM-DDTHH:MM:SSZ).
