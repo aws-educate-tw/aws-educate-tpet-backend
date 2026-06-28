@@ -393,19 +393,29 @@ def validate_registration_deadline(
 ) -> None:
     """Validate that a user-provided registration_deadline doesn't exceed the deadline limit."""
     try:
-        provided_deadline_dt = datetime.datetime.fromisoformat(
-            registration_deadline.replace("Z", "+00:00")
-        ).astimezone(datetime.UTC)
+        provided_deadline_dt = parse_iso8601_to_datetime(registration_deadline)
+
+        now = parse_iso8601_to_datetime(get_current_utc_time())
+        if provided_deadline_dt <= now:
+            error_collector.add_error(
+                message="registration_deadline must be in the future",
+                error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
+                details={
+                    "registration_deadline": registration_deadline,
+                    "current_time": format_time_to_iso8601(now),
+                },
+            )
+
         if deadline_limit_dt is not None and provided_deadline_dt > deadline_limit_dt:
             error_collector.add_error(
                 message="registration_deadline must be before campaign_start_time - 1 day",
                 error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
                 details={
                     "registration_deadline": registration_deadline,
-                    "deadline_limit": deadline_limit_dt.strftime("%Y-%m-%d"),
+                    "deadline_limit": format_time_to_iso8601(deadline_limit_dt),
                 },
             )
-    except (ValueError, AttributeError) as e:
+    except (ValueError, AttributeError, TypeError) as e:
         logger.error(
             "Failed to parse registration_deadline '%s': %s",
             registration_deadline,
@@ -413,6 +423,17 @@ def validate_registration_deadline(
         )
         error_collector.add_error(
             message="Invalid registration_deadline format",
+            error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
+            details={"registration_deadline": registration_deadline},
+        )
+    except Exception as e:
+        logger.error(
+            "Unexpected error while validating registration_deadline '%s': %s",
+            registration_deadline,
+            e,
+        )
+        error_collector.add_error(
+            message="Unexpected error during registration_deadline validation",
             error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
             details={"registration_deadline": registration_deadline},
         )
@@ -829,40 +850,54 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             deadline_limit_dt = None
             if campaign_start_time:
                 try:
-                    campaign_start_dt = datetime.datetime.fromisoformat(
-                        campaign_start_time.replace("Z", "+00:00")
-                    )
+                    campaign_start_dt = parse_iso8601_to_datetime(campaign_start_time)
                     deadline_limit_dt = (
                         campaign_start_dt - datetime.timedelta(days=1)
                     ).replace(hour=0, minute=0, second=0, microsecond=0)
 
-                    today = parse_iso8601_to_datetime(get_current_utc_time()).date()
+                    today = parse_iso8601_to_datetime(get_current_utc_time())
                     # if today is on or after the deadline_limit, it means the registration deadline has passed
                     # and we should not allow creating the registration
-                    if today >= deadline_limit_dt.date():
+                    if today >= deadline_limit_dt:
                         error_collector.add_error(
                             message="Cannot create registration: today is on or after the registration deadline (campaign_start time - 1 day).",
                             error_code=ValidationErrorCode.CAMPAIGN_START_TIME_PASSED,
                             details={
                                 "campaign_start_time": campaign_start_time,
-                                "deadline_limit": deadline_limit_dt.strftime(
-                                    "%Y-%m-%d"
-                                ),
-                                "today": today.strftime("%Y-%m-%d"),
+                                "deadline_limit": format_time_to_iso8601(deadline_limit_dt),
+                                "today": format_time_to_iso8601(today),
                             },
                         )
-                except (ValueError, AttributeError) as e:
+                except (ValueError, AttributeError, TypeError) as e:
                     logger.error(
                         "Failed to parse campaign_start_time '%s': %s",
                         campaign_start_time,
                         e,
                     )
+                    error_collector.add_error(
+                        message="Invalid campaign_start_time format",
+                        error_code=ValidationErrorCode.FAILED_PARSE_CAMPAIGN_START_TIME,
+                        details={"campaign_start_time": campaign_start_time},
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Unexpected error parsing campaign_start_time '%s': %s",
+                        campaign_start_time,
+                        e,
+                        exc_info=True,
+                    )
+                    error_collector.add_error(
+                        message="Invalid campaign_start_time format",
+                        error_code=ValidationErrorCode.FAILED_PARSE_CAMPAIGN_START_TIME,
+                        details={"campaign_start_time": str(campaign_start_time)},
+                )
 
             registration_deadline = body.get("registration_deadline")
+            
+            # Registration deadline should be set in ios8601 format (YYYY-MM-DDTHH:MM:SSZ).
             if registration_deadline is None:
-                now_plus_14_eod = datetime.datetime.now(
-                    datetime.UTC
-                ) + datetime.timedelta(days=14)
+                now_utc = datetime.datetime.now(datetime.UTC)
+                now_plus_14_eod = now_utc + datetime.timedelta(days=14)
                 # ensure that registration_deadline is less than campaign_start_time - 1 day
                 if (
                     deadline_limit_dt is not None
