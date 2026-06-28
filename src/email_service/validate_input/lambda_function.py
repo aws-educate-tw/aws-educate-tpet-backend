@@ -396,6 +396,7 @@ def validate_iso8601(date_string: str) -> bool:
     except ValueError:
         return False
 
+
 def validate_registration_deadline(
     registration_deadline: str,
     deadline_limit_dt: datetime.datetime | None,
@@ -738,9 +739,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 elif not validate_iso8601(campaign_start_time):
                     error_collector.add_error(
                         message="campaign_start_time must be a valid ISO 8601 datetime string",
-                            error_code=ValidationErrorCode.INVALID_CAMPAIGN_START_TIME,
-                            details={"campaign_start_time": campaign_start_time},
-                        )
+                        error_code=ValidationErrorCode.INVALID_CAMPAIGN_START_TIME,
+                        details={"campaign_start_time": campaign_start_time},
+                    )
 
                 try:
                     rsvp_service = RSVPService()
