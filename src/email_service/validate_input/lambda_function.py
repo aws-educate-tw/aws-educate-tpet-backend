@@ -393,13 +393,14 @@ def validate_iso8601(value: Any) -> bool:
     """Strictly check whether a value is a well-formed ISO 8601 datetime string.
     Args:
         value: The value to check. Non-string values are always invalid.
- 
+
     Returns:
         True if value is a string matching the strict ISO 8601 pattern.
     """
     if not isinstance(value, str):
         return False
     return bool(ISO8601_PATTERN.match(value))
+
 
 def validate_registration_deadline(
     registration_deadline: str,
@@ -415,7 +416,7 @@ def validate_registration_deadline(
                 details={"registration_deadline": registration_deadline},
             )
             return
-        
+
         provided_deadline_dt = parse_iso8601_to_datetime(registration_deadline)
 
         now = parse_iso8601_to_datetime(get_current_utc_time())
