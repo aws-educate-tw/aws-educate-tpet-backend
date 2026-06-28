@@ -740,7 +740,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                         message="campaign_start_time is required for RSVP run_type",
                         error_code=ValidationErrorCode.MISSING_CAMPAIGN_START_TIME,
                     )
-                if not validate_iso8601(campaign_start_time):
+                elif not validate_iso8601(campaign_start_time):
                     error_collector.add_error(
                         message="campaign_start_time must be a valid ISO 8601 datetime string",
                         error_code=ValidationErrorCode.INVALID_CAMPAIGN_START_TIME,
@@ -877,7 +877,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
             # Validate campaign_start_time and compute deadline_limit
             deadline_limit_dt = None
-            if campaign_start_time:
+            if campaign_start_time and validate_iso8601(campaign_start_time):
                 try:
                     campaign_start_dt = parse_iso8601_to_datetime(campaign_start_time)
                     deadline_limit_dt = (
