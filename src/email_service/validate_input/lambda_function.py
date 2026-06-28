@@ -389,11 +389,12 @@ def validate_certificate_requirements(
 def validate_iso8601(date_string: str) -> bool:
     """Validate if a string is a valid ISO 8601 datetime string."""
     try:
+        if not re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", date_string):
+            return False
         datetime.datetime.fromisoformat(date_string.replace("Z", "+00:00"))
         return True
     except ValueError:
         return False
-
 
 def validate_registration_deadline(
     registration_deadline: str,
@@ -737,9 +738,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 elif not validate_iso8601(campaign_start_time):
                     error_collector.add_error(
                         message="campaign_start_time must be a valid ISO 8601 datetime string",
-                        error_code=ValidationErrorCode.INVALID_CAMPAIGN_START_TIME,
-                        details={"campaign_start_time": campaign_start_time},
-                    )
+                            error_code=ValidationErrorCode.INVALID_CAMPAIGN_START_TIME,
+                            details={"campaign_start_time": campaign_start_time},
+                        )
 
                 try:
                     rsvp_service = RSVPService()
