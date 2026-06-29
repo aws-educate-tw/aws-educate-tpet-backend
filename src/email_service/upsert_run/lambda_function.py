@@ -173,21 +173,11 @@ def process_record(record: dict[str, Any], aws_request_id: str) -> None:
 
     # For RSVP run type, call RSVP service to upsert run configuration
     if run_type == RunType.RSVP.value:
-        campaign_id = sqs_message.get("campaign_id")
-
-        # Since the usage of `registration_deadline` is not yet fully defined,
-        # we temporarily omit passing this value to the RSVP service.
-        # Instead, a default value will be set on the RSVP service side
-        # to prevent potential issues.
-
-        # TODO: Finalize the design and integrate `registration_deadline` handling.
-        registration_deadline = sqs_message.get(
-            "registration_deadline", "2099-12-31T23:59:59Z"
-        )
+        registration_deadline = sqs_message.get("registration_deadline")
         sqs_message["registration_deadline"] = registration_deadline
-
         max_participants = sqs_message.get("expected_email_send_count", 0)
 
+        campaign_id = sqs_message.get("campaign_id")
         if campaign_id and max_participants:
             try:
                 rsvp_service = RSVPService()

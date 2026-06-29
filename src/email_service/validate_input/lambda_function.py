@@ -1,3 +1,4 @@
+import datetime
 import io
 import json
 import logging
@@ -17,7 +18,11 @@ from recipient_source_enum import RecipientSource
 from requests.exceptions import RequestException
 from run_type_enum import RunType
 from sqs import send_message_to_queue
-from time_util import get_current_utc_time
+from time_util import (
+    format_time_to_iso8601,
+    get_current_utc_time,
+    parse_iso8601_to_datetime,
+)
 from validation_exceptions import ValidationError, ValidationErrorCollector
 
 from rsvp_service import RSVPService
@@ -381,6 +386,78 @@ def validate_certificate_requirements(
             )
 
 
+def validate_iso8601(date_string: str) -> bool:
+    """Validate if a string is a valid ISO 8601 datetime string."""
+    try:
+        if not re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", date_string):
+            return False
+        datetime.datetime.fromisoformat(date_string.replace("Z", "+00:00"))
+        return True
+    except ValueError:
+        return False
+
+
+def validate_registration_deadline(
+    registration_deadline: str,
+    deadline_limit_dt: datetime.datetime | None,
+    error_collector: ValidationErrorCollector,
+) -> None:
+    """Validate that a user-provided registration_deadline doesn't exceed the deadline limit."""
+    try:
+        if not validate_iso8601(registration_deadline):
+            error_collector.add_error(
+                message="registration_deadline must be a valid ISO 8601 datetime string",
+                error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
+                details={"registration_deadline": registration_deadline},
+            )
+            return
+
+        provided_deadline_dt = parse_iso8601_to_datetime(registration_deadline)
+
+        now = parse_iso8601_to_datetime(get_current_utc_time())
+        if provided_deadline_dt <= now:
+            error_collector.add_error(
+                message="registration_deadline must be in the future",
+                error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
+                details={
+                    "registration_deadline": registration_deadline,
+                    "current_time": format_time_to_iso8601(now),
+                },
+            )
+
+        if deadline_limit_dt is not None and provided_deadline_dt > deadline_limit_dt:
+            error_collector.add_error(
+                message="registration_deadline must be before campaign_start_time - 1 day",
+                error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
+                details={
+                    "registration_deadline": registration_deadline,
+                    "deadline_limit": format_time_to_iso8601(deadline_limit_dt),
+                },
+            )
+    except (ValueError, AttributeError, TypeError) as e:
+        logger.error(
+            "Failed to parse registration_deadline '%s': %s",
+            registration_deadline,
+            e,
+        )
+        error_collector.add_error(
+            message="Invalid registration_deadline format",
+            error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
+            details={"registration_deadline": registration_deadline},
+        )
+    except Exception as e:
+        logger.error(
+            "Unexpected error while validating registration_deadline '%s': %s",
+            registration_deadline,
+            e,
+        )
+        error_collector.add_error(
+            message="Unexpected error during registration_deadline validation",
+            error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
+            details={"registration_deadline": registration_deadline},
+        )
+
+
 def validate_email_addresses(
     cc: list[str],
     bcc: list[str],
@@ -653,6 +730,19 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                         error_code=ValidationErrorCode.MISSING_CAMPAIGN_ID,
                     )
 
+                campaign_start_time = body.get("campaign_start_time")
+                if not campaign_start_time:
+                    error_collector.add_error(
+                        message="campaign_start_time is required for RSVP run_type",
+                        error_code=ValidationErrorCode.MISSING_CAMPAIGN_START_TIME,
+                    )
+                elif not validate_iso8601(campaign_start_time):
+                    error_collector.add_error(
+                        message="campaign_start_time must be a valid ISO 8601 datetime string",
+                        error_code=ValidationErrorCode.INVALID_CAMPAIGN_START_TIME,
+                        details={"campaign_start_time": campaign_start_time},
+                    )
+
                 try:
                     rsvp_service = RSVPService()
                     campaign_info = rsvp_service.verify_campaign(campaign_id)
@@ -732,9 +822,6 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             # Validate email addresses
             validate_email_addresses(cc, bcc, reply_to, error_collector)
 
-            # Raise all errors if any were collected
-            error_collector.raise_if_has_errors()
-
         # Get current user info
         current_user_info = current_user_util.get_current_user_info()
         sender_id = current_user_info.get("user_id")
@@ -782,7 +869,78 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Add campaign_id for RSVP run type
         if run_type == RunType.RSVP.value:
-            common_data["campaign_id"] = body.get("campaign_id")
+            common_data["campaign_id"] = campaign_id
+
+            # Validate campaign_start_time and compute deadline_limit
+            deadline_limit_dt = None
+            if campaign_start_time and validate_iso8601(campaign_start_time):
+                try:
+                    campaign_start_dt = parse_iso8601_to_datetime(campaign_start_time)
+                    deadline_limit_dt = (
+                        campaign_start_dt - datetime.timedelta(days=1)
+                    ).replace(hour=0, minute=0, second=0, microsecond=0)
+
+                    today = parse_iso8601_to_datetime(get_current_utc_time())
+                    # if today is on or after the deadline_limit, it means the registration deadline has passed
+                    # and we should not allow creating the registration
+                    if today >= deadline_limit_dt:
+                        error_collector.add_error(
+                            message="Cannot create registration: today is on or after the registration deadline (campaign_start time - 1 day).",
+                            error_code=ValidationErrorCode.CAMPAIGN_START_TIME_PASSED,
+                            details={
+                                "campaign_start_time": campaign_start_time,
+                                "deadline_limit": format_time_to_iso8601(
+                                    deadline_limit_dt
+                                ),
+                                "today": format_time_to_iso8601(today),
+                            },
+                        )
+                except (ValueError, AttributeError, TypeError) as e:
+                    logger.error(
+                        "Failed to parse campaign_start_time '%s': %s",
+                        campaign_start_time,
+                        e,
+                    )
+                    error_collector.add_error(
+                        message="Invalid campaign_start_time format",
+                        error_code=ValidationErrorCode.FAILED_PARSE_CAMPAIGN_START_TIME,
+                        details={"campaign_start_time": campaign_start_time},
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Unexpected error parsing campaign_start_time '%s': %s",
+                        campaign_start_time,
+                        e,
+                        exc_info=True,
+                    )
+                    error_collector.add_error(
+                        message="Invalid campaign_start_time format",
+                        error_code=ValidationErrorCode.FAILED_PARSE_CAMPAIGN_START_TIME,
+                        details={"campaign_start_time": str(campaign_start_time)},
+                    )
+
+            registration_deadline = body.get("registration_deadline")
+            # Registration deadline should be set in ios8601 format (YYYY-MM-DDTHH:MM:SSZ).
+            if registration_deadline is None:
+                now_utc = datetime.datetime.now(datetime.UTC)
+                now_plus_14_eod = now_utc + datetime.timedelta(days=14)
+                # ensure that registration_deadline is less than campaign_start_time - 1 day
+                if (
+                    deadline_limit_dt is not None
+                    and now_plus_14_eod > deadline_limit_dt
+                ):
+                    registration_deadline = format_time_to_iso8601(deadline_limit_dt)
+                else:
+                    registration_deadline = format_time_to_iso8601(now_plus_14_eod)
+            else:
+                # If user provided a registration_deadline, then validate it doesn't exceed the limit
+                validate_registration_deadline(
+                    registration_deadline, deadline_limit_dt, error_collector
+                )
+            common_data["registration_deadline"] = registration_deadline
+
+        # Raise all collected errors before sending to SQS
+        error_collector.raise_if_has_errors()
 
         # Send message to SQS
         message_body = {**common_data, "access_token": access_token}
