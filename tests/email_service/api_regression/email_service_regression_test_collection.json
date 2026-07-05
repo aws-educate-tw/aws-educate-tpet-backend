@@ -59,8 +59,8 @@
 					"        raw: JSON.stringify({\r",
 					"            \"campaign_name\": \"Campaign Created for regression test\",\r",
 					"            \"cohort\": \"8\",\r",
-					"            \"campaign_start_time\": \"2026-04-20T09:00:00Z\",\r",
-					"            \"campaign_end_time\": \"2028-05-20T17:00:00Z\",\r",
+					"            \"campaign_start_time\": \"2099-04-20T09:00:00Z\",\r",
+					"            \"campaign_end_time\": \"2099-05-20T17:00:00Z\",\r",
 					"            \"campaign_location\": \"Taipei 101\"\r",
 					"        })\r",
 					"    }\r",
@@ -134,7 +134,7 @@
 					"});\r",
 					"\r",
 					"if (responseData.run_id) {\r",
-					"    pm.environment.set(\"run_id_from_send_rsvp_email_api\", responseData.run_id);\r",
+					"    pm.environment.set(\"run_id_from_send_email_api\", responseData.run_id);\r",
 					"    console.log(\"Saved run_id to environment: \" + responseData.run_id);\r",
 					"}"
 					],
@@ -159,7 +159,7 @@
 				"header": [],
 				"body": {
 				"mode": "raw",
-				"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_type\": \"RSVP\",\n    \"campaign_id\" : \"{{campaign_id}}\", \n   \"spreadsheet_file_id\": \"8a43e298780c411f822433f3f82f6559\",\n  \"subject\": \"[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}\",\n    \"display_name\": \"GitHub Actions - PR{{pull_request_number}} - API Regression Test\",\n    \"template_file_id\": \"{{template_file_id}}\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\", \n    \"sender_local_part\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"harry鍾\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"{{template_file_id}}\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\",\n        \"dev@aws-educate.tw\"\n    ]\n}",
+				"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_type\": \"RSVP\",\n    \"campaign_id\" : \"{{campaign_id}}\", \n    \"campaign_start_time\" : \"2099-04-20T09:00:00Z\",\n    \"subject\": \"[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}\",\n    \"display_name\": \"GitHub Actions - PR{{pull_request_number}} - API Regression Test\",\n    \"template_file_id\": \"{{template_file_id}}\",\n    \"spreadsheet_file_id\": \"dd0a7dc01af34687b2fc254f59fd0f82\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\", \n    \"sender_local_part\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"harry鍾\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"{{template_file_id}}\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\",\n        \"dev@aws-educate.tw\"\n    ]\n}",
 				"options": {
 					"raw": {
 					"language": "json"
@@ -188,7 +188,7 @@
 					"header": [],
 					"body": {
 					"mode": "raw",
-					"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_type\": \"RSVP\",\n    \"campaign_id\" : \"evt_e4d82a9121ad46a1ae39d8a9823751f6\",\n    \"spreadsheet_file_id\": \"8a43e298780c411f822433f3f82f6559\",\n    \"subject\": \"【SCRUM-583】test by kiki\",\n    \"display_name\": \"參與證明\",\n    \"template_file_id\": \"{{template_file_id}}\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"dev\",\n    // \"recipients\": [\n    //     {\n    //         \"email\": \"h830519h@yahoo.com.tw\",\n    //         \"template_variables\": {\n    //             \"Name\": \"harry鍾\",\n    //             \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n    //         }\n    //     }\n    // ],\n    \"attachment_file_ids\": [],\n    \"bcc\": [],\n    \"cc\": []\n}",
+					"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_type\": \"RSVP\",\n    \"campaign_id\" : \"evt_e4d82a9121ad46a1ae39d8a9823751f6\",\n    \"spreadsheet_file_id\": \"dd0a7dc01af34687b2fc254f59fd0f82\",\n    \"subject\": \"【SCRUM-583】test by kiki\",\n    \"display_name\": \"參與證明\",\n    \"template_file_id\": \"110497578d8642dba3f7c3ab00529fc7\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"271yeye@gmail.com\",\n    \"sender_local_part\": \"dev\",\n    // \"recipients\": [\n    //     {\n    //         \"email\": \"h830519h@yahoo.com.tw\",\n    //         \"template_variables\": {\n    //             \"Name\": \"harry鍾\",\n    //             \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n    //         }\n    //     }\n    // ],\n    \"attachment_file_ids\": [],\n    \"bcc\": [],\n    \"cc\": []\n}",
 					"options": {
 						"raw": {
 						"language": "json"
@@ -223,7 +223,7 @@
 					"header": [],
 					"body": {
 					"mode": "raw",
-					"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_type\": \"RSVP\",\n    \"campaign_id\" : \"evt_123\",\n    \"spreadsheet_file_id\": \"8a43e298780c411f822433f3f82f6559\",\n    \"subject\": \"【SCRUM-583】test by kiki\",\n    \"display_name\": \"參與證明\",\n    \"template_file_id\": \"110497578d8642dba3f7c3ab00529fc7\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"dev\",\n    // \"recipients\": [\n    //     {\n    //         \"email\": \"h830519h@yahoo.com.tw\",\n    //         \"template_variables\": {\n    //             \"Name\": \"harry鍾\",\n    //             \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n    //         }\n    //     }\n    // ],\n    \"attachment_file_ids\": [],\n    \"bcc\": [],\n    \"cc\": []\n}",
+					"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_type\": \"RSVP\",\n    \"campaign_id\" : \"evt_123\",\n    \"spreadsheet_file_id\": \"dd0a7dc01af34687b2fc254f59fd0f82\",\n    \"subject\": \"【SCRUM-583】test by kiki\",\n    \"display_name\": \"參與證明\",\n    \"template_file_id\": \"110497578d8642dba3f7c3ab00529fc7\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"271yeye@gmail.com\",\n    \"sender_local_part\": \"dev\",\n    // \"recipients\": [\n    //     {\n    //         \"email\": \"h830519h@yahoo.com.tw\",\n    //         \"template_variables\": {\n    //             \"Name\": \"harry鍾\",\n    //             \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n    //         }\n    //     }\n    // ],\n    \"attachment_file_ids\": [],\n    \"bcc\": [],\n    \"cc\": []\n}",
 					"options": {
 						"raw": {
 						"language": "json"
@@ -258,7 +258,7 @@
 					"header": [],
 					"body": {
 					"mode": "raw",
-					"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_type\": \"RSVP\",\n    \"spreadsheet_file_id\": \"8a43e298780c411f822433f3f82f6559\",\n    \"subject\": \"【SCRUM-583】test by kiki\",\n    \"display_name\": \"參與證明\",\n    \"template_file_id\": \"110497578d8642dba3f7c3ab00529fc7\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"dev\",\n    // \"recipients\": [\n    //     {\n    //         \"email\": \"h830519h@yahoo.com.tw\",\n    //         \"template_variables\": {\n    //             \"Name\": \"harry鍾\",\n    //             \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n    //         }\n    //     }\n    // ],\n    \"attachment_file_ids\": [],\n    \"bcc\": [],\n    \"cc\": []\n}",
+					"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_type\": \"RSVP\",\n    \"spreadsheet_file_id\": \"dd0a7dc01af34687b2fc254f59fd0f82\",\n    \"subject\": \"【SCRUM-583】test by kiki\",\n    \"display_name\": \"參與證明\",\n    \"template_file_id\": \"110497578d8642dba3f7c3ab00529fc7\",\n    \"is_generate_certificate\": false,\n    \"reply_to\": \"271yeye@gmail.com\",\n    \"sender_local_part\": \"dev\",\n    // \"recipients\": [\n    //     {\n    //         \"email\": \"h830519h@yahoo.com.tw\",\n    //         \"template_variables\": {\n    //             \"Name\": \"harry鍾\",\n    //             \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n    //         }\n    //     }\n    // ],\n    \"attachment_file_ids\": [],\n    \"bcc\": [],\n    \"cc\": []\n}",
 					"options": {
 						"raw": {
 						"language": "json"
