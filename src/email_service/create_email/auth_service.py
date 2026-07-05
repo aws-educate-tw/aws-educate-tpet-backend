@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+
 class AuthService:
     def __init__(self):
         environment = os.environ.get("ENVIRONMENT")
