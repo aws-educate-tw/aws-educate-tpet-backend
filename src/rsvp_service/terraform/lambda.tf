@@ -84,10 +84,7 @@ module "update_rsvp_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
 
   ######################
@@ -205,10 +202,7 @@ module "get_rsvp_status_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
 
   ######################
@@ -324,10 +318,7 @@ module "verify_campaign_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
 
   ######################
@@ -433,10 +424,7 @@ module "upsert_run_configuration_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
 
   ######################
@@ -543,10 +531,7 @@ module "import_participant_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
 
   ######################
@@ -654,10 +639,7 @@ module "list_campaigns_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
 
   ######################
@@ -766,10 +748,7 @@ module "get_campaign_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
 
   ######################
@@ -875,10 +854,7 @@ module "create_campaign_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
 
   ######################
@@ -986,10 +962,7 @@ module "update_campaign_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore,
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
 
   ######################

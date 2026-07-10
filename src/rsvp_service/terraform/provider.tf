@@ -3,9 +3,11 @@ provider "aws" {
 
   default_tags {
     tags = {
-      "Terraform"   = "true",
-      "Environment" = var.environment,
       "Project"     = "AWS Educate TPET"
+      "Service"     = var.service_underscore
+      "Environment" = var.environment
+      "Repository"  = "aws-educate-tw/aws-educate-tpet-backend"
+      "ManagedBy"   = "terraform"
     }
   }
 }

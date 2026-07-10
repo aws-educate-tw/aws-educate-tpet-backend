@@ -84,12 +84,6 @@ module "health_check_lambda" {
     }
   }
 
-  tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-  }
-
   ######################
   # Additional policies
   ######################
@@ -203,10 +197,7 @@ module "validate_input_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -353,10 +344,7 @@ module "auto_resume_aurora_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -515,10 +503,7 @@ module "upsert_run_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -677,10 +662,7 @@ module "create_email_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -840,10 +822,7 @@ module "send_email_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -1000,10 +979,7 @@ module "list_runs_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -1147,10 +1123,7 @@ module "create_run_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -1299,10 +1272,7 @@ module "get_run_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -1445,10 +1415,7 @@ module "list_emails_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies

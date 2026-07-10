@@ -2,10 +2,6 @@ locals {
   region             = var.aws_region
   custom_domain_name = "${var.environment}-${var.service_hyphen}-internal-api-tpet.aws-educate.tw"
   sub_domain_name    = "${var.environment}-${var.service_hyphen}-internal-api-tpet"
-
-  tags = {
-    Service = var.service_underscore
-  }
 }
 
 # Find a certificate that is issued
@@ -184,8 +180,6 @@ module "api_gateway" {
     throttling_burst_limit   = 100
     throttling_rate_limit    = 100
   }
-
-  tags = local.tags
 }
 
 resource "aws_route53_record" "api_gateway_custom_domain_record" {

@@ -73,12 +73,6 @@ module "health_check_lambda" {
     }
   }
 
-  tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-  }
-
 }
 
 module "health_check_docker_image" {
@@ -157,10 +151,7 @@ module "upload_multiple_file_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -283,10 +274,7 @@ module "list_files_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -411,10 +399,7 @@ module "get_file_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -535,10 +520,7 @@ module "get_template_variables_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
 
   ######################
