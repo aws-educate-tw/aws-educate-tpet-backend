@@ -15,8 +15,7 @@ resource "aws_s3_bucket" "aws_educate_tpet_bucket" {
   bucket = local.public_bucket_name
 
   tags = {
-    Name        = local.public_bucket_name
-    Environment = var.environment
+    Name = local.public_bucket_name
   }
 }
 
@@ -67,7 +66,6 @@ resource "aws_s3_bucket" "aws_educate_tpet_private_bucket" {
   bucket = local.private_bucket_name
 
   tags = {
-    Name        = local.private_bucket_name
-    Environment = var.environment
+    Name = local.private_bucket_name
   }
 }

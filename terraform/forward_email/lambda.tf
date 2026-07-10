@@ -77,11 +77,6 @@ module "forward_email_lambda" {
     }
   }
 
-  tags = {
-    "Terraform"   = "true"
-    "Environment" = var.environment
-  }
-
   ######################
   # Additional policies
   ######################
