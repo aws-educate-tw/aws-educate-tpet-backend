@@ -2,8 +2,7 @@ resource "aws_s3_bucket" "aws_educate_tpet_bucket" {
   bucket = "${var.environment}-aws-educate-tpet-bucket"
 
   tags = {
-    Name        = "${var.environment}-aws-educate-tpet-bucket"
-    Environment = var.environment
+    Name = "${var.environment}-aws-educate-tpet-bucket"
   }
 }
 

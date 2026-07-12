@@ -3,10 +3,6 @@ resource "aws_secretsmanager_secret" "surveycake_service_account_access_token" {
   name        = "aws-educate-tpet/${var.environment}/service-accounts/surveycake/access-token"
   description = "Access token for AWS Eudcate TPET ${var.environment} SurveyCake service account"
 
-  tags = {
-    Service = var.service_underscore
-  }
-
   # Resource Policy
   policy = jsonencode({
     Version = "2012-10-17"
@@ -68,10 +64,6 @@ resource "aws_secretsmanager_secret_version" "surveycake_access_token" {
 resource "aws_secretsmanager_secret" "postman_service_account_access_token" {
   name        = "aws-educate-tpet/${var.environment}/service-accounts/postman/access-token"
   description = "Access token for AWS Eudcate TPET ${var.environment} Postman service account"
-
-  tags = {
-    Service = var.service_underscore
-  }
 
   # Resource Policy
   policy = jsonencode({

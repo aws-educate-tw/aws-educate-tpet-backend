@@ -34,6 +34,4 @@ module "aurora_postgresql_v2" {
   instances = {
     one = {}
   }
-
-  tags = local.tags
 }
