@@ -209,15 +209,12 @@ def process_rsvp_emails_and_update_spreadsheet(sqs_message: dict) -> list[dict]:
             "Name", row_data.get("姓名", email)
         )  # Fallback to email if no name
 
-        # Generate participant_id and email_id for tracking
-        participant_id = str(uuid.uuid4())
         email_id = str(uuid.uuid4().hex)
 
         # Import participant to RSVP service
         try:
             response = rsvp_service.import_participant(
                 run_id=run_id,
-                participant_id=participant_id,
                 email=email,
                 campaign_id=campaign_id,
                 name=name,
@@ -228,6 +225,16 @@ def process_rsvp_emails_and_update_spreadsheet(sqs_message: dict) -> list[dict]:
                     "Failed to import participant to RSVP service: %s", response
                 )
                 raise ValueError("Failed to import participant to RSVP service")
+
+            participant_id = (response.get("data") or {}).get("participant_id")
+            if not participant_id:
+                logger.error(
+                    "RSVP service import_participant returned no participant_id: %s",
+                    response,
+                )
+                raise ValueError(
+                    "RSVP service import_participant returned no participant_id"
+                )
 
             logger.info(
                 "Imported participant: email=%s, participant_id=%s, email_id=%s",
