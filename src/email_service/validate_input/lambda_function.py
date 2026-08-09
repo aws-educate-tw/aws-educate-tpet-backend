@@ -399,10 +399,10 @@ def validate_iso8601(date_string: str) -> bool:
 
 def validate_registration_deadline(
     registration_deadline: str,
-    deadline_limit_dt: datetime.datetime | None,
+    campaign_start_dt: datetime.datetime | None,
     error_collector: ValidationErrorCollector,
 ) -> None:
-    """Validate that a user-provided registration_deadline doesn't exceed the deadline limit."""
+    """Validate that a user-provided registration_deadline is not later than campaign_start_time."""
     try:
         if not validate_iso8601(registration_deadline):
             error_collector.add_error(
@@ -414,24 +414,13 @@ def validate_registration_deadline(
 
         provided_deadline_dt = parse_iso8601_to_datetime(registration_deadline)
 
-        now = parse_iso8601_to_datetime(get_current_utc_time())
-        if provided_deadline_dt <= now:
+        if campaign_start_dt is not None and provided_deadline_dt > campaign_start_dt:
             error_collector.add_error(
-                message="registration_deadline must be in the future",
+                message="registration_deadline must not be later than campaign_start_time",
                 error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
                 details={
                     "registration_deadline": registration_deadline,
-                    "current_time": format_time_to_iso8601(now),
-                },
-            )
-
-        if deadline_limit_dt is not None and provided_deadline_dt > deadline_limit_dt:
-            error_collector.add_error(
-                message="registration_deadline must be before campaign_start_time - 1 day",
-                error_code=ValidationErrorCode.INVALID_REGISTRATION_DEADLINE,
-                details={
-                    "registration_deadline": registration_deadline,
-                    "deadline_limit": format_time_to_iso8601(deadline_limit_dt),
+                    "campaign_start_time": format_time_to_iso8601(campaign_start_dt),
                 },
             )
     except (ValueError, AttributeError, TypeError) as e:
@@ -871,30 +860,11 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if run_type == RunType.RSVP.value:
             common_data["campaign_id"] = campaign_id
 
-            # Validate campaign_start_time and compute deadline_limit
-            deadline_limit_dt = None
+            # Parse campaign_start_time for registration_deadline validation.
+            campaign_start_dt = None
             if campaign_start_time and validate_iso8601(campaign_start_time):
                 try:
                     campaign_start_dt = parse_iso8601_to_datetime(campaign_start_time)
-                    deadline_limit_dt = (
-                        campaign_start_dt - datetime.timedelta(days=1)
-                    ).replace(hour=0, minute=0, second=0, microsecond=0)
-
-                    today = parse_iso8601_to_datetime(get_current_utc_time())
-                    # if today is on or after the deadline_limit, it means the registration deadline has passed
-                    # and we should not allow creating the registration
-                    if today >= deadline_limit_dt:
-                        error_collector.add_error(
-                            message="Cannot create registration: today is on or after the registration deadline (campaign_start time - 1 day).",
-                            error_code=ValidationErrorCode.CAMPAIGN_START_TIME_PASSED,
-                            details={
-                                "campaign_start_time": campaign_start_time,
-                                "deadline_limit": format_time_to_iso8601(
-                                    deadline_limit_dt
-                                ),
-                                "today": format_time_to_iso8601(today),
-                            },
-                        )
                 except (ValueError, AttributeError, TypeError) as e:
                     logger.error(
                         "Failed to parse campaign_start_time '%s': %s",
@@ -922,20 +892,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             registration_deadline = body.get("registration_deadline")
             # Registration deadline should be set in ios8601 format (YYYY-MM-DDTHH:MM:SSZ).
             if registration_deadline is None:
-                now_utc = datetime.datetime.now(datetime.UTC)
-                now_plus_14_eod = now_utc + datetime.timedelta(days=14)
-                # ensure that registration_deadline is less than campaign_start_time - 1 day
-                if (
-                    deadline_limit_dt is not None
-                    and now_plus_14_eod > deadline_limit_dt
-                ):
-                    registration_deadline = format_time_to_iso8601(deadline_limit_dt)
-                else:
-                    registration_deadline = format_time_to_iso8601(now_plus_14_eod)
+                error_collector.add_error(
+                    message="registration_deadline is required for RSVP run_type",
+                    error_code=ValidationErrorCode.MISSING_REGISTRATION_DEADLINE,
+                )
             else:
-                # If user provided a registration_deadline, then validate it doesn't exceed the limit
                 validate_registration_deadline(
-                    registration_deadline, deadline_limit_dt, error_collector
+                    registration_deadline, campaign_start_dt, error_collector
                 )
             common_data["registration_deadline"] = registration_deadline
 
