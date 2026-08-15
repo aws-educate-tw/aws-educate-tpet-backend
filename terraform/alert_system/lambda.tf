@@ -11,11 +11,11 @@ resource "random_string" "this" {
 }
 
 locals {
-  source_path_alert = "${path.module}/slack_alert/"
-  source_path_handler  = "${path.module}/slack_interaction_handler/"
+  source_path_alert   = "${path.module}/slack_alert/"
+  source_path_handler = "${path.module}/slack_interaction_handler/"
 
-  slack_alert_function_name_and_ecr_name     = "${var.environment}-slack-alert-${random_string.this.result}"
-  slack_handler_function_name_and_ecr_name      = "${var.environment}-slack-interaction-handler-${random_string.this.result}"
+  slack_alert_function_name_and_ecr_name   = "${var.environment}-slack-alert-${random_string.this.result}"
+  slack_handler_function_name_and_ecr_name = "${var.environment}-slack-interaction-handler-${random_string.this.result}"
 
   path_include = ["**"]
   path_exclude = [
@@ -41,11 +41,11 @@ locals {
   dir_sha_handler       = sha1(join("", [for f in local.files_handler : filesha1("${local.source_path_handler}/${f}")]))
 
   # Calculate hash for auto re-enable
-  source_path_reenable       = "${path.module}/auto_reenable/"
-  files_include_reenable     = setunion([for f in local.path_include : fileset(local.source_path_reenable, f)]...)
-  files_exclude_reenable     = setunion([for f in local.path_exclude : fileset(local.source_path_reenable, f)]...)
-  files_reenable             = sort(setsubtract(local.files_include_reenable, local.files_exclude_reenable))
-  dir_sha_reenable           = sha1(join("", [for f in local.files_reenable : filesha1("${local.source_path_reenable}/${f}")]))
+  source_path_reenable        = "${path.module}/auto_reenable/"
+  files_include_reenable      = setunion([for f in local.path_include : fileset(local.source_path_reenable, f)]...)
+  files_exclude_reenable      = setunion([for f in local.path_exclude : fileset(local.source_path_reenable, f)]...)
+  files_reenable              = sort(setsubtract(local.files_include_reenable, local.files_exclude_reenable))
+  dir_sha_reenable            = sha1(join("", [for f in local.files_reenable : filesha1("${local.source_path_reenable}/${f}")]))
   auto_reenable_function_name = "${var.environment}-auto-reenable-${random_string.this.result}"
 
 }
@@ -83,10 +83,9 @@ module "slack_alert_lambda" {
   publish = true
 
   environment_variables = {
-    ENVIRONMENT     = var.environment
-    INCIDENT_TABLE  = aws_dynamodb_table.alarm_slack_mapping.name
-    SLACK_BOT_TOKEN = local.slack_alert_config.slack_bot_token
-    SLACK_CHANNEL   = local.slack_alert_config.slack_channel
+    ENVIRONMENT                   = var.environment
+    INCIDENT_TABLE                = aws_dynamodb_table.alarm_slack_mapping.name
+    SLACK_ALERT_CONFIG_SECRET_ARN = aws_secretsmanager_secret.slack_alert_config.arn
   }
 
   allowed_triggers = {
@@ -125,6 +124,12 @@ module "slack_alert_lambda" {
       ]
       resources = ["*"]
     }
+    secrets_manager = {
+      sid       = "AllowSecretsManagerRead"
+      effect    = "Allow"
+      actions   = ["secretsmanager:GetSecretValue"]
+      resources = [aws_secretsmanager_secret.slack_alert_config.arn]
+    }
   }
 
   tags = {
@@ -149,9 +154,9 @@ module "slack_alert_docker_image" {
         rulePriority = 1
         description  = "Keep last 3 images"
         selection = {
-          tagStatus     = "any"
-          countType     = "imageCountMoreThan"
-          countNumber   = 3
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 3
         }
         action = {
           type = "expire"
@@ -199,10 +204,9 @@ module "slack_interaction_handler_lambda" {
   publish = true
 
   environment_variables = {
-    ENVIRONMENT              = var.environment
-    INCIDENT_TABLE           = aws_dynamodb_table.alarm_slack_mapping.name
-    SLACK_BOT_TOKEN          = local.slack_alert_config.slack_bot_token
-    SLACK_SIGNING_SECRET     = local.slack_alert_config.slack_signing_secret
+    ENVIRONMENT                   = var.environment
+    INCIDENT_TABLE                = aws_dynamodb_table.alarm_slack_mapping.name
+    SLACK_ALERT_CONFIG_SECRET_ARN = aws_secretsmanager_secret.slack_alert_config.arn
   }
 
   attach_policy_statements = true
@@ -226,6 +230,12 @@ module "slack_interaction_handler_lambda" {
         "cloudwatch:DescribeAlarms"
       ]
       resources = ["*"]
+    }
+    secrets_manager = {
+      sid       = "AllowSecretsManagerRead"
+      effect    = "Allow"
+      actions   = ["secretsmanager:GetSecretValue"]
+      resources = [aws_secretsmanager_secret.slack_alert_config.arn]
     }
   }
 
@@ -251,9 +261,9 @@ module "slack_interaction_handler_docker_image" {
         rulePriority = 1
         description  = "Keep last 3 images"
         selection = {
-          tagStatus     = "any"
-          countType     = "imageCountMoreThan"
-          countNumber   = 3
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 3
         }
         action = {
           type = "expire"
@@ -295,9 +305,9 @@ module "auto_reenable_lambda" {
   publish = true
 
   environment_variables = {
-    ENVIRONMENT              = var.environment
-    INCIDENT_TABLE           = aws_dynamodb_table.alarm_slack_mapping.name
-    SLACK_BOT_TOKEN          = local.slack_alert_config.slack_bot_token
+    ENVIRONMENT                   = var.environment
+    INCIDENT_TABLE                = aws_dynamodb_table.alarm_slack_mapping.name
+    SLACK_ALERT_CONFIG_SECRET_ARN = aws_secretsmanager_secret.slack_alert_config.arn
   }
 
   attach_policy_statements = true
@@ -318,6 +328,12 @@ module "auto_reenable_lambda" {
         "dynamodb:UpdateItem"
       ]
       resources = [aws_dynamodb_table.alarm_slack_mapping.arn]
+    }
+    secrets_manager = {
+      sid       = "AllowSecretsManagerRead"
+      effect    = "Allow"
+      actions   = ["secretsmanager:GetSecretValue"]
+      resources = [aws_secretsmanager_secret.slack_alert_config.arn]
     }
   }
 
@@ -343,9 +359,9 @@ module "auto_reenable_docker_image" {
         rulePriority = 1
         description  = "Keep last 3 images"
         selection = {
-          tagStatus     = "any"
-          countType     = "imageCountMoreThan"
-          countNumber   = 3
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 3
         }
         action = {
           type = "expire"

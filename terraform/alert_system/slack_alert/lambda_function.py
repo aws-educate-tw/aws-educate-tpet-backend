@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 
 from botocore.exceptions import ClientError
 from cloudwatch_util import CloudWatchError, get_metric_chart
@@ -11,15 +10,16 @@ from utils import (
     CloudWatchAlarmState,
     IncidentState,
     build_blocks,
+    get_slack_config,
     post_incident_message,
 )
 
-SLACK_BOT_TOKEN = os.environ["SLACK_BOT_TOKEN"]
-SLACK_CHANNEL = os.environ["SLACK_CHANNEL"]
+slack_config = get_slack_config()
+SLACK_BOT_TOKEN = slack_config["slack_bot_token"]
+SLACK_CHANNEL = slack_config["slack_channel"]
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-logger.info("Token prefix: %s", SLACK_BOT_TOKEN[:4])
 
 incident_repo = IncidentRepository()
 slack = WebClient(token=SLACK_BOT_TOKEN)

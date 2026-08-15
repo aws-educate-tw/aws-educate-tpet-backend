@@ -7,11 +7,3 @@ resource "aws_secretsmanager_secret" "slack_alert_config" {
     Environment = var.environment
   }
 }
-
-data "aws_secretsmanager_secret_version" "slack_alert_config" {
-  secret_id = aws_secretsmanager_secret.slack_alert_config.id
-}
-
-locals {
-  slack_alert_config = jsondecode(data.aws_secretsmanager_secret_version.slack_alert_config.secret_string)
-}
