@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 
 import boto3
 from botocore.exceptions import ClientError
@@ -11,11 +10,12 @@ from utils import (
     CloudWatchAlarmState,
     IncidentState,
     build_blocks,
+    get_slack_config,
     post_thread_message,
     update_incident_message,
 )
 
-SLACK_BOT_TOKEN = os.environ["SLACK_BOT_TOKEN"]
+SLACK_BOT_TOKEN = get_slack_config()["slack_bot_token"]
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)

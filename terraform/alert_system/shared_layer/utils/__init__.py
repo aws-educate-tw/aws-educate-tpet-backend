@@ -1,5 +1,6 @@
 from .alarm_state_enum import CloudWatchAlarmState, IncidentState
 from .slack_blocks import build_blocks
+from .slack_config import get_slack_config
 from .slack_incident import (
     handle_button_action,
     post_incident_message,
@@ -16,5 +17,6 @@ __all__ = [
     "update_incident_message",
     "post_thread_message",
     "handle_button_action",
+    "get_slack_config",
     "verify_slack_request_signature",
 ]

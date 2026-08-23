@@ -1,7 +1,6 @@
 import base64
 import json
 import logging
-import os
 import urllib.parse
 
 import boto3
@@ -9,15 +8,21 @@ from botocore.exceptions import ClientError
 from incident_repository import IncidentRepository
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-from utils import build_blocks, handle_button_action, verify_slack_request_signature
+from utils import (
+    build_blocks,
+    get_slack_config,
+    handle_button_action,
+    verify_slack_request_signature,
+)
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 cw = boto3.client("cloudwatch")
 incident_repo = IncidentRepository()
-slack = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
-slack_signing_secret = os.environ["SLACK_SIGNING_SECRET"]
+slack_config = get_slack_config()
+slack = WebClient(token=slack_config["slack_bot_token"])
+slack_signing_secret = slack_config["slack_signing_secret"]
 
 
 def lambda_handler(event, context):
