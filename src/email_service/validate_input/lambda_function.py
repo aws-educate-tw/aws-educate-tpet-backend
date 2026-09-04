@@ -187,8 +187,7 @@ def validate_template_variables(
     required_variables = extract_template_variables(template_content)
     if system_generated_variables:
         required_variables = [
-            var for var in required_variables
-            if var not in system_generated_variables
+            var for var in required_variables if var not in system_generated_variables
         ]
 
     if not required_variables:
@@ -727,7 +726,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                             else None
                         ),
                     )
-                    
+
             else:  # DIRECT mode
                 expected_email_send_count = validate_direct_mode(
                     recipients, error_collector
