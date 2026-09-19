@@ -1,0 +1,114 @@
+meta {
+  name: Send email (non-RSVP)
+  type: http
+  seq: 2
+}
+
+post {
+  url: https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "recipient_source": "DIRECT",
+    "subject": "[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}",
+    "display_name": "GitHub Actions - PR{{pull_request_number}} - API Regression Test",
+    "template_file_id": "{{template_file_id}}",
+    "is_generate_certificate": true,
+    "reply_to": "postman+{{commit_sha}}@{{domain}}",
+    "sender_local_part": "githubactions.pr{{pull_request_number}}.{{commit_sha}}",
+    "recipients": [
+      {
+        "email": "awseducate.cloudambassador@gmail.com",
+        "template_variables": {
+          "Name": "API Regression User",
+          "Certificate Text": "TPET API regression test certificate."
+        }
+      }
+    ],
+    "attachment_file_ids": [
+      "{{template_file_id}}"
+    ],
+    "bcc": [],
+    "cc": []
+  }
+
+}
+
+script:pre-request {
+  const environment = bru.getEnvVar('environment');
+  const accessToken = bru.getEnvVar('access_token');
+
+  const fileResponse = await bru.sendRequest({
+    method: 'GET',
+    url: `https://${environment}-file-service-internal-api-tpet.aws-educate.tw/${environment}/files?file_extension=html&limit=1`,
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+
+  const file = fileResponse.data?.data?.[0];
+  if (!file) {
+    bru.deleteEnvVar('template_file_id');
+    bru.deleteEnvVar('template_file_name');
+    bru.deleteEnvVar('template_file_url');
+    throw new Error('No HTML file found in the file service.');
+  }
+
+  bru.setEnvVar('template_file_id', file.file_id);
+  bru.setEnvVar('template_file_name', file.file_name);
+  bru.setEnvVar('template_file_url', file.file_url);
+}
+
+script:post-response {
+  test("Status code is 202", function () {
+      expect(res.getStatus()).to.equal(202);
+  });
+
+  const responseData = res.getBody();
+
+  test("Response contains all required fields", function () {
+      expect(responseData).to.have.property("status");
+      expect(responseData).to.have.property("message");
+      expect(responseData).to.have.property("recipient_source");
+      expect(responseData).to.have.property("run_id");
+      expect(responseData).to.have.property("template_file_id");
+      expect(responseData).to.have.property("subject");
+      expect(responseData).to.have.property("display_name");
+      expect(responseData).to.have.property("attachment_file_ids");
+      expect(responseData).to.have.property("is_generate_certificate");
+      expect(responseData).to.have.property("sender_id");
+      expect(responseData).to.have.property("reply_to");
+      expect(responseData).to.have.property("sender_local_part");
+      expect(responseData).to.have.property("cc");
+      expect(responseData).to.have.property("bcc");
+      expect(responseData).to.have.property("recipients");
+      expect(responseData).to.have.property("success_email_count");
+      expect(responseData).to.have.property("expected_email_send_count");
+  });
+
+  test("Status is SUCCESS", function () {
+      expect(responseData.status).to.eql("SUCCESS");
+  });
+
+  test("Run ID is present", function () {
+      expect(responseData.run_id).to.not.be.null;
+  });
+
+  // Save run_id to environment variable for subsequent API calls
+  if (responseData.run_id) {
+      bru.deleteEnvVar("list_emails_retry_count");
+      bru.setEnvVar("run_id_from_send_email_api", responseData.run_id);
+      console.log("Saved run_id to environment: " + responseData.run_id);
+  }
+
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}

@@ -1,0 +1,159 @@
+name: Bruno API Regression
+
+on:
+  push:
+    branches:
+      - SCRUM-692-Phase-1-Bruno-Proof-of-Concept
+    paths:
+      - .github/workflows/bruno_api_regression.yaml
+      - tests/bruno/**
+  workflow_dispatch:
+    inputs:
+      service:
+        description: Collection to run against Preview
+        required: true
+        default: auth
+        type: choice
+        options:
+          - auth
+          - email
+          - all
+
+permissions:
+  contents: read
+
+env:
+  BRUNO_DIR: tests/bruno
+  REPORT_DIR: bruno-reports
+  AWS_REGION: us-west-1
+
+jobs:
+  auth:
+    if: github.event_name == 'push' || inputs.service == 'auth' || inputs.service == 'all'
+    name: Bruno API Regression - Auth Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/bruno/package-lock.json
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Bruno CLI
+        run: npm ci
+        working-directory: ${{ env.BRUNO_DIR }}
+
+      - name: Run Auth Service collection
+        env:
+          COLLECTION_DIR: ${{ github.workspace }}/tests/bruno/collections/auth-service
+          REPORT_PATH: ${{ github.workspace }}/bruno-reports/auth-service
+        run: |
+          set +x
+          secret_response=$(aws secretsmanager get-secret-value \
+            --secret-id 'aws-educate-tpet/preview/service-accounts/postman/access-token' \
+            --query 'SecretString' \
+            --output text)
+          access_token=$(jq -r '.access_token' <<< "$secret_response")
+          echo "::add-mask::$secret_response"
+          echo "::add-mask::$access_token"
+          test -n "$access_token" && test "$access_token" != 'null'
+
+          mkdir -p "$REPORT_PATH"
+          cd "$COLLECTION_DIR"
+          ../../node_modules/.bin/bru run . -r --env preview \
+            --env-var "access_token=$access_token" \
+            --reporter-json "$REPORT_PATH/report.json" \
+            --reporter-junit "$REPORT_PATH/report.junit.xml" \
+            --reporter-html "$REPORT_PATH/report.html" \
+            --reporter-skip-headers Authorization \
+            --reporter-skip-body
+
+      - name: Upload Auth Service reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bruno-api-regression-auth-service-${{ github.run_id }}
+          path: ${{ env.REPORT_DIR }}/auth-service/
+          if-no-files-found: error
+
+      - name: Write Auth Service test summary
+        if: always()
+        run: >-
+          node "$BRUNO_DIR/scripts/write-github-summary.js"
+          --service auth
+          --json "$REPORT_DIR/auth-service/report.json"
+          --junit "$REPORT_DIR/auth-service/report.junit.xml"
+
+  email:
+    if: inputs.service == 'email' || inputs.service == 'all'
+    name: Bruno API Regression - Email Service
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/bruno/package-lock.json
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Bruno CLI
+        run: npm ci
+        working-directory: ${{ env.BRUNO_DIR }}
+
+      - name: Run Email Service collection
+        env:
+          COLLECTION_DIR: ${{ github.workspace }}/tests/bruno/collections/email-service
+          REPORT_PATH: ${{ github.workspace }}/bruno-reports/email-service
+        run: |
+          set +x
+          access_secret_response=$(aws secretsmanager get-secret-value \
+            --secret-id 'aws-educate-tpet/preview/service-accounts/postman/access-token' \
+            --query 'SecretString' \
+            --output text)
+          access_token=$(jq -r '.access_token' <<< "$access_secret_response")
+          echo "::add-mask::$access_secret_response"
+          echo "::add-mask::$access_token"
+          test -n "$access_token" && test "$access_token" != 'null'
+
+          mkdir -p "$REPORT_PATH"
+          cd "$COLLECTION_DIR"
+          ../../node_modules/.bin/bru run . -r --env preview \
+            --env-var "access_token=$access_token" \
+            --env-var "pull_request_number=${{ github.run_id }}" \
+            --env-var "commit_sha=${{ github.sha }}" \
+            --reporter-json "$REPORT_PATH/report.json" \
+            --reporter-junit "$REPORT_PATH/report.junit.xml" \
+            --reporter-html "$REPORT_PATH/report.html" \
+            --reporter-skip-headers Authorization \
+            --reporter-skip-body
+
+      - name: Upload Email Service reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bruno-api-regression-email-service-${{ github.run_id }}
+          path: ${{ env.REPORT_DIR }}/email-service/
+          if-no-files-found: error
+
+      - name: Write Email Service test summary
+        if: always()
+        run: >-
+          node "$BRUNO_DIR/scripts/write-github-summary.js"
+          --service email
+          --json "$REPORT_DIR/email-service/report.json"
+          --junit "$REPORT_DIR/email-service/report.junit.xml"
