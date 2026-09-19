@@ -1,5 +1,5 @@
 /*
- * Generates the Bruno POC collections from the Postman v2.1 source files.
+ * Generates the Bruno API regression collections from the Postman v2.1 source files.
  *
  * The script is intentionally scoped to Auth and Email Service. It removes
  * saved examples and uses the approved shared test recipient before writing files.
@@ -252,7 +252,7 @@ async function migrateService(service) {
   }
 
   removeExamples(converted.collection.items);
-  converted.collection.root.docs = 'Generated from the TPET Postman v2.1 collection for the Bruno POC.';
+  converted.collection.root.docs = 'Generated from the TPET Postman v2.1 collection for Bruno API regression.';
 
   if (service.sourceName === 'auth_service') updateAuthJsonAssertion(converted.collection);
   if (service.sourceName === 'email_service') updateEmailScripts(converted.collection);

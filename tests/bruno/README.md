@@ -1,6 +1,6 @@
-# TPET Bruno Proof of Concept
+# TPET Bruno API Regression
 
-This directory is the Phase 1 Bruno proof of concept for the Auth Service and
+This directory contains the Phase 1 Bruno migration for the Auth Service and
 Email Service API regression collections. The collections are generated from
 the existing Postman v2.1 JSON files, then adjusted only where Bruno requires a
 different scripting API.
@@ -12,7 +12,7 @@ different scripting API.
   collection sequencing.
 - Bruno CLI: JSON, JUnit and HTML reports; non-zero exit status on test failure.
 
-The POC intentionally excludes saved Postman response examples. They are not
+The generated collections exclude saved Postman response examples. They are not
 needed to execute a collection and retaining them would copy historical API
 data into a second format.
 
@@ -21,10 +21,10 @@ data into a second format.
 ```bash
 cd tests/bruno
 npm ci
-npm run import:postman-poc
+npm run import:postman
 ```
 
-`scripts/import-postman-poc.js` is idempotent and is the source of the manual
+`scripts/import-postman-collections.js` is idempotent and is the source of the manual
 migration changes. It performs the following transformations:
 
 - converts Postman v2.1 collections and preview environments with the official
@@ -72,20 +72,21 @@ must always use `--reporter-skip-headers Authorization --reporter-skip-body`.
 
 ## CI runtime secrets
 
-The manual GitHub Actions workflow at
-`.github/workflows/bruno_api_regression_poc.yaml` injects secrets only at
+The GitHub Actions workflow at
+`.github/workflows/bruno_api_regression.yaml` injects secrets only at
 runtime:
 
 - `aws-educate-tpet/preview/service-accounts/postman/access-token` provides the
   API access token.
 
-The workflow is manual-only because the Email collection has external side
-effects. It uploads JSON, JUnit and HTML reports as artifacts and excludes
-request/response bodies and the Authorization header from those reports.
+The workflow offers a manual service selector and a branch-scoped Auth trigger.
+The Email collection is not run automatically because it has external side
+effects. The workflow uploads JSON, JUnit and HTML reports as artifacts and
+excludes request/response bodies and the Authorization header from those reports.
 
 ## Known Phase 1 boundary
 
 The selected collections contain no multipart upload request. The existing File
 Service collection is the multipart case, so end-to-end multipart validation is
-not satisfied by this Auth/Email-only POC. It should be added as a focused
-follow-up POC before declaring the full Phase 1 acceptance criteria complete.
+not satisfied by the current Auth/Email scope. It should be added as a focused
+follow-up migration before declaring the full Phase 1 acceptance criteria complete.

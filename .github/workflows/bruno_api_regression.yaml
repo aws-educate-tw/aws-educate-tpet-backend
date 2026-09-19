@@ -1,11 +1,11 @@
-name: Bruno API Regression POC
+name: Bruno API Regression
 
 on:
   push:
     branches:
       - SCRUM-692-Phase-1-Bruno-Proof-of-Concept
     paths:
-      - .github/workflows/bruno_api_regression_poc.yaml
+      - .github/workflows/bruno_api_regression.yaml
       - tests/bruno/**
   workflow_dispatch:
     inputs:
@@ -24,13 +24,13 @@ permissions:
 
 env:
   BRUNO_DIR: tests/bruno
-  REPORT_DIR: bruno-poc-reports
+  REPORT_DIR: bruno-reports
   AWS_REGION: us-west-1
 
 jobs:
   auth:
     if: github.event_name == 'push' || inputs.service == 'auth' || inputs.service == 'all'
-    name: Bruno POC - Auth Service
+    name: Bruno API Regression - Auth Service
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,7 +54,7 @@ jobs:
       - name: Run Auth Service collection
         env:
           COLLECTION_DIR: ${{ github.workspace }}/tests/bruno/collections/auth-service
-          REPORT_PATH: ${{ github.workspace }}/bruno-poc-reports/auth-service
+          REPORT_PATH: ${{ github.workspace }}/bruno-reports/auth-service
         run: |
           set +x
           secret_response=$(aws secretsmanager get-secret-value \
@@ -80,13 +80,13 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bruno-poc-auth-service-${{ github.run_id }}
+          name: bruno-api-regression-auth-service-${{ github.run_id }}
           path: ${{ env.REPORT_DIR }}/auth-service/
           if-no-files-found: error
 
   email:
     if: inputs.service == 'email' || inputs.service == 'all'
-    name: Bruno POC - Email Service
+    name: Bruno API Regression - Email Service
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -110,7 +110,7 @@ jobs:
       - name: Run Email Service collection
         env:
           COLLECTION_DIR: ${{ github.workspace }}/tests/bruno/collections/email-service
-          REPORT_PATH: ${{ github.workspace }}/bruno-poc-reports/email-service
+          REPORT_PATH: ${{ github.workspace }}/bruno-reports/email-service
         run: |
           set +x
           access_secret_response=$(aws secretsmanager get-secret-value \
@@ -138,6 +138,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bruno-poc-email-service-${{ github.run_id }}
+          name: bruno-api-regression-email-service-${{ github.run_id }}
           path: ${{ env.REPORT_DIR }}/email-service/
           if-no-files-found: error
