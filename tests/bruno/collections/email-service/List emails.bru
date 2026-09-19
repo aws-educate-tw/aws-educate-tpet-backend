@@ -1,0 +1,92 @@
+meta {
+  name: List emails
+  type: http
+  seq: 5
+}
+
+get {
+  url: https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs/{{run_id_from_send_email_api}}/emails?limit=ALL
+  body: none
+  auth: bearer
+}
+
+params:query {
+  @description('(Required) 最多取回多少筆 data，數字請指定 1~5000 想拿全部資料請寫 ALL')
+  limit: ALL
+  ~last_evaluated_key: eyJlbWFpbF9pZCI6ICIyNzc4MzU3YzY2OTQ0ZWI5YmE1YjFlYzg1MTEzZTliZSIsICJydW5faWQiOiAiYjg4ZGM5OGQ2YjA1NDNlNzg4NmM1OWU4ZDIzZjRlNDQiLCAiY3JlYXRlZF9hdCI6ICIyMDI0LTA4LTAzVDE2OjEwOjAyWiJ9
+  @description('(Optional) 目前只能設定為 created_at, Default=created_at')
+  ~sort_by: created_at
+  @description('(Optional) {ASC / DESC}, Default=DESC')
+  ~sort_order: ASC
+  @description('(Optional) 查詢特定 Status 的資料 (PENDING / SUCCESS / FAILED)')
+  ~status: SUCCESS
+  @description('(Optional) 要第幾頁的資料')
+  ~page: 2
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+script:pre-request {
+  await bru.sleep(3000);
+}
+
+script:post-response {
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  const responseData = res.getBody();
+
+  test("Response has data array", function () {
+      expect(responseData).to.have.property("data");
+      expect(responseData.data).to.be.an("array");
+  });
+
+  test("Response has pagination info", function () {
+      expect(responseData).to.have.property("pagination");
+  });
+
+  const currentRetryCount = Number(bru.getEnvVar("list_emails_retry_count") || 0);
+  const maxRetryCount = 6;
+  const retryDelayMs = 3000;
+
+  if (Array.isArray(responseData.data) && responseData.data.length === 0 && currentRetryCount < maxRetryCount) {
+      const nextRetryCount = currentRetryCount + 1;
+      bru.setEnvVar("list_emails_retry_count", String(nextRetryCount));
+      console.log(`List emails returned no data yet. Retry ${nextRetryCount}/${maxRetryCount} after ${retryDelayMs}ms for run_id ${bru.getEnvVar("run_id_from_send_email_api")}`);
+      const waitUntil = Date.now() + retryDelayMs;
+      while (Date.now() < waitUntil) {}
+      bru.runner.setNextRequest("List emails");
+  } else if (Array.isArray(responseData.data)) {
+        bru.deleteEnvVar("list_emails_retry_count");
+
+      test("At least one email exists", function () {
+          expect(responseData.data.length).to.be.above(0);
+      });
+
+      test("Email contains recipient_name field", function () {
+          const firstEmail = responseData.data[0];
+          expect(firstEmail).to.have.property("recipient_name");
+      });
+
+      test('Recipient name is a non-empty string', function () {
+          const firstEmail = responseData.data[0];
+          expect(firstEmail.recipient_name).to.be.a('string').and.to.not.be.empty;
+      });
+
+      // Optional: Check all emails have recipient_name field
+      test("All emails have recipient_name field", function () {
+          responseData.data.forEach((email, index) => {
+              expect(email, `Email at index ${index}`).to.have.property("recipient_name");
+          });
+      });
+  }
+
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}

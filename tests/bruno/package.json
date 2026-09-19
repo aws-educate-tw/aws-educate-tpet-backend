@@ -1,0 +1,15 @@
+{
+  "name": "tpet-bruno-poc",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Bruno proof of concept for TPET API regression tests",
+  "scripts": {
+    "import:postman-poc": "node scripts/import-postman-poc.js",
+    "test:auth": "cd collections/auth-service && bru run . -r --env preview",
+    "test:email": "cd collections/email-service && bru run . -r --env preview"
+  },
+  "devDependencies": {
+    "@usebruno/cli": "4.1.0",
+    "@usebruno/converters": "0.23.0"
+  }
+}

@@ -1,0 +1,53 @@
+meta {
+  name: Get me
+  type: http
+  seq: 1
+}
+
+get {
+  url: https://{{environment}}-{{service_hyphen}}-internal-api-tpet.aws-educate.tw/{{environment}}/auth/users/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+script:post-response {
+  // Validate that the status code is 200
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  // Validate that the response is in JSON format
+  test("Response is JSON", function () {
+      expect(res.getHeader('content-type')).to.include('application/json');
+  });
+
+  // Validate that the response body contains the required fields
+  test("Response has required fields", function () {
+      const jsonData = res.getBody();
+      expect(jsonData).to.have.property("email");
+      expect(jsonData).to.have.property("user_id");
+      expect(jsonData).to.have.property("username");
+  });
+
+  // Validate that the email matches the expected value (optional, specific to certain test scenarios)
+  test("Email matches expected value", function () {
+      const jsonData = res.getBody();
+      expect(jsonData.email).to.eql("pm@aws-educate.tw");
+  });
+
+  // Validate that the username matches the expected value (optional, specific to certain test scenarios)
+  test("Username matches expected value", function () {
+      const jsonData = res.getBody();
+      expect(jsonData.username).to.eql("pm");
+  });
+
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}
