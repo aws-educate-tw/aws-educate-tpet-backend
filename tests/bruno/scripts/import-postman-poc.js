@@ -138,6 +138,19 @@ function updateAuthJsonAssertion(collection) {
     'pm.response.to.be.json;',
     "expect(res.getHeader('content-type')).to.include('application/json');"
   );
+
+  // @usebruno/converters currently rewrites the literal `postman` to `pm`
+  // while translating this Postman script. Restore the source collection's
+  // expected service-account identity so the Bruno and Newman assertions match.
+  request.request.script.res = request.request.script.res
+    .replace(
+      'expect(jsonData.email).to.eql("pm@aws-educate.tw");',
+      'expect(jsonData.email).to.eql("postman@aws-educate.tw");'
+    )
+    .replace(
+      'expect(jsonData.username).to.eql("pm");',
+      'expect(jsonData.username).to.eql("postman");'
+    );
 }
 
 function updateEmailScripts(collection) {

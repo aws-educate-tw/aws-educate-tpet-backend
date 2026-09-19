@@ -36,13 +36,13 @@ script:post-response {
   // Validate that the email matches the expected value (optional, specific to certain test scenarios)
   test("Email matches expected value", function () {
       const jsonData = res.getBody();
-      expect(jsonData.email).to.eql("pm@aws-educate.tw");
+      expect(jsonData.email).to.eql("postman@aws-educate.tw");
   });
 
   // Validate that the username matches the expected value (optional, specific to certain test scenarios)
   test("Username matches expected value", function () {
       const jsonData = res.getBody();
-      expect(jsonData.username).to.eql("pm");
+      expect(jsonData.username).to.eql("postman");
   });
 
 }
