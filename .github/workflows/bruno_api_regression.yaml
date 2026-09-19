@@ -84,6 +84,14 @@ jobs:
           path: ${{ env.REPORT_DIR }}/auth-service/
           if-no-files-found: error
 
+      - name: Write Auth Service test summary
+        if: always()
+        run: >-
+          node "$BRUNO_DIR/scripts/write-github-summary.js"
+          --service auth
+          --json "$REPORT_DIR/auth-service/report.json"
+          --junit "$REPORT_DIR/auth-service/report.junit.xml"
+
   email:
     if: inputs.service == 'email' || inputs.service == 'all'
     name: Bruno API Regression - Email Service
@@ -141,3 +149,11 @@ jobs:
           name: bruno-api-regression-email-service-${{ github.run_id }}
           path: ${{ env.REPORT_DIR }}/email-service/
           if-no-files-found: error
+
+      - name: Write Email Service test summary
+        if: always()
+        run: >-
+          node "$BRUNO_DIR/scripts/write-github-summary.js"
+          --service email
+          --json "$REPORT_DIR/email-service/report.json"
+          --junit "$REPORT_DIR/email-service/report.junit.xml"

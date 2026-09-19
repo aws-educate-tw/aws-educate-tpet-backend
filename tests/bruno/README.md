@@ -69,6 +69,8 @@ cd tests/bruno/collections/email-service
 
 The CLI process exits non-zero when a request, test or assertion fails. Reports
 must always use `--reporter-skip-headers Authorization --reporter-skip-body`.
+The GitHub Actions job summary uses the sanitized JSON and JUnit reports to show
+request and test totals directly on the run page.
 
 ## CI runtime secrets
 
