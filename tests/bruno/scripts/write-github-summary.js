@@ -76,5 +76,5 @@ const summaryFile = process.env.GITHUB_STEP_SUMMARY;
 if (summaryFile) {
   fs.appendFileSync(summaryFile, `${markdown}\n`);
 } else {
-  console.log(markdown);
+  process.stdout.write(`${markdown}\n`);
 }
