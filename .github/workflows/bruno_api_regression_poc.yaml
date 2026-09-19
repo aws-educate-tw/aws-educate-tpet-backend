@@ -117,24 +117,15 @@ jobs:
             --secret-id 'aws-educate-tpet/preview/service-accounts/postman/access-token' \
             --query 'SecretString' \
             --output text)
-          recipient_secret_response=$(aws secretsmanager get-secret-value \
-            --secret-id 'aws-educate-tpet/preview/api-regression/test-recipient-email' \
-            --query 'SecretString' \
-            --output text)
           access_token=$(jq -r '.access_token' <<< "$access_secret_response")
-          test_recipient_email=$(jq -r '.email' <<< "$recipient_secret_response")
           echo "::add-mask::$access_secret_response"
-          echo "::add-mask::$recipient_secret_response"
           echo "::add-mask::$access_token"
-          echo "::add-mask::$test_recipient_email"
           test -n "$access_token" && test "$access_token" != 'null'
-          test -n "$test_recipient_email" && test "$test_recipient_email" != 'null'
 
           mkdir -p "$REPORT_PATH"
           cd "$COLLECTION_DIR"
           ../../node_modules/.bin/bru run . -r --env preview \
             --env-var "access_token=$access_token" \
-            --env-var "test_recipient_email=$test_recipient_email" \
             --env-var "pull_request_number=${{ github.run_id }}" \
             --env-var "commit_sha=${{ github.sha }}" \
             --reporter-json "$REPORT_PATH/report.json" \

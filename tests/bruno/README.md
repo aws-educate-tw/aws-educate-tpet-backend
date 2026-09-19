@@ -33,14 +33,15 @@ migration changes. It performs the following transformations:
 - rewrites the unsupported `pm.response.to.be.json` assertion;
 - rewrites `pm.sendRequest` callback flows using awaited `bru.sendRequest`;
 - replaces the ineffective List Emails timeout with `await bru.sleep(3000)`;
-- removes saved examples and personal recipient data;
-- makes `access_token` and `test_recipient_email` Bruno secret variables.
+- removes saved examples and replaces the historical personal recipient data
+  with the approved shared regression-test mailbox;
+- makes `access_token` a Bruno secret variable.
 
 ## Local execution
 
 The Auth collection requires only a valid preview access token. The Email
-collection also sends email and therefore requires an approved non-personal
-test recipient address.
+collection sends to the shared regression-test mailbox configured in its
+request bodies.
 
 ```bash
 cd tests/bruno/collections/auth-service
@@ -58,7 +59,6 @@ cd tests/bruno/collections/email-service
 ../../node_modules/.bin/bru run . -r \
   --env preview \
   --env-var access_token="$ACCESS_TOKEN" \
-  --env-var test_recipient_email="$TEST_RECIPIENT_EMAIL" \
   --env-var pull_request_number=local \
   --env-var commit_sha=local \
   --reporter-html /tmp/email-report.html \
@@ -78,10 +78,6 @@ runtime:
 
 - `aws-educate-tpet/preview/service-accounts/postman/access-token` provides the
   API access token.
-- `aws-educate-tpet/preview/api-regression/test-recipient-email` must be
-  provisioned before the Email Service job can run. Its JSON value must contain
-  an `email` field and should point to a dedicated test mailbox or distribution
-  list, never an individual address.
 
 The workflow is manual-only because the Email collection has external side
 effects. It uploads JSON, JUnit and HTML reports as artifacts and excludes

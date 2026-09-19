@@ -2,7 +2,7 @@
  * Generates the Bruno POC collections from the Postman v2.1 source files.
  *
  * The script is intentionally scoped to Auth and Email Service. It removes
- * saved examples and replaces personal recipient data before writing files.
+ * saved examples and uses the approved shared test recipient before writing files.
  */
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -16,6 +16,7 @@ const {
 const projectRoot = path.resolve(__dirname, '..', '..', '..');
 const brunoRoot = path.resolve(__dirname, '..');
 const collectionRoot = path.join(brunoRoot, 'collections');
+const emailTestRecipient = 'awseducate.cloudambassador@gmail.com';
 
 const services = [
   {
@@ -120,7 +121,7 @@ function sanitiseEmailRequest(item) {
   const body = JSON.parse(item.request.body.json);
   body.recipients = [
     {
-      email: '{{test_recipient_email}}',
+      email: emailTestRecipient,
       template_variables: {
         Name: 'API Regression User',
         'Certificate Text': 'TPET API regression test certificate.'
@@ -207,18 +208,6 @@ function createEnvironment(convertedEnvironment, service) {
       secret: true
     }
   );
-
-  if (service.sourceName === 'email_service') {
-    variables.push(
-      {
-        name: 'test_recipient_email',
-        value: '',
-        enabled: true,
-        type: 'text',
-        secret: true
-      }
-    );
-  }
 
   return {
     name: 'preview',
