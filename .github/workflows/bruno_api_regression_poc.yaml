@@ -1,6 +1,12 @@
 name: Bruno API Regression POC
 
 on:
+  push:
+    branches:
+      - SCRUM-692-Phase-1-Bruno-Proof-of-Concept
+    paths:
+      - .github/workflows/bruno_api_regression_poc.yaml
+      - tests/bruno/**
   workflow_dispatch:
     inputs:
       service:
@@ -23,7 +29,7 @@ env:
 
 jobs:
   auth:
-    if: inputs.service == 'auth' || inputs.service == 'all'
+    if: github.event_name == 'push' || inputs.service == 'auth' || inputs.service == 'all'
     name: Bruno POC - Auth Service
     runs-on: ubuntu-latest
     steps:
