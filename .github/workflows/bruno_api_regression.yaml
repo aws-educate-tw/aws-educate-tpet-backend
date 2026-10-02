@@ -17,6 +17,9 @@ on:
         options:
           - auth
           - email
+          - file
+          - rsvp
+          - webhook
           - all
 
 permissions:
@@ -157,3 +160,88 @@ jobs:
           --service email
           --json "$REPORT_DIR/email-service/report.json"
           --junit "$REPORT_DIR/email-service/report.junit.xml"
+
+  additional-services:
+    if: inputs.service == 'all' || contains(fromJSON('["file","rsvp","webhook"]'), inputs.service)
+    name: Bruno API Regression - ${{ matrix.service }} Service
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ inputs.service == 'all' && fromJSON('["file","rsvp","webhook"]') || fromJSON(format('["{0}"]', inputs.service)) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/bruno/package-lock.json
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Bruno CLI
+        run: npm ci
+        working-directory: ${{ env.BRUNO_DIR }}
+
+      - name: Run ${{ matrix.service }} Service collection
+        env:
+          SERVICE: ${{ matrix.service }}
+          COLLECTION_DIR: ${{ github.workspace }}/tests/bruno/collections/${{ matrix.service }}-service
+          REPORT_PATH: ${{ github.workspace }}/bruno-reports/${{ matrix.service }}-service
+        run: |
+          set +x
+          access_secret_response=$(aws secretsmanager get-secret-value \
+            --secret-id 'aws-educate-tpet/preview/service-accounts/postman/access-token' \
+            --query 'SecretString' \
+            --output text)
+          access_token=$(jq -r '.access_token' <<< "$access_secret_response")
+          echo "::add-mask::$access_secret_response"
+          echo "::add-mask::$access_token"
+          test -n "$access_token" && test "$access_token" != 'null'
+
+          extra_env_vars=()
+          if [[ "$SERVICE" == 'rsvp' ]]; then
+            RSVP_SIGNING_SECRET=$(aws secretsmanager get-secret-value \
+              --secret-id 'aws-educate-tpet/preview/jwt-hs256-secret' \
+              --query 'SecretString' \
+              --output text)
+            echo "::add-mask::$RSVP_SIGNING_SECRET"
+            export RSVP_SIGNING_SECRET
+            rsvp_token=$(node "$GITHUB_WORKSPACE/tests/bruno/scripts/create-rsvp-token.js")
+            echo "::add-mask::$rsvp_token"
+            extra_env_vars+=(--env-var "token=$rsvp_token")
+          fi
+
+          mkdir -p "$REPORT_PATH"
+          cd "$COLLECTION_DIR"
+          ../../node_modules/.bin/bru run . -r --env preview \
+            --env-var "access_token=$access_token" \
+            --env-var "pull_request_number=${{ github.run_id }}" \
+            --env-var "commit_sha=${{ github.sha }}" \
+            "${extra_env_vars[@]}" \
+            --reporter-json "$REPORT_PATH/report.json" \
+            --reporter-junit "$REPORT_PATH/report.junit.xml" \
+            --reporter-html "$REPORT_PATH/report.html" \
+            --reporter-skip-headers Authorization \
+            --reporter-skip-body
+
+      - name: Upload ${{ matrix.service }} Service reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bruno-api-regression-${{ matrix.service }}-service-${{ github.run_id }}
+          path: ${{ env.REPORT_DIR }}/${{ matrix.service }}-service/
+          if-no-files-found: error
+
+      - name: Write ${{ matrix.service }} Service test summary
+        if: always()
+        run: >-
+          node "$BRUNO_DIR/scripts/write-github-summary.js"
+          --service ${{ matrix.service }}
+          --json "$REPORT_DIR/${{ matrix.service }}-service/report.json"
+          --junit "$REPORT_DIR/${{ matrix.service }}-service/report.junit.xml"

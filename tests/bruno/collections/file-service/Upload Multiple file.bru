@@ -1,0 +1,62 @@
+meta {
+  name: Upload Multiple file
+  type: http
+  seq: 1
+}
+
+post {
+  url: https://{{environment}}-file-service-internal-api-tpet.aws-educate.tw/{{environment}}/upload-multiple-file
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:multipart-form {
+  file: @file(../../../file_service/api_regression/test_template_file.html)
+}
+
+script:post-response {
+  // Verify that the status code is 200
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  // Verify that the response contains a 'files' array
+  test("Response contains 'files' array", function () {
+      const jsonData = res.getBody();
+      expect(jsonData).to.have.property("files").that.is.an("array");
+      expect(jsonData.files.length).to.be.greaterThan(0);
+  });
+
+  // Verify that each file object contains required fields
+  test("Each file has required fields", function () {
+      const jsonData = res.getBody();
+      jsonData.files.forEach(file => {
+          expect(file).to.have.property("file_id");
+          expect(file).to.have.property("s3_object_key");
+          expect(file).to.have.property("created_at");
+          expect(file).to.have.property("file_url");
+          expect(file).to.have.property("file_name");
+          expect(file).to.have.property("file_extension");
+          expect(file).to.have.property("file_size");
+          expect(file).to.have.property("uploader_id");
+      });
+  });
+
+
+  // Verify that the file URL is reachable (HEAD request)
+  test("File URL is reachable", async function () {
+        const firstFile = res.getBody().files[0];
+        const headResponse = await bru.sendRequest({ url: firstFile.file_url, method: 'HEAD' });
+        expect(headResponse.status).to.equal(200);
+    });
+
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}

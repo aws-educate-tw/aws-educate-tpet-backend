@@ -1,7 +1,7 @@
 # TPET Bruno API Regression
 
-This directory contains the Phase 1 Bruno migration for the Auth Service and
-Email Service API regression collections. The collections are generated from
+This directory contains the Bruno migration for all five version-controlled
+TPET API regression collections. The collections are generated from
 the existing Postman v2.1 JSON files, then adjusted only where Bruno requires a
 different scripting API.
 
@@ -10,6 +10,10 @@ different scripting API.
 - Auth Service: bearer authentication, preview environment and response tests.
 - Email Service: request chaining, environment mutation, dynamic variables and
   collection sequencing.
+- File Service: multipart HTML upload and a HEAD request for the uploaded file.
+- RSVP Service: nine requests, response-dependent assertions, and Preview
+  participant fixtures.
+- Webhook Service: webhook creation and response checks.
 - Bruno CLI: JSON, JUnit and HTML reports; non-zero exit status on test failure.
 
 The generated collections exclude saved Postman response examples. They are not
@@ -29,19 +33,25 @@ migration changes. It performs the following transformations:
 
 - converts Postman v2.1 collections and preview environments with the official
   `@usebruno/converters` package;
-- retains the six Auth and Email requests and their test scripts;
+- retains all 17 requests and their test scripts;
 - rewrites the unsupported `pm.response.to.be.json` assertion;
 - rewrites `pm.sendRequest` callback flows using awaited `bru.sendRequest`;
 - replaces the ineffective List Emails timeout with `await bru.sleep(3000)`;
 - removes saved examples and replaces the historical personal recipient data
   with the approved shared regression-test mailbox;
 - makes `access_token` a Bruno secret variable.
+- repairs the File Service multipart fixture path and rewrites its asynchronous
+  `pm.sendRequest` assertion;
+- repairs RSVP request-body access, JSON-content checks, commented JSON bodies,
+  and collection variables; replaces the example participant with a test identity;
+- leaves the RSVP participant token blank in the Bruno environment.
 
 ## Local execution
 
-The Auth collection requires only a valid preview access token. The Email
-collection sends to the shared regression-test mailbox configured in its
-request bodies.
+Auth, Email, File, and Webhook use a valid Preview access token. Email sends to
+the shared regression-test mailbox configured in its request bodies. RSVP's
+first two requests also need a participant JWT signed for the Preview fixture;
+pass it as `--env-var token="$RSVP_TOKEN"` for a local run.
 
 ```bash
 cd tests/bruno/collections/auth-service
@@ -81,14 +91,20 @@ runtime:
 - `aws-educate-tpet/preview/service-accounts/postman/access-token` provides the
   API access token.
 
-The workflow offers a manual service selector and a branch-scoped Auth trigger.
-The Email collection is not run automatically because it has external side
-effects. The workflow uploads JSON, JUnit and HTML reports as artifacts and
-excludes request/response bodies and the Authorization header from those reports.
+The workflow offers a manual selector for `auth`, `email`, `file`, `rsvp`,
+`webhook`, or `all`, plus a branch-scoped Auth trigger. The other collections
+are manual because they change Preview data. The RSVP job retrieves
+`aws-educate-tpet/preview/jwt-hs256-secret` and signs a one-hour participant
+JWT for the existing Preview run and participant fixture. The workflow uploads
+JSON, JUnit, and HTML reports as artifacts and excludes request/response bodies
+and the Authorization header from those reports.
 
-## Known Phase 1 boundary
+## Validation boundary
 
-The selected collections contain no multipart upload request. The existing File
-Service collection is the multipart case, so end-to-end multipart validation is
-not satisfied by the current Auth/Email scope. It should be added as a focused
-follow-up migration before declaring the full Phase 1 acceptance criteria complete.
+All five collections parse and their scripts pass JavaScript syntax checks.
+The original Newman service workflows still run independently. The new File,
+RSVP, and Webhook collections require a manual Preview CI run to establish live
+request and assertion parity. RSVP has response-dependent test branches, so its
+78 declared assertions are not a fixed per-run pass count. Its Preview fixture
+must still exist and the CI AWS identity must be able to read the JWT signing
+secret.

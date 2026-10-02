@@ -1,7 +1,7 @@
 /*
  * Generates the Bruno API regression collections from the Postman v2.1 source files.
  *
- * The script is intentionally scoped to Auth and Email Service. It removes
+ * The script covers the version-controlled TPET regression collections. It removes
  * saved examples and uses the approved shared test recipient before writing files.
  */
 const fs = require('node:fs/promises');
@@ -34,6 +34,23 @@ const services = [
       'pull_request_number',
       'commit_sha'
     ]
+  },
+  {
+    sourceName: 'file_service',
+    targetName: 'file-service',
+    environmentVariables: ['environment']
+  },
+  {
+    sourceName: 'rsvp_service',
+    targetName: 'rsvp-service',
+    environmentVariables: [
+      'environment', 'campaign_id', 'run_id', 'run_id_participant_id'
+    ]
+  },
+  {
+    sourceName: 'webhook_service',
+    targetName: 'webhook-service',
+    environmentVariables: ['environment', 'pull_request_number', 'commit_sha']
   }
 ];
 
@@ -185,6 +202,50 @@ function updateEmailScripts(collection) {
   );
 }
 
+function updateFileScripts(collection) {
+  const request = findRequest(collection.items, 'Upload Multiple file');
+  const file = request.request.body.multipartForm.find((part) => part.name === 'file');
+  file.value = ['../../../file_service/api_regression/test_template_file.html'];
+
+  request.request.script.res = request.request.script.res.replace(
+    /test\("File URL is reachable", function \(done\) \{[\s\S]*?\n\}\);/,
+    `test("File URL is reachable", async function () {
+      const firstFile = res.getBody().files[0];
+      const headResponse = await bru.sendRequest({ url: firstFile.file_url, method: 'HEAD' });
+      expect(headResponse.status).to.equal(200);
+  });`
+  );
+}
+
+function updateRsvpScripts(collection) {
+  for (const item of collection.items) {
+    if (item.type !== 'http-request') continue;
+    item.request.script.res = item.request.script.res
+      .replaceAll('pm.response.to.be.json;', "expect(res.getHeader('content-type')).to.include('application/json');")
+      .replaceAll('JSON.parse(req.getBody().raw.replace(/\\/\\/.*$/gm, ""))', 'req.getBody()')
+      .replaceAll('JSON.parse(req.getBody().raw)', 'req.getBody()')
+      .replace('const requestedId = req.getUrl().path.slice(-2)[0];', 'const requestedId = bru.getEnvVar("campaign_id");');
+  }
+
+  const updateRsvp = findRequest(collection.items, 'Update rsvp');
+  updateRsvp.request.body.json = JSON.stringify({
+    action: 'ATTEND',
+    clientTimestamp: 1705821234567
+  }, null, 2);
+
+  const updateCampaign = findRequest(collection.items, 'Update campaign');
+  updateCampaign.request.body.json = updateCampaign.request.body.json
+    .replace('false // 或 true', 'false')
+    .replaceAll('\t', '  ');
+
+  const importParticipant = findRequest(collection.items, 'Import participant');
+  importParticipant.request.body.json = JSON.stringify({
+    email: 'api-regression+{{run_id}}@example.com',
+    campaign_id: '{{campaign_id}}',
+    name: 'API Regression User'
+  }, null, 2);
+}
+
 function normaliseBru(content) {
   return content.replace(/[ \t]+$/gm, '');
 }
@@ -208,6 +269,10 @@ function createEnvironment(convertedEnvironment, service) {
       secret: true
     }
   );
+
+  if (service.sourceName === 'rsvp_service') {
+    variables.push({ name: 'token', value: '', enabled: true, type: 'text', secret: true });
+  }
 
   return {
     name: 'preview',
@@ -256,6 +321,8 @@ async function migrateService(service) {
 
   if (service.sourceName === 'auth_service') updateAuthJsonAssertion(converted.collection);
   if (service.sourceName === 'email_service') updateEmailScripts(converted.collection);
+  if (service.sourceName === 'file_service') updateFileScripts(converted.collection);
+  if (service.sourceName === 'rsvp_service') updateRsvpScripts(converted.collection);
 
   const destination = path.join(collectionRoot, service.targetName);
   await fs.rm(destination, { recursive: true, force: true });
