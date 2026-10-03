@@ -216,6 +216,9 @@ venv.bak/
 !.vscode/extensions.json
 .history
 
+### Node ###
+node_modules/
+
 ### Windows ###
 # Windows thumbnail cache files
 Thumbs.db

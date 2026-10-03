@@ -1,0 +1,175 @@
+meta {
+  name: Get rsvp status
+  type: http
+  seq: 2
+}
+
+get {
+  url: https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/rsvp/{{run_id_participant_id}}/status
+  body: json
+  auth: bearer
+}
+
+headers {
+  :
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  // ============================================================
+  // Post-response Script: GET /rsvp-service/rsvp/{run_id_participant_id}/status
+  // Covers all 5 response scenarios defined in the API spec
+  // ============================================================
+
+  const statusCode = res.getStatus();
+
+  // --- Performance baseline ---
+  test("Response time is within 3000ms", () => {
+      expect(res.getResponseTime()).to.be.below(3000);
+  });
+
+  // ============================================================
+  // Scenario 1 & 5: Success (HTTP 200)
+  // ============================================================
+  if (statusCode === 200) {
+
+      test("[200] Content-Type is application/json", () => {
+          expect(res.getHeader("Content-Type")).to.include("application/json");
+      });
+
+      const json = res.getBody();
+
+      test("[200] Top-level status field equals 'SUCCESS'", () => {
+          expect(json).to.have.property("status", "SUCCESS");
+      });
+
+      // --- rsvp_status ---
+      test("[200] rsvp_status is a valid enum value", () => {
+          expect(["PENDING", "ATTEND", "NOT_ATTEND"]).to.include(json.rsvp_status);
+      });
+
+      // --- participant_name ---
+      test("[200] participant_name is a non-empty string", () => {
+          expect(json.participant_name).to.be.a("string").and.not.empty;
+      });
+
+      // --- campaign fields (from campaigns table) ---
+      test("[200] campaign_name is a non-empty string", () => {
+          expect(json.campaign_name).to.be.a("string").and.not.empty;
+      });
+
+      const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+
+      test("[200] campaign_start_time is valid ISO 8601", () => {
+          expect(json.campaign_start_time).to.match(iso8601Regex);
+      });
+
+      test("[200] campaign_location is a non-empty string", () => {
+          expect(json.campaign_location).to.be.a("string").and.not.empty;
+      });
+
+      // --- campaign_run fields (from campaign_run table) ---
+      test("[200] registration_deadline is valid ISO 8601", () => {
+          expect(json.registration_deadline).to.match(iso8601Regex);
+      });
+
+      test("[200] is_registration_closed is a boolean", () => {
+          expect(json.is_registration_closed).to.be.a("boolean");
+      });
+
+      // --- Scenario 5: expired event (is_registration_closed=true) ---
+      // An expired event still returns 200; frontend should show "expired" message
+      if (json.is_registration_closed === true) {
+          const deadline = new Date(json.registration_deadline);
+          const now = new Date();
+
+          test("[Scenario 5] registration_deadline is in the past when closed", () => {
+              expect(deadline.getTime()).to.be.below(now.getTime());
+          });
+
+          console.log("[Scenario 5] Registration is closed — frontend should display expired activity message.");
+      }
+
+      // --- Save values for downstream requests ---
+      bru.setCollectionVar("rsvp_status", json.rsvp_status);
+      bru.setCollectionVar("is_registration_closed", json.is_registration_closed);
+      console.log(`[200] rsvp_status=${json.rsvp_status} | is_registration_closed=${json.is_registration_closed}`);
+  }
+
+  // ============================================================
+  // Scenario 2: Invalid Token (HTTP 401)
+  // ============================================================
+  else if (statusCode === 401) {
+
+      test("[Scenario 2] Status is 401 Unauthorized", () => {
+          expect(res.getStatus()).to.equal(401);
+      });
+
+      test("[Scenario 2] Response body is valid JSON", () => {
+          expect(res.getHeader('content-type')).to.include('application/json');
+      });
+
+      test("[Scenario 2] Error field exists in response", () => {
+          const json = res.getBody();
+          expect(json.message || json.error || json.detail).to.exist;
+      });
+
+      console.warn("[Scenario 2] Invalid token — frontend must block page entry with full-page error.");
+  }
+
+  // ============================================================
+  // Scenario 3: Event Not Found (HTTP 404)
+  // ============================================================
+  else if (statusCode === 404) {
+
+      test("[Scenario 3] Status is 404 Not Found", () => {
+          expect(res.getStatus()).to.equal(404);
+      });
+
+      test("[Scenario 3] Response body is valid JSON", () => {
+          expect(res.getHeader('content-type')).to.include('application/json');
+      });
+
+      test("[Scenario 3] Error field exists in response", () => {
+          const json = res.getBody();
+          expect(json.message || json.error || json.detail).to.exist;
+      });
+
+      console.warn("[Scenario 3] Event not found — frontend should render 'Event does not exist' error page.");
+  }
+
+  // ============================================================
+  // Scenario 4: Internal Server Error (HTTP 500)
+  // ============================================================
+  else if (statusCode === 500) {
+
+      test("[Scenario 4] Status is 500 Internal Server Error", () => {
+          expect(res.getStatus()).to.equal(500);
+      });
+
+      test("[Scenario 4] Response body is valid JSON", () => {
+          expect(res.getHeader('content-type')).to.include('application/json');
+      });
+
+      console.error("[Scenario 4] Server error — frontend should display 'System busy' message.");
+  }
+
+  // ============================================================
+  // Catch-all: Unexpected status code
+  // ============================================================
+  else {
+      test(`Unexpected status code received: ${statusCode}`, () => {
+          expect([200, 401, 404, 500]).to.include(statusCode);
+      });
+
+      console.error(`[Unexpected] Undocumented status code: ${statusCode}`);
+  }
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}

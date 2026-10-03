@@ -1,0 +1,79 @@
+meta {
+  name: Get campaign
+  type: http
+  seq: 7
+}
+
+get {
+  url: https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns/{{campaign_id}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+script:post-response {
+  // Verify that the status code is 200
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  // Verify that the response is in JSON format
+  test("Response is JSON", function () {
+      expect(res.getHeader('content-type')).to.include('application/json');
+  });
+
+  // Parse the JSON response body
+  const responseData = res.getBody();
+
+  // Verify campaign basic fields and data types
+  test("Campaign object has required fields with correct types", function () {
+      expect(responseData).to.be.an("object");
+
+      // Campaign level validation
+      expect(responseData).to.have.property("campaign_id").that.is.a("string").and.to.not.be.empty;
+      expect(responseData).to.have.property("campaign_name").that.is.a("string");
+      expect(responseData).to.have.property("campaign_start_time").that.is.a("string");
+      expect(responseData).to.have.property("campaign_end_time").that.is.a("string");
+      expect(responseData).to.have.property("campaign_location").that.is.a("string");
+      expect(responseData).to.have.property("campaign_created_at").that.is.a("string");
+      expect(responseData).to.have.property("is_active").that.is.a("boolean");
+  });
+
+  // Verify 'runs' array and its nested 'participants' structure
+  test("Runs array and nested participants have correct schema", function () {
+      // Check if runs array exists
+      expect(responseData).to.have.property("runs").that.is.an("array");
+
+      // Iterate through each run object
+      responseData.runs.forEach((run, runIndex) => {
+          // Run level validation
+          expect(run, `Run at index ${runIndex}`).to.have.property("run_id").that.is.a("string").and.to.not.be.empty;
+          expect(run, `Run at index ${runIndex}`).to.have.property("subject").that.is.a("string");
+          expect(run, `Run at index ${runIndex}`).to.have.property("registration_deadline").that.is.a("string");
+          expect(run, `Run at index ${runIndex}`).to.have.property("max_participants").that.is.a("number");
+          expect(run, `Run at index ${runIndex}`).to.have.property("is_active").that.is.a("boolean");
+
+          // Check if participants array exists inside the run
+          expect(run).to.have.property("participants").that.is.an("array");
+
+          // Iterate through each participant object
+          run.participants.forEach((participant, pIndex) => {
+              // Participant level validation
+              expect(participant, `Participant at run ${runIndex}, index ${pIndex}`).to.have.property("participant_id").that.is.a("string");
+              expect(participant, `Participant at run ${runIndex}, index ${pIndex}`).to.have.property("email_id").that.is.a("string");
+              expect(participant, `Participant at run ${runIndex}, index ${pIndex}`).to.have.property("rsvp_status").that.is.a("string");
+              expect(participant, `Participant at run ${runIndex}, index ${pIndex}`).to.have.property("name").that.is.a("string");
+              expect(participant, `Participant at run ${runIndex}, index ${pIndex}`).to.have.property("created_at").that.is.a("string");
+              expect(participant, `Participant at run ${runIndex}, index ${pIndex}`).to.have.property("updated_at").that.is.a("string");
+          });
+      });
+  });
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}

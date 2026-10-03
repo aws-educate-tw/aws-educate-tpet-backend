@@ -1,0 +1,66 @@
+meta {
+  name: Create run
+  type: http
+  seq: 3
+}
+
+post {
+  url: https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+      "run_type": "WEBHOOK",
+      "recipient_source": "DIRECT"
+  }
+}
+
+script:post-response {
+  const createRunResponse = res.getBody();
+
+  test("Status code is 201 Created", function () {
+      expect(res.getStatus()).to.equal(201);
+  });
+
+  test("Response body values are correct", function () {
+      expect(createRunResponse.run_type).to.eql("WEBHOOK");
+      expect(createRunResponse.recipient_source).to.eql("DIRECT");
+  });
+
+  test("Key properties exist and have correct format", function () {
+      expect(createRunResponse).to.have.property("run_id");
+      expect(createRunResponse.run_id).to.be.a('string').and.to.not.be.empty;
+
+      expect(createRunResponse).to.have.property("created_at");
+      expect(createRunResponse.created_at).to.be.a('string');
+  });
+
+  test("Initial counts are zero", function () {
+      expect(createRunResponse.expected_email_send_count).to.eql(0);
+      expect(createRunResponse.success_email_count).to.eql(0);
+      expect(createRunResponse.failed_email_count).to.eql(0);
+  });
+
+  test("Data types for array fields are correct", function () {
+      expect(createRunResponse.recipients).to.be.an('array');
+      expect(createRunResponse.cc).to.be.an('array');
+      expect(createRunResponse.bcc).to.be.an('array');
+  });
+
+  if (createRunResponse.run_id) {
+      bru.setEnvVar("runId", createRunResponse.run_id);
+      console.log("Saved runId to environment: " + createRunResponse.run_id);
+  }
+
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}
