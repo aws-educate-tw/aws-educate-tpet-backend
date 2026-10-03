@@ -11,17 +11,18 @@ resource "random_string" "this" {
 }
 
 locals {
-  source_path                                        = "${path.module}/.."
-  health_check_function_name_and_ecr_repo_name       = "${var.environment}-${var.service_underscore}-health_check-${random_string.this.result}"
-  validate_input_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-validate_input-${random_string.this.result}"
-  auto_resume_aurora_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-auto_resume_aurora-${random_string.this.result}"
-  upsert_run_function_name_and_ecr_repo_name         = "${var.environment}-${var.service_underscore}-upsert_run-${random_string.this.result}"
-  create_run_function_name_and_ecr_repo_name         = "${var.environment}-${var.service_underscore}-create_run-${random_string.this.result}"
-  create_email_function_name_and_ecr_repo_name       = "${var.environment}-${var.service_underscore}-create_email-${random_string.this.result}"
-  send_email_function_name_and_ecr_repo_name         = "${var.environment}-${var.service_underscore}-send_email-${random_string.this.result}"
-  list_runs_function_name_and_ecr_repo_name          = "${var.environment}-${var.service_underscore}-list_runs-${random_string.this.result}"
-  get_run_function_name_and_ecr_repo_name            = "${var.environment}-${var.service_underscore}-get_run-${random_string.this.result}"
-  list_emails_function_name_and_ecr_repo_name        = "${var.environment}-${var.service_underscore}-list_emails-${random_string.this.result}"
+  source_path                                            = "${path.module}/.."
+  health_check_function_name_and_ecr_repo_name           = "${var.environment}-${var.service_underscore}-health_check-${random_string.this.result}"
+  validate_input_function_name_and_ecr_repo_name         = "${var.environment}-${var.service_underscore}-validate_input-${random_string.this.result}"
+  auto_resume_aurora_function_name_and_ecr_repo_name     = "${var.environment}-${var.service_underscore}-auto_resume_aurora-${random_string.this.result}"
+  upsert_run_function_name_and_ecr_repo_name             = "${var.environment}-${var.service_underscore}-upsert_run-${random_string.this.result}"
+  create_run_function_name_and_ecr_repo_name             = "${var.environment}-${var.service_underscore}-create_run-${random_string.this.result}"
+  create_email_function_name_and_ecr_repo_name           = "${var.environment}-${var.service_underscore}-create_email-${random_string.this.result}"
+  send_email_function_name_and_ecr_repo_name             = "${var.environment}-${var.service_underscore}-send_email-${random_string.this.result}"
+  list_runs_function_name_and_ecr_repo_name              = "${var.environment}-${var.service_underscore}-list_runs-${random_string.this.result}"
+  get_run_function_name_and_ecr_repo_name                = "${var.environment}-${var.service_underscore}-get_run-${random_string.this.result}"
+  list_emails_function_name_and_ecr_repo_name            = "${var.environment}-${var.service_underscore}-list_emails-${random_string.this.result}"
+  dispatch_scheduled_run_function_name_and_ecr_repo_name = "${var.environment}-${var.service_underscore}-dispatch_scheduled_run-${random_string.this.result}"
 
   bucket_name                                        = "${var.environment}-${var.bucket_name}"
   private_bucket_name                                = "${var.environment}-${var.private_bucket_name}"
@@ -1504,6 +1505,137 @@ module "list_emails_docker_image" {
 
   # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
   source_path = "${local.source_path}/list_emails/" # Remember to change
+  triggers = {
+    dir_sha = local.dir_sha
+  }
+
+}
+
+#################################################
+#################################################
+#################################################
+# EventBridge Scheduler Invoke scheduled run ####
+#################################################
+#################################################
+#################################################
+
+module "dispatch_scheduled_run_lambda" {
+  source  = "terraform-aws-modules/lambda/aws"
+  version = "7.7.0"
+
+  function_name  = local.dispatch_scheduled_run_function_name_and_ecr_repo_name                                                          # Remember to change
+  description    = "AWS Educate TPET ${var.service_hyphen} in ${var.environment}: EventBridge Scheduler Invoke (dispatch scheduled run)" # Remember to change
+  create_package = false
+  timeout        = 600
+  memory_size    = 1024
+
+  ##################
+  # Container Image
+  ##################
+  package_type  = "Image"
+  architectures = [var.lambda_architecture]
+  image_uri     = module.dispatch_scheduled_run_docker_image.image_uri # Remember to change
+
+  publish = true # Whether to publish creation/change as new Lambda Function Version.
+
+
+  environment_variables = {
+    "ENVIRONMENT"                        = var.environment
+    "SERVICE"                            = var.service_underscore
+    "SEND_EMAIL_SQS_QUEUE_URL"           = module.send_email_sqs.queue_url
+    "DATABASE_NAME"                      = var.database_name
+    "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
+    "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+    "AUTO_RESUME_AURORA_LAMBDA_NAME"     = local.auto_resume_aurora_function_name_and_ecr_repo_name
+  }
+
+  allowed_triggers = {
+    AllowExecutionFromEventBridgeScheduler = {
+      service    = "scheduler"
+      source_arn = "arn:aws:scheduler:${var.aws_region}:${data.aws_caller_identity.this.account_id}:schedule/${aws_scheduler_schedule_group.scheduled_email.name}/*"
+    }
+  }
+
+  tags = {
+    "Prewarm" = "true"
+  }
+  ######################
+  # Additional policies
+  ######################
+
+  attach_policy_statements = true
+  policy_statements = {
+    rds_data_access = {
+      effect = "Allow",
+      actions = [
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement",
+        "rds-data:BeginTransaction",
+        "rds-data:CommitTransaction",
+        "rds-data:RollbackTransaction"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_arn
+      ]
+    },
+    secrets_manager_access = {
+      effect = "Allow",
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ],
+      resources = [
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+      ]
+    },
+    sqs_send_message = {
+      effect = "Allow",
+      actions = [
+        "sqs:SendMessage"
+      ],
+      resources = [
+        "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.send_email_sqs.queue_name}"
+      ]
+    },
+    lambda_invoke = {
+      effect = "Allow",
+      actions = [
+        "lambda:InvokeFunction"
+      ],
+      resources = [
+        "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.this.account_id}:function:${local.auto_resume_aurora_function_name_and_ecr_repo_name}"
+      ]
+    }
+  }
+}
+
+module "dispatch_scheduled_run_docker_image" {
+  source  = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  version = "7.7.0"
+
+  create_ecr_repo      = true
+  keep_remotely        = true
+  use_image_tag        = false
+  image_tag_mutability = "MUTABLE"
+  ecr_repo             = local.dispatch_scheduled_run_function_name_and_ecr_repo_name # Remember to change
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 10 images",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 10
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+
+  # docker_file_path = "${local.source_path}/path/to/Dockerfile" # set `docker_file_path` If your Dockerfile is not in `source_path`
+  source_path = "${local.source_path}/dispatch_scheduled_run/" # Remember to change
   triggers = {
     dir_sha = local.dir_sha
   }
