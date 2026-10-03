@@ -25,6 +25,7 @@ def lambda_handler(event: dict[str, Any], context) -> dict[str, Any]:
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
     # TODO: Wake up Aurora, claim the run and push its SCHEDULED emails to the send_email queue
+    # Raise on failure instead of returning an error response, otherwise Lambda won't retry or send it to the DLQ
     logger.warning(
         "dispatch_scheduled_run is not implemented yet. run_id: %s",
         event.get("run_id"),

@@ -1737,6 +1737,17 @@ module "dispatch_scheduled_run_lambda" {
     }
   }
 
+  ###################
+  # Async invocation
+  ###################
+  # EventBridge Scheduler and update_run_schedule invoke this function asynchronously,
+  # so errors raised by the function are retried by Lambda instead of the schedule's retry policy
+  create_async_event_config    = true
+  maximum_retry_attempts       = 2
+  maximum_event_age_in_seconds = 1800 # Stop retrying after 30 minutes so a scheduled run is never sent too late
+  destination_on_failure       = module.scheduled_email_dlq.queue_arn
+  attach_async_event_policy    = true # Allow the function role to send failed invocation records to the DLQ
+
   tags = {
     "Prewarm" = "true"
   }
