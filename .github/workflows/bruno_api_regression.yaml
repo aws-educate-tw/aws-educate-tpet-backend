@@ -300,7 +300,9 @@ jobs:
           --junit "$REPORT_DIR/rsvp-service/report.junit.xml"
 
   webhook:
-    if: inputs.service == 'webhook' || inputs.service == 'all'
+    # The Webhook API creates an Email run and can time out when both suites run together.
+    needs: email
+    if: ${{ always() && (inputs.service == 'webhook' || (inputs.service == 'all' && needs.email.result == 'success')) }}
     name: Bruno API Regression - Webhook Service
     runs-on: ubuntu-latest
     steps:
