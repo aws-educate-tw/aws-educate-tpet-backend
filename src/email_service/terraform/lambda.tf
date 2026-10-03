@@ -654,6 +654,10 @@ module "create_email_lambda" {
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
     "JWT_SECRET"                         = data.aws_secretsmanager_secret_version.jwt_secret.secret_string
+    "SCHEDULE_GROUP_NAME"                = aws_scheduler_schedule_group.scheduled_email.name
+    "SCHEDULER_ROLE_ARN"                 = aws_iam_role.dispatch_scheduled_run_scheduler_role.arn
+    "SCHEDULER_DLQ_ARN"                  = module.scheduled_email_dlq.queue_arn
+    "DISPATCH_SCHEDULED_RUN_LAMBDA_ARN"  = module.dispatch_scheduled_run_lambda.lambda_function_arn
   }
 
   allowed_triggers = {
@@ -734,6 +738,31 @@ module "create_email_lambda" {
       resources = [
         "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.send_email_sqs.queue_name}"
       ]
+    },
+    scheduler_create_schedule = {
+      effect = "Allow",
+      actions = [
+        "scheduler:CreateSchedule"
+      ],
+      resources = [
+        "arn:aws:scheduler:${var.aws_region}:${data.aws_caller_identity.this.account_id}:schedule/${aws_scheduler_schedule_group.scheduled_email.name}/*"
+      ]
+    },
+    scheduler_pass_role = {
+      effect = "Allow",
+      actions = [
+        "iam:PassRole"
+      ],
+      resources = [
+        aws_iam_role.dispatch_scheduled_run_scheduler_role.arn
+      ],
+      condition = {
+        stringequals_condition = {
+          test     = "StringEquals"
+          variable = "iam:PassedToService"
+          values   = ["scheduler.amazonaws.com"]
+        }
+      }
     }
   }
 }
