@@ -42,3 +42,44 @@ EOT
     Severity    = "P2"
   }
 }
+
+#########################################################
+#########################################################
+#########################################################
+# Scheduled Email DLQ Message Count >= 1 ################
+#########################################################
+#########################################################
+#########################################################
+resource "aws_cloudwatch_metric_alarm" "scheduled_email_dlq_message_count_gte_1" {
+  # Title: [Severity][Service] - {condition}
+  alarm_name = "[P2][Email-Service] - Scheduled Email DLQ Message Count >= 1"
+
+  # Description format: Simplified to single line per field
+  alarm_description = <<EOT
+Level: P2
+Condition: ApproximateNumberOfMessagesVisible >= 1 and over 1 minute
+Runbook: TBD
+Observability Links: Dashboard: https://console.aws.amazon.com/cloudwatch/home?region=${data.aws_region.current.name}#dashboards:name=Email-Service | Logs: https://console.aws.amazon.com/cloudwatch/home?region=${data.aws_region.current.name}#logsV2:log-groups/log-group/${urlencode(module.dispatch_scheduled_run_lambda.lambda_cloudwatch_log_group_name)}
+PIC: TBD
+EOT
+
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "ApproximateNumberOfMessagesVisible"
+  namespace           = "AWS/SQS"
+  period              = 60
+  statistic           = "Maximum"
+  threshold           = 0
+
+  dimensions = {
+    QueueName = module.scheduled_email_dlq.queue_name
+  }
+
+  alarm_actions = [data.aws_sns_topic.alarm_alert.arn]
+  ok_actions    = [data.aws_sns_topic.alarm_alert.arn]
+
+  tags = {
+    Owner    = "TPET"
+    Severity = "P2"
+  }
+}
