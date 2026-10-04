@@ -656,7 +656,6 @@ module "create_email_lambda" {
     "JWT_SECRET"                         = data.aws_secretsmanager_secret_version.jwt_secret.secret_string
     "SCHEDULE_GROUP_NAME"                = aws_scheduler_schedule_group.scheduled_email.name
     "SCHEDULER_ROLE_ARN"                 = aws_iam_role.dispatch_scheduled_run_scheduler_role.arn
-    "SCHEDULER_DLQ_ARN"                  = module.scheduled_email_dlq.queue_arn
     "DISPATCH_SCHEDULED_RUN_LAMBDA_ARN"  = module.dispatch_scheduled_run_lambda.lambda_function_arn
   }
 
@@ -1745,8 +1744,6 @@ module "dispatch_scheduled_run_lambda" {
   create_async_event_config    = true
   maximum_retry_attempts       = 2
   maximum_event_age_in_seconds = 1800 # Stop retrying after 30 minutes so a scheduled run is never sent too late
-  destination_on_failure       = module.scheduled_email_dlq.queue_arn
-  attach_async_event_policy    = true # Allow the function role to send failed invocation records to the DLQ
 
   tags = {
     "Prewarm" = "true"

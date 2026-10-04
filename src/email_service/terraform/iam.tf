@@ -43,24 +43,3 @@ resource "aws_iam_role_policy" "dispatch_scheduled_run_scheduler_policy" {
     ]
   })
 }
-
-# Create specific IAM policy for sending undelivered schedule events to the scheduled email DLQ
-resource "aws_iam_role_policy" "scheduled_email_dlq_scheduler_policy" {
-  name = "${var.environment}-${var.service_underscore}-send_message_to_scheduled_email_dlq-${random_string.this.result}"
-  role = aws_iam_role.dispatch_scheduled_run_scheduler_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "sqs:SendMessage"
-        ]
-        Resource = [
-          module.scheduled_email_dlq.queue_arn
-        ]
-      }
-    ]
-  })
-}

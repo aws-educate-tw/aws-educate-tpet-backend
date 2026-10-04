@@ -60,13 +60,3 @@ module "upsert_run_sqs" {
     maxReceiveCount = 1
   }
 }
-
-
-module "scheduled_email_dlq" {
-  source  = "terraform-aws-modules/sqs/aws"
-  version = "4.2.0"
-
-  # Dead letter queue for scheduled runs that fail to dispatch: events EventBridge Scheduler fails to deliver,
-  # and dispatch_scheduled_run invocations that still fail after Lambda async retries
-  name = "${var.environment}-scheduled-email-dlq"
-}
