@@ -88,10 +88,7 @@ module "lambda_authorizer_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies

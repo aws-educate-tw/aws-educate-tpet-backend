@@ -48,9 +48,4 @@ module "vpc" {
   create_database_subnet_route_table = true
   enable_dns_hostnames               = true
   enable_dns_support                 = true
-
-  tags = {
-    Terraform = "true"
-    Service   = var.service_underscore
-  }
 }

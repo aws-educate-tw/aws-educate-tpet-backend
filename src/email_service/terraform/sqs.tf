@@ -41,7 +41,7 @@ module "auto_resumer_sqs" {
   create_dlq = true
   redrive_policy = {
     # One failure to receive a message would cause the message to move to the DLQ
-    maxReceiveCount = 2
+    maxReceiveCount = 1
   }
 }
 
@@ -57,6 +57,6 @@ module "upsert_run_sqs" {
   create_dlq = true
   redrive_policy = {
     # One failure to receive a message would cause the message to move to the DLQ
-    maxReceiveCount = 2
+    maxReceiveCount = 1
   }
 }

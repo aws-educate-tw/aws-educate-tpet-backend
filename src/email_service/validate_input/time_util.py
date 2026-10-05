@@ -27,14 +27,27 @@ def format_time_to_iso8601(dt: datetime.datetime) -> str:
 
 def parse_iso8601_to_datetime(iso8601_str: str) -> datetime.datetime:
     """
-    Parse an ISO 8601 string to a datetime object.
+    Safely parse an ISO 8601 string into a timezone-aware UTC datetime object.
+
+    Accepts strings ending in "Z", strings with an explicit numeric offset
+    (e.g. "+08:00"), and strings with no offset at all. A string with no
+    offset is assumed to represent UTC (it is NOT interpreted as local time).
 
     :param iso8601_str: ISO 8601 formatted string.
-    :return: Datetime object.
+    :return: Timezone-aware datetime object in UTC.
+    :raises ValueError: If the string is not a valid ISO 8601 datetime.
+    :raises AttributeError: If iso8601_str is not a string (e.g. None).
     """
-    return datetime.datetime.strptime(iso8601_str, TIME_FORMAT).replace(
-        tzinfo=datetime.UTC
-    )
+    dt = datetime.datetime.fromisoformat(iso8601_str.replace("Z", "+00:00"))
+
+    if dt.tzinfo is None:
+        # No offset present in the original string — assume UTC explicitly,
+        # rather than letting astimezone() silently use the server's local tz.
+        dt = dt.replace(tzinfo=datetime.UTC)
+    else:
+        dt = dt.astimezone(datetime.UTC)
+
+    return dt
 
 
 def format_datetime_for_rds(dt: datetime.datetime) -> str:

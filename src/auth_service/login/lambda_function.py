@@ -5,6 +5,8 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 
+from email_service import EmailService
+
 # Initialize logger
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -21,6 +23,8 @@ ALLOWED_ORIGINS = [
     "https://aws-educate.tw",
     "https://vercel.app",
 ]
+
+email_service = EmailService()
 
 
 def lambda_handler(event, context):
@@ -111,6 +115,9 @@ def lambda_handler(event, context):
             f"accessToken={access_token}; Path=/; {secure_attribute}HttpOnly; SameSite=None; Domain={domain}; Max-Age={max_age}"
             for domain in domains
         ]
+
+        # Trigger prewarm for aurora in email_service to reduce cold start latency after login
+        email_service.health_check()
 
         # Return successful response with the access token set in cookies
         return {

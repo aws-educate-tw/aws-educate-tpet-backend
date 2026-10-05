@@ -74,12 +74,6 @@ module "health_check_lambda" {
     }
   }
 
-  tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-  }
-
 }
 
 module "health_check_docker_image" {
@@ -157,10 +151,7 @@ module "get_webhook_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -261,10 +252,7 @@ module "update_webhook_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -365,11 +353,6 @@ module "list_webhooks_lambda" {
     }
   }
 
-  tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-  }
   ######################
   # Additional policies
   ######################
@@ -476,10 +459,7 @@ module "save_webhook_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -582,10 +562,7 @@ module "trigger_webhook_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies

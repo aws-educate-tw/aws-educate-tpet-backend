@@ -1,6 +1,8 @@
 import json
 import logging
+import os
 
+import boto3
 from botocore.exceptions import ClientError
 from run_repository import RunRepository
 
@@ -13,6 +15,23 @@ logger.setLevel(logging.INFO)
 
 # No DecimalEncoder needed as RunRepository's parse_field should handle it.
 # No extract_query_params needed for get_run by ID.
+
+# Initialize auto_resume Lambda client
+lambda_client = boto3.client("lambda")
+AUTO_RESUME_AURORA_LAMBDA_NAME = os.getenv("AUTO_RESUME_AURORA_LAMBDA_NAME")
+
+
+def ensure_db_ready() -> None:
+    """Sync invoke auto_resume Lambda to ensure Aurora is awake before DB access."""
+    logger.info("Start invoke auto_resume Lambda to ensure Aurora is awake.")
+    response = lambda_client.invoke(
+        FunctionName=AUTO_RESUME_AURORA_LAMBDA_NAME,
+        InvocationType="RequestResponse",
+        Payload=b"{}",
+    )
+    if response["StatusCode"] != 200 or "FunctionError" in response:
+        logger.error("auto_resume invocation failed: %s", response)
+        raise RuntimeError("Database wake-up failed")
 
 
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
@@ -27,6 +46,21 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             aws_request_id,
         )
         return {"statusCode": 200, "body": "Successfully warmed up"}
+
+    try:
+        ensure_db_ready()
+    except Exception as e:
+        logger.error(
+            "Error ensuring database is ready: %s. Request ID: %s", e, aws_request_id
+        )
+        return {
+            "statusCode": 500,
+            "body": json.dumps(
+                {
+                    "message": f"Error ensuring database is ready: {e}. Request ID: {aws_request_id}"
+                }
+            ),
+        }
 
     try:
         run_id = event.get("pathParameters", {}).get("run_id")

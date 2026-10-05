@@ -3,6 +3,8 @@ import logging
 import os
 
 import boto3
+from aws_lambda_powertools.utilities.parameters import get_secret
+from aws_lambda_powertools.utilities.parameters.exceptions import GetParameterError
 from botocore.exceptions import ClientError
 
 # Initialize logger
@@ -59,10 +61,11 @@ def refresh_service_account_access_token(service_account: str) -> dict:
         logger.info("Starting token refresh for service account: %s", service_account)
 
         # Retrieve service account password from Secrets Manager
-        password_response = secrets_client.get_secret_value(
-            SecretId=get_secret_path(service_account, "password")
+        password_secret = get_secret(
+            get_secret_path(service_account, "password"),
+            transform="json",
         )
-        password = json.loads(password_response["SecretString"])["password"]
+        password = password_secret["password"]
 
         # Prepare login payload with complete API Gateway format
         login_payload = {
@@ -122,7 +125,7 @@ def refresh_service_account_access_token(service_account: str) -> dict:
             "message": "Token refresh successful",
         }
 
-    except (ClientError, ValueError) as e:
+    except (ClientError, GetParameterError, ValueError) as e:
         logger.error(
             "Token refresh failed for service account %s: %s", service_account, str(e)
         )

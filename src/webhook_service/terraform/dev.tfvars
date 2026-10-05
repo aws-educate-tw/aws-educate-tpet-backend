@@ -6,4 +6,4 @@ dynamodb_table                                = "webhook"
 dynamodb_table_total_count                    = "webhook_total_count"
 enable_pitr                                   = false
 enable_deletion_protection_for_dynamodb_table = true
-lambda_architecture                           = "x84_64"
+lambda_architecture                           = "x86_64"

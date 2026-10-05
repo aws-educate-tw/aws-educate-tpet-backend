@@ -4,7 +4,7 @@ from typing import Any
 
 import requests
 from config import Config
-from utils import SecretsManager
+from utils import get_access_token
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -16,9 +16,6 @@ RUN_TYPE = "WEBHOOK"
 
 class EmailService:
     """Class to handle email service operations"""
-
-    def __init__(self):
-        self.secrets_manager = SecretsManager()
 
     def prepare_email_body(
         self, webhook_details: dict[str, Any], recipient_email: str
@@ -49,7 +46,7 @@ class EmailService:
     def send_email(self, email_body: dict[str, Any]) -> dict[str, Any]:
         """Send an email using the send email API"""
         try:
-            access_token = self.secrets_manager.get_access_token("surveycake")
+            access_token = get_access_token("surveycake")
             logger.info("Send email API endpoint: %s", Config.SEND_EMAIL_API_ENDPOINT)
 
             response = requests.post(

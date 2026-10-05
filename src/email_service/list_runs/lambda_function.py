@@ -1,9 +1,12 @@
 import json
 import logging
 import math  # Added for math.ceil
+import os
 
+import boto3
 from botocore.exceptions import ClientError
 from run_repository import RunRepository
+from run_type_enum import RunType
 
 # Removed unused time_util import
 
@@ -11,7 +14,22 @@ from run_repository import RunRepository
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# DecimalEncoder is removed as RunRepository handles Decimal to float for PostgreSQL JSONB.
+# Initialize auto_resume Lambda client
+lambda_client = boto3.client("lambda")
+AUTO_RESUME_AURORA_LAMBDA_NAME = os.getenv("AUTO_RESUME_AURORA_LAMBDA_NAME")
+
+
+def ensure_db_ready() -> None:
+    """Sync invoke auto_resume Lambda to ensure Aurora is awake before DB access."""
+    logger.info("Start invoke auto_resume Lambda to ensure Aurora is awake.")
+    response = lambda_client.invoke(
+        FunctionName=AUTO_RESUME_AURORA_LAMBDA_NAME,
+        InvocationType="RequestResponse",
+        Payload=b"{}",
+    )
+    if response["StatusCode"] != 200 or "FunctionError" in response:
+        logger.error("auto_resume invocation failed: %s", response)
+        raise RuntimeError("Database wake-up failed")
 
 
 def extract_query_params(event: dict[str, any]) -> dict[str, any]:
@@ -33,6 +51,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
         created_year: str | None = params.get("created_year", None)
         # Add any other filter parameters the user might send, e.g. sender_id
         sender_id: str | None = params.get("sender_id", None)
+        campaign_id: str | None = params.get("campaign_id", None)
 
         if sort_order not in ["ASC", "DESC"]:
             logger.warning(
@@ -48,6 +67,21 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
             logger.warning("Invalid limit %d received, defaulting to 20.", limit)
             limit = 20
 
+        # Validate run_type
+        valid_run_types = [rt.value for rt in RunType]
+        if run_type:
+            run_type = run_type.upper()
+            if run_type not in valid_run_types:
+                logger.error("Invalid run_type parameter: %s", run_type)
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps(
+                        {
+                            "message": f"Invalid run_type. Allowed values are {[e.value for e in RunType]}."
+                        }
+                    ),
+                }
+
     except ValueError as e:
         logger.error("Invalid query parameter type: %s", e)
         return {
@@ -57,7 +91,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
 
     # Log the extracted parameters
     logger.info(
-        "Extracted parameters - page: %d, limit: %d, sort_by: %s, sort_order: %s, run_type: %s, created_year: %s, sender_id: %s",
+        "Extracted parameters - page: %d, limit: %d, sort_by: %s, sort_order: %s, run_type: %s, created_year: %s, sender_id: %s, campaign_id: %s",
         page,
         limit,
         sort_by,
@@ -65,6 +99,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
         run_type,
         created_year,
         sender_id,
+        campaign_id,
     )
 
     return {
@@ -75,6 +110,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
         "run_type": run_type,
         "created_year": created_year,
         "sender_id": sender_id,  # Include sender_id if it's a filter
+        "campaign_id": campaign_id,
     }
 
 
@@ -86,42 +122,52 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         logger.info("Received a prewarm request. Skipping business logic.")
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
-    # Extract and validate query parameters
-    query_params_result = extract_query_params(event)
-    if isinstance(query_params_result, dict) and query_params_result.get("statusCode"):
-        return query_params_result
-
-    # Ensure all expected keys are present, providing defaults if necessary
-    page = query_params_result.get("page", 1)
-    limit = query_params_result.get("limit", 100)
-    sort_by = query_params_result.get("sort_by", "created_at")
-    sort_order = query_params_result.get("sort_order", "DESC")
-    # Filters for the repository
-    filters = {}
-    if query_params_result.get("run_type"):
-        filters["run_type"] = query_params_result["run_type"]
-    if query_params_result.get("created_year"):
-        filters["created_year"] = query_params_result["created_year"]
-    if query_params_result.get("sender_id"):  # Assuming sender_id is a direct filter
-        filters["sender_id"] = query_params_result["sender_id"]
-
-    # Get access token from headers (user_id might be needed for filtering by sender_id if not passed directly)
-    # For now, assuming sender_id can be an optional filter from query params.
-    # If runs should always be scoped to the current user, this logic would need adjustment.
-    authorization_header = event["headers"].get("authorization")
-    if not authorization_header or not authorization_header.startswith("Bearer "):
-        return {
-            "statusCode": 401,
-            "body": json.dumps({"message": "Missing or invalid Authorization header"}),
-        }
-    # access_token = authorization_header.split(" ")[1]
-    # user_id = CurrentUserUtil().get_user_id_from_access_token(access_token)
-    # If filtering by current user is mandatory, add user_id to filters:
-    # filters["sender_id"] = user_id
-
-    run_repo = RunRepository()
-
     try:
+        ensure_db_ready()
+
+        # Extract and validate query parameters
+        query_params_result = extract_query_params(event)
+        if isinstance(query_params_result, dict) and query_params_result.get(
+            "statusCode"
+        ):
+            return query_params_result
+
+        # Ensure all expected keys are present, providing defaults if necessary
+        page = query_params_result.get("page", 1)
+        limit = query_params_result.get("limit", 100)
+        sort_by = query_params_result.get("sort_by", "created_at")
+        sort_order = query_params_result.get("sort_order", "DESC")
+        # Filters for the repository
+        filters = {}
+        if query_params_result.get("run_type"):
+            filters["run_type"] = query_params_result["run_type"]
+        if query_params_result.get("created_year"):
+            filters["created_year"] = query_params_result["created_year"]
+        if query_params_result.get(
+            "sender_id"
+        ):  # Assuming sender_id is a direct filter
+            filters["sender_id"] = query_params_result["sender_id"]
+        if query_params_result.get("campaign_id"):
+            filters["campaign_id"] = query_params_result["campaign_id"]
+
+        # Get access token from headers (user_id might be needed for filtering by sender_id if not passed directly)
+        # For now, assuming sender_id can be an optional filter from query params.
+        # If runs should always be scoped to the current user, this logic would need adjustment.
+        authorization_header = event["headers"].get("authorization")
+        if not authorization_header or not authorization_header.startswith("Bearer "):
+            return {
+                "statusCode": 401,
+                "body": json.dumps(
+                    {"message": "Missing or invalid Authorization header"}
+                ),
+            }
+        # access_token = authorization_header.split(" ")[1]
+        # user_id = CurrentUserUtil().get_user_id_from_access_token(access_token)
+        # If filtering by current user is mandatory, add user_id to filters:
+        # filters["sender_id"] = user_id
+
+        run_repo = RunRepository()
+
         # Prepare params for repository methods
         repo_params = {
             "page": page,
@@ -139,6 +185,8 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             repo_params["created_year"] = filters["created_year"]
         if "sender_id" in filters:
             repo_params["sender_id"] = filters["sender_id"]
+        if "campaign_id" in filters:
+            repo_params["campaign_id"] = filters["campaign_id"]
 
         runs = run_repo.list_runs(repo_params)
         total_items = run_repo.count_runs(repo_params)

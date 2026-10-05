@@ -58,6 +58,13 @@ def read_file_from_s3(bucket_name, s3_key):
         raise
 
 
-def upload_file_to_s3(file_path, bucket_name, s3_key):
+def upload_file_to_s3(file_path, s3_key):
+    """
+    Upload a file to S3 bucket.
+
+    :param file_path: The local file path to upload
+    :param s3_key: The key (path) in the S3 bucket
+    """
     s3 = boto3.client("s3")
-    s3.upload_file(file_path, bucket_name, s3_key)
+    s3.upload_file(file_path, BUCKET_NAME, s3_key)
+    logger.info("Successfully uploaded file to S3: %s", s3_key)

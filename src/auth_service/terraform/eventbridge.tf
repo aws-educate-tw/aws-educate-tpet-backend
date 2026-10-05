@@ -1,10 +1,6 @@
 # Create EventBridge scheduler group
 resource "aws_scheduler_schedule_group" "service_group" {
   name = "${var.environment}-${var.service_underscore}-schedule_group"
-
-  tags = {
-    Service = var.service_underscore
-  }
 }
 
 # Create EventBridge scheduler

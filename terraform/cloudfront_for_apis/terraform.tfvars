@@ -5,16 +5,6 @@ service_hyphen     = "cloudfront-for-apis"
 domain_name        = "aws-educate.tw"
 api_gateway_origins = [
   {
-    # Campaign Service - prod
-    domain_name  = "prod-campaign-service-internal-api-tpet.aws-educate.tw"
-    path_pattern = "/prod/*campaign*"
-  },
-  {
-    # Campaign Service - dev
-    domain_name  = "dev-campaign-service-internal-api-tpet.aws-educate.tw"
-    path_pattern = "/dev/*campaign*"
-  },
-  {
     # File Service - prod
     domain_name  = "prod-file-service-internal-api-tpet.aws-educate.tw"
     path_pattern = "/prod/*file*"
@@ -43,6 +33,16 @@ api_gateway_origins = [
     # Webhook Service - dev
     domain_name  = "dev-webhook-service-internal-api-tpet.aws-educate.tw"
     path_pattern = "/dev/*webhook*"
+  },
+  {
+    # RSVP Service - prod
+    domain_name  = "prod-rsvp-service-internal-api-tpet.aws-educate.tw"
+    path_pattern = "/rsvp-service/prod/*"
+  },
+  {
+    # RSVP Service - dev
+    domain_name  = "dev-rsvp-service-internal-api-tpet.aws-educate.tw"
+    path_pattern = "/rsvp-service/dev/*"
   },
   {
     # Email Service - prod

@@ -84,12 +84,6 @@ module "health_check_lambda" {
     }
   }
 
-  tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-  }
-
   ######################
   # Additional policies
   ######################
@@ -203,10 +197,7 @@ module "validate_input_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -353,10 +344,7 @@ module "auto_resume_aurora_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -515,10 +503,7 @@ module "upsert_run_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -666,6 +651,7 @@ module "create_email_lambda" {
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+    "JWT_SECRET"                         = data.aws_secretsmanager_secret_version.jwt_secret.secret_string
   }
 
   allowed_triggers = {
@@ -676,10 +662,7 @@ module "create_email_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -706,7 +689,8 @@ module "create_email_lambda" {
         "secretsmanager:GetSecretValue"
       ],
       resources = [
-        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+        module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"],
+        data.aws_secretsmanager_secret.jwt_secret.arn
       ]
     },
 
@@ -838,10 +822,7 @@ module "send_email_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -987,6 +968,7 @@ module "list_runs_lambda" {
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+    "AUTO_RESUME_AURORA_LAMBDA_NAME"     = local.auto_resume_aurora_function_name_and_ecr_repo_name
   }
 
   allowed_triggers = {
@@ -997,10 +979,7 @@ module "list_runs_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -1048,6 +1027,15 @@ module "list_runs_lambda" {
       resources = [
         "arn:aws:s3:::${local.bucket_name}",
         "arn:aws:s3:::${local.bucket_name}/*"
+      ]
+    },
+    lambda_invoke = {
+      effect = "Allow",
+      actions = [
+        "lambda:InvokeFunction"
+      ],
+      resources = [
+        "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.this.account_id}:function:${local.auto_resume_aurora_function_name_and_ecr_repo_name}"
       ]
     }
   }
@@ -1124,6 +1112,7 @@ module "create_run_lambda" {
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
     "DOMAIN_NAME"                        = var.domain_name
+    "AUTO_RESUME_AURORA_LAMBDA_NAME"     = local.auto_resume_aurora_function_name_and_ecr_repo_name
   }
 
   allowed_triggers = {
@@ -1134,10 +1123,7 @@ module "create_run_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -1193,6 +1179,15 @@ module "create_run_lambda" {
       ],
       resources = [
         "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.this.account_id}:${module.create_email_sqs.queue_name}"
+      ]
+    },
+    lambda_invoke = {
+      effect = "Allow",
+      actions = [
+        "lambda:InvokeFunction"
+      ],
+      resources = [
+        "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.this.account_id}:function:${local.auto_resume_aurora_function_name_and_ecr_repo_name}"
       ]
     },
   }
@@ -1266,6 +1261,7 @@ module "get_run_lambda" {
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+    "AUTO_RESUME_AURORA_LAMBDA_NAME"     = local.auto_resume_aurora_function_name_and_ecr_repo_name
   }
 
   allowed_triggers = {
@@ -1276,10 +1272,7 @@ module "get_run_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -1327,6 +1320,15 @@ module "get_run_lambda" {
       resources = [
         "arn:aws:s3:::${local.bucket_name}",
         "arn:aws:s3:::${local.bucket_name}/*"
+      ]
+    },
+    lambda_invoke = {
+      effect = "Allow",
+      actions = [
+        "lambda:InvokeFunction"
+      ],
+      resources = [
+        "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.this.account_id}:function:${local.auto_resume_aurora_function_name_and_ecr_repo_name}"
       ]
     }
   }
@@ -1402,6 +1404,7 @@ module "list_emails_lambda" {
     "DATABASE_NAME"                      = var.database_name
     "RDS_CLUSTER_ARN"                    = module.aurora_postgresql_v2.cluster_arn
     "RDS_CLUSTER_MASTER_USER_SECRET_ARN" = module.aurora_postgresql_v2.cluster_master_user_secret[0]["secret_arn"]
+    "AUTO_RESUME_AURORA_LAMBDA_NAME"     = local.auto_resume_aurora_function_name_and_ecr_repo_name
   }
 
   allowed_triggers = {
@@ -1412,10 +1415,7 @@ module "list_emails_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -1462,6 +1462,15 @@ module "list_emails_lambda" {
       resources = [
         "arn:aws:s3:::${local.bucket_name}",
         "arn:aws:s3:::${local.bucket_name}/*"
+      ]
+    },
+    lambda_invoke = {
+      effect = "Allow",
+      actions = [
+        "lambda:InvokeFunction"
+      ],
+      resources = [
+        "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.this.account_id}:function:${local.auto_resume_aurora_function_name_and_ecr_repo_name}"
       ]
     }
   }

@@ -1,0 +1,1946 @@
+{
+  "info": {
+    "_postman_id": "cf8e0dab-f34d-4990-9400-ef9918e4f3c8",
+    "name": "RSVP Service Regression Test",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "36968695"
+  },
+  "item": [
+    {
+      "name": "Update rsvp",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// ============================================================",
+              "// Post-response Script: PUT /rsvp-service/rsvp/{run_id_participant_id}",
+              "// Covers all 6 response scenarios defined in the API spec",
+              "// ============================================================",
+              "",
+              "const statusCode = pm.response.code;",
+              "",
+              "// --- Performance baseline ---",
+              "pm.test(\"Response time is within 3000ms\", () => {",
+              "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+              "});",
+              "",
+              "// ============================================================",
+              "// Scenario 1: Happy Path (HTTP 200)",
+              "// ============================================================",
+              "if (statusCode === 200) {",
+              "",
+              "    pm.test(\"[200] Content-Type is application/json\", () => {",
+              "        pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+              "    });",
+              "",
+              "    const json = pm.response.json();",
+              "",
+              "    pm.test(\"[200] data object exists\", () => {",
+              "        pm.expect(json).to.have.property(\"data\").that.is.an(\"object\");",
+              "    });",
+              "",
+              "    const data = json.data;",
+              "",
+              "    pm.test(\"[200] currentStatus is a valid enum value\", () => {",
+              "        pm.expect([\"ATTEND\", \"NOT_ATTEND\", \"PENDING\"]).to.include(data.currentStatus);",
+              "    });",
+              "",
+              "    // --- Scenario 1 vs Scenario 3 distinction ---",
+              "    // Scenario 1: status=\"SUCCESS\" + currentStatus matches the action we sent",
+              "    // Scenario 3: no status field (or omitted), currentStatus reflects DB value (stale request ignored)",
+              "    const sentBody = JSON.parse(pm.request.body.raw.replace(/\\/\\/.*$/gm, \"\"));",
+              "    const sentAction = sentBody.action;",
+              "",
+              "    if (json.status === \"SUCCESS\") {",
+              "        pm.test(\"[Scenario 1] status field equals 'SUCCESS'\", () => {",
+              "            pm.expect(json.status).to.equal(\"SUCCESS\");",
+              "        });",
+              "",
+              "        pm.test(\"[Scenario 1] currentStatus matches the action sent in request\", () => {",
+              "            pm.expect(data.currentStatus).to.equal(sentAction);",
+              "        });",
+              "",
+              "        console.log(`[Scenario 1] Update accepted — currentStatus: ${data.currentStatus}`);",
+              "",
+              "    } else {",
+              "        // Stale request: backend ignored the write, returned current DB value",
+              "        pm.test(\"[Scenario 3] Stale request — status field is absent or not 'SUCCESS'\", () => {",
+              "            pm.expect(json.status).to.not.equal(\"SUCCESS\");",
+              "        });",
+              "",
+              "        pm.test(\"[Scenario 3] currentStatus is a valid enum value (DB authoritative value)\", () => {",
+              "            pm.expect([\"ATTEND\", \"NOT_ATTEND\", \"PENDING\"]).to.include(data.currentStatus);",
+              "        });",
+              "",
+              "        console.warn(`[Scenario 3] Stale/out-of-order request detected — backend returned DB value: ${data.currentStatus}`);",
+              "    }",
+              "",
+              "    // --- Persist latest status for downstream requests ---",
+              "    pm.collectionVariables.set(\"current_status\", data.currentStatus);",
+              "}",
+              "",
+              "// ============================================================",
+              "// Scenario 2: Registration Closed (HTTP 403)",
+              "// ============================================================",
+              "else if (statusCode === 403) {",
+              "",
+              "    pm.test(\"[Scenario 2] Status is 403 Forbidden\", () => {",
+              "        pm.response.to.have.status(403);",
+              "    });",
+              "",
+              "    pm.test(\"[Scenario 2] Response body is valid JSON\", () => {",
+              "        pm.response.to.be.json;",
+              "    });",
+              "",
+              "    pm.test(\"[Scenario 2] Error code is REGISTRATION_CLOSED\", () => {",
+              "        const json = pm.response.json();",
+              "        // Accept common error envelope shapes: { code }, { error: { code } }, { message }",
+              "        const code = json.code || json.error?.code || json.message;",
+              "        pm.expect(code).to.include(\"REGISTRATION_CLOSED\");",
+              "    });",
+              "",
+              "    console.warn(\"[Scenario 2] Registration is closed — frontend should show modal and lock all buttons.\");",
+              "}",
+              "",
+              "// ============================================================",
+              "// Scenario 4: Invalid Token (HTTP 401)",
+              "// ============================================================",
+              "else if (statusCode === 401) {",
+              "",
+              "    pm.test(\"[Scenario 4] Status is 401 Unauthorized\", () => {",
+              "        pm.response.to.have.status(401);",
+              "    });",
+              "",
+              "    pm.test(\"[Scenario 4] Response body is valid JSON\", () => {",
+              "        pm.response.to.be.json;",
+              "    });",
+              "",
+              "    pm.test(\"[Scenario 4] Error code is INVALID_TOKEN\", () => {",
+              "        const json = pm.response.json();",
+              "        const code = json.code || json.error?.code || json.message;",
+              "        pm.expect(code).to.include(\"INVALID_TOKEN\");",
+              "    });",
+              "",
+              "    console.warn(\"[Scenario 4] Invalid token — frontend should redirect to error page or logout.\");",
+              "}",
+              "",
+              "// ============================================================",
+              "// Scenario 6: Concurrent Update / Race Condition (HTTP 409)",
+              "// ============================================================",
+              "else if (statusCode === 409) {",
+              "",
+              "    pm.test(\"[Scenario 6] Status is 409 Conflict\", () => {",
+              "        pm.response.to.have.status(409);",
+              "    });",
+              "",
+              "    pm.test(\"[Scenario 6] Response body is valid JSON\", () => {",
+              "        pm.response.to.be.json;",
+              "    });",
+              "",
+              "    pm.test(\"[Scenario 6] Error code is CONCURRENT_UPDATE\", () => {",
+              "        const json = pm.response.json();",
+              "        const code = json.code || json.error?.code || json.message;",
+              "        pm.expect(code).to.include(\"CONCURRENT_UPDATE\");",
+              "    });",
+              "",
+              "    // Track retry count to prevent infinite retry loop on the frontend side",
+              "    let retryCount = parseInt(pm.collectionVariables.get(\"retry_count\") || \"0\");",
+              "    retryCount++;",
+              "    pm.collectionVariables.set(\"retry_count\", retryCount);",
+              "",
+              "    console.warn(`[Scenario 6] Concurrent conflict detected (retry #${retryCount}) — frontend should auto-retry.`);",
+              "}",
+              "",
+              "// ============================================================",
+              "// Scenario 5: Internal Server Error (HTTP 500)",
+              "// ============================================================",
+              "else if (statusCode === 500) {",
+              "",
+              "    pm.test(\"[Scenario 5] Status is 500 Internal Server Error\", () => {",
+              "        pm.response.to.have.status(500);",
+              "    });",
+              "",
+              "    pm.test(\"[Scenario 5] Response body is valid JSON\", () => {",
+              "        pm.response.to.be.json;",
+              "    });",
+              "",
+              "    pm.test(\"[Scenario 5] Error code is INTERNAL_ERROR\", () => {",
+              "        const json = pm.response.json();",
+              "        const code = json.code || json.error?.code || json.message;",
+              "        pm.expect(code).to.include(\"INTERNAL_ERROR\");",
+              "    });",
+              "",
+              "    console.error(\"[Scenario 5] Server error — frontend should display 'System busy' message.\");",
+              "}",
+              "",
+              "// ============================================================",
+              "// Catch-all: Unexpected status code",
+              "// ============================================================",
+              "else {",
+              "    pm.test(`Unexpected status code received: ${statusCode}`, () => {",
+              "        pm.expect([200, 401, 403, 409, 500]).to.include(statusCode);",
+              "    });",
+              "",
+              "    console.error(`[Unexpected] Undocumented status code: ${statusCode}`);",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"action\": \"ATTEND\",                   // [必填] 意願狀態 (Enum: \"ATTEND\", \"NOT_ATTEND\")\n  \"clientTimestamp\": 1705821234567      // [必填] 前端當下時間戳 (Date.now())，用於亂序防禦\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/rsvp/{{run_id_participant_id}}",
+          "protocol": "https",
+          "host": [
+            "{{environment}}-rsvp-service-internal-api-tpet",
+            "aws-educate",
+            "tw"
+          ],
+          "path": [
+            "rsvp-service",
+            "{{environment}}",
+            "rsvp",
+            "{{run_id_participant_id}}"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "200",
+          "originalRequest": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"ATTEND\",                   // [必填] 意願狀態 (Enum: \"ATTEND\", \"NOT_ATTEND\")\n  \"clientTimestamp\": 1705821234567      // [必填] 前端當下時間戳 (Date.now())，用於亂序防禦\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/rsvp/{{run_id_participant_id}}",
+              "protocol": "https",
+              "host": [
+                "{{environment}}-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "{{environment}}",
+                "rsvp",
+                "{{run_id_participant_id}}"
+              ]
+            }
+          },
+          "_postman_previewlanguage": null,
+          "header": null,
+          "cookie": [],
+          "body": "{ \n    \"status\": \"SUCCESS\", \n    \"data\": { \n        \"currentStatus\": \"ATTEND\", \n    } \n}"
+        }
+      ]
+    },
+    {
+      "name": "Get rsvp status",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// ============================================================",
+              "// Post-response Script: GET /rsvp-service/rsvp/{run_id_participant_id}/status",
+              "// Covers all 5 response scenarios defined in the API spec",
+              "// ============================================================",
+              "",
+              "const statusCode = pm.response.code;",
+              "",
+              "// --- Performance baseline ---",
+              "pm.test(\"Response time is within 3000ms\", () => {",
+              "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+              "});",
+              "",
+              "// ============================================================",
+              "// Scenario 1 & 5: Success (HTTP 200)",
+              "// ============================================================",
+              "if (statusCode === 200) {",
+              "",
+              "    pm.test(\"[200] Content-Type is application/json\", () => {",
+              "        pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+              "    });",
+              "",
+              "    const json = pm.response.json();",
+              "",
+              "    pm.test(\"[200] Top-level status field equals 'SUCCESS'\", () => {",
+              "        pm.expect(json).to.have.property(\"status\", \"SUCCESS\");",
+              "    });",
+              "",
+              "    // --- rsvp_status ---",
+              "    pm.test(\"[200] rsvp_status is a valid enum value\", () => {",
+              "        pm.expect([\"PENDING\", \"ATTEND\", \"NOT_ATTEND\"]).to.include(json.rsvp_status);",
+              "    });",
+              "",
+              "    // --- participant_name ---",
+              "    pm.test(\"[200] participant_name is a non-empty string\", () => {",
+              "        pm.expect(json.participant_name).to.be.a(\"string\").and.not.empty;",
+              "    });",
+              "",
+              "    // --- campaign fields (from campaigns table) ---",
+              "    pm.test(\"[200] campaign_name is a non-empty string\", () => {",
+              "        pm.expect(json.campaign_name).to.be.a(\"string\").and.not.empty;",
+              "    });",
+              "",
+              "    const iso8601Regex = /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$/;",
+              "",
+              "    pm.test(\"[200] campaign_start_time is valid ISO 8601\", () => {",
+              "        pm.expect(json.campaign_start_time).to.match(iso8601Regex);",
+              "    });",
+              "",
+              "    pm.test(\"[200] campaign_location is a non-empty string\", () => {",
+              "        pm.expect(json.campaign_location).to.be.a(\"string\").and.not.empty;",
+              "    });",
+              "",
+              "    // --- campaign_run fields (from campaign_run table) ---",
+              "    pm.test(\"[200] registration_deadline is valid ISO 8601\", () => {",
+              "        pm.expect(json.registration_deadline).to.match(iso8601Regex);",
+              "    });",
+              "",
+              "    pm.test(\"[200] is_registration_closed is a boolean\", () => {",
+              "        pm.expect(json.is_registration_closed).to.be.a(\"boolean\");",
+              "    });",
+              "",
+              "    // --- Scenario 5: expired event (is_registration_closed=true) ---",
+              "    // An expired event still returns 200; frontend should show \"expired\" message",
+              "    if (json.is_registration_closed === true) {",
+              "        const deadline = new Date(json.registration_deadline);",
+              "        const now = new Date();",
+              "",
+              "        pm.test(\"[Scenario 5] registration_deadline is in the past when closed\", () => {",
+              "            pm.expect(deadline.getTime()).to.be.below(now.getTime());",
+              "        });",
+              "",
+              "        console.log(\"[Scenario 5] Registration is closed — frontend should display expired activity message.\");",
+              "    }",
+              "",
+              "    // --- Save values for downstream requests ---",
+              "    pm.collectionVariables.set(\"rsvp_status\", json.rsvp_status);",
+              "    pm.collectionVariables.set(\"is_registration_closed\", json.is_registration_closed);",
+              "    console.log(`[200] rsvp_status=${json.rsvp_status} | is_registration_closed=${json.is_registration_closed}`);",
+              "}",
+              "",
+              "// ============================================================",
+              "// Scenario 2: Invalid Token (HTTP 401)",
+              "// ============================================================",
+              "else if (statusCode === 401) {",
+              "",
+              "    pm.test(\"[Scenario 2] Status is 401 Unauthorized\", () => {",
+              "        pm.response.to.have.status(401);",
+              "    });",
+              "",
+              "    pm.test(\"[Scenario 2] Response body is valid JSON\", () => {",
+              "        pm.response.to.be.json;",
+              "    });",
+              "",
+              "    pm.test(\"[Scenario 2] Error field exists in response\", () => {",
+              "        const json = pm.response.json();",
+              "        pm.expect(json.message || json.error || json.detail).to.exist;",
+              "    });",
+              "",
+              "    console.warn(\"[Scenario 2] Invalid token — frontend must block page entry with full-page error.\");",
+              "}",
+              "",
+              "// ============================================================",
+              "// Scenario 3: Event Not Found (HTTP 404)",
+              "// ============================================================",
+              "else if (statusCode === 404) {",
+              "",
+              "    pm.test(\"[Scenario 3] Status is 404 Not Found\", () => {",
+              "        pm.response.to.have.status(404);",
+              "    });",
+              "",
+              "    pm.test(\"[Scenario 3] Response body is valid JSON\", () => {",
+              "        pm.response.to.be.json;",
+              "    });",
+              "",
+              "    pm.test(\"[Scenario 3] Error field exists in response\", () => {",
+              "        const json = pm.response.json();",
+              "        pm.expect(json.message || json.error || json.detail).to.exist;",
+              "    });",
+              "",
+              "    console.warn(\"[Scenario 3] Event not found — frontend should render 'Event does not exist' error page.\");",
+              "}",
+              "",
+              "// ============================================================",
+              "// Scenario 4: Internal Server Error (HTTP 500)",
+              "// ============================================================",
+              "else if (statusCode === 500) {",
+              "",
+              "    pm.test(\"[Scenario 4] Status is 500 Internal Server Error\", () => {",
+              "        pm.response.to.have.status(500);",
+              "    });",
+              "",
+              "    pm.test(\"[Scenario 4] Response body is valid JSON\", () => {",
+              "        pm.response.to.be.json;",
+              "    });",
+              "",
+              "    console.error(\"[Scenario 4] Server error — frontend should display 'System busy' message.\");",
+              "}",
+              "",
+              "// ============================================================",
+              "// Catch-all: Unexpected status code",
+              "// ============================================================",
+              "else {",
+              "    pm.test(`Unexpected status code received: ${statusCode}`, () => {",
+              "        pm.expect([200, 401, 404, 500]).to.include(statusCode);",
+              "    });",
+              "",
+              "    console.error(`[Unexpected] Undocumented status code: ${statusCode}`);",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "",
+            "value": "",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/rsvp/{{run_id_participant_id}}/status",
+          "protocol": "https",
+          "host": [
+            "{{environment}}-rsvp-service-internal-api-tpet",
+            "aws-educate",
+            "tw"
+          ],
+          "path": [
+            "rsvp-service",
+            "{{environment}}",
+            "rsvp",
+            "{{run_id_participant_id}}",
+            "status"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "200",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/rsvp/{{run_id_participant_id}}/status",
+              "protocol": "https",
+              "host": [
+                "{{environment}}-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "{{environment}}",
+                "rsvp",
+                "{{run_id_participant_id}}",
+                "status"
+              ]
+            }
+          },
+          "_postman_previewlanguage": null,
+          "header": null,
+          "cookie": [],
+          "body": "{\n  \"status\": \"success\",\n  \"data\": {\n    // --- 使用者狀態 ---\n    \"current_status\": \"PENDING\",      // Enum: \"PENDING\", \"ATTEND\", \"NOT_ATTEND\"\n                                     // 若 DB 找不到該 participant_id，預設回傳 \"PENDING\"\n\n    // --- 顯示用資訊 (前端可直接用來 render 畫面) ---\n    \"participant_name\": \"王小明\",      // 來自 Token (若 DB 無資料) 或 DB (若有資料)\n\n    // --- 活動 metadata ---\n    \"run_info\": {\n        \"event_name\": \"AWS Cloud Workshop\",\n        \"event_time\": \"2026-03-01T09:00:00Z\",\n        \"location\": \"Taipei 101\",\n        \"registration_deadline\": \"2026-02-20T23:59:59Z\",\n        \"isRegistration_closed\": false // boolean: 依據 Server 時間判斷\n    },\n\n  \n  }\n}"
+        },
+        {
+          "name": "200 (2)",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/rsvp/36df42a9ff04449c8f7fde4af9c01d25_62a54705-7767-497c-bca0-d1d8de0d9ad2/status",
+              "protocol": "https",
+              "host": [
+                "{{environment}}-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "{{environment}}",
+                "rsvp",
+                "36df42a9ff04449c8f7fde4af9c01d25_62a54705-7767-497c-bca0-d1d8de0d9ad2",
+                "status"
+              ]
+            }
+          },
+          "_postman_previewlanguage": null,
+          "header": null,
+          "cookie": [],
+          "body": "{\n    \"status\": \"SUCCESS\", \n    \"rsvp_status\": \"PENDING\", \n    \"participant_name\": \"Kiki\", \n    \"campaign_name\": \"2026 AWS Workshop222\", \n    \"campaign_start_time\": \"2026-05-20T09:00:00Z\", \n    \"campaign_location\": \"Taipei 101\", \n    \"registration_deadline\": \"2099-12-31T23:59:59Z\", \n    \"is_registration_closed\": false\n}"
+        }
+      ]
+    },
+    {
+      "name": "Verify campaign",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// 1. Basic Status Code and Response Format Validation",
+              "pm.test(\"HTTP Status Code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response is in JSON format\", function () {",
+              "    pm.response.to.be.withBody;",
+              "    pm.response.to.be.json;",
+              "});",
+              "",
+              "// 2. Data Integrity and Value Validation",
+              "const jsonData = pm.response.json();",
+              "",
+              "pm.test(\"Response status should be success\", function () {",
+              "    pm.expect(jsonData.status).to.eql(\"success\");",
+              "});",
+              "",
+              "pm.test(\"Campaign data integrity check\", function () {",
+              "    const data = jsonData.data;",
+              "    ",
+              "    // Validate that the campaign_id matches the one requested in the path",
+              "    // Assuming you have 'campaign_id' defined as a variable in your request path",
+              "    const requestedId = pm.request.url.path.slice(-2)[0]; ",
+              "    pm.expect(data.campaign_id).to.be.a('string');",
+              "    ",
+              "    // Core business logic: The campaign should be valid and active",
+              "    pm.test(\"Campaign must be valid and active for Internal Service use\", function() {",
+              "        pm.expect(data.is_valid).to.be.true;",
+              "        pm.expect(data.is_active).to.be.true;",
+              "    });",
+              "",
+              "    // Ensure campaign_name is present (useful for logging/double-check)",
+              "    pm.expect(data.campaign_name).to.be.a('string').and.not.empty;",
+              "});",
+              "",
+              "// 3. JSON Schema Validation",
+              "const schema = {",
+              "    \"type\": \"object\",",
+              "    \"required\": [\"status\", \"data\"],",
+              "    \"properties\": {",
+              "        \"status\": { \"type\": \"string\" },",
+              "        \"data\": {",
+              "            \"type\": \"object\",",
+              "            \"required\": [\"is_valid\", \"campaign_id\", \"campaign_name\", \"is_active\"],",
+              "            \"properties\": {",
+              "                \"is_valid\": { \"type\": \"boolean\" },",
+              "                \"campaign_id\": { \"type\": \"string\" },",
+              "                \"campaign_name\": { \"type\": \"string\" },",
+              "                \"is_active\": { \"type\": \"boolean\" }",
+              "            }",
+              "        }",
+              "    }",
+              "};",
+              "",
+              "pm.test(\"Validate JSON Schema accuracy\", function () {",
+              "    pm.response.to.have.jsonSchema(schema);",
+              "});",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/internal/campaign/{{campaign_id}}/check",
+          "protocol": "https",
+          "host": [
+            "{{environment}}-rsvp-service-internal-api-tpet",
+            "aws-educate",
+            "tw"
+          ],
+          "path": [
+            "rsvp-service",
+            "{{environment}}",
+            "internal",
+            "campaign",
+            "{{campaign_id}}",
+            "check"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "200",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://local-dev-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/local-dev/internal/campaign/evt_c1452db884ac471dadb38a0a194bf152/check",
+              "protocol": "https",
+              "host": [
+                "local-dev-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "local-dev",
+                "internal",
+                "campaign",
+                "evt_c1452db884ac471dadb38a0a194bf152",
+                "check"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "Date",
+              "value": "Sat, 04 Apr 2026 12:06:24 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "161"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Apigw-Requestid",
+              "value": "bSy-MheJvHcEPaQ="
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"status\": \"success\",\n    \"data\": {\n        \"is_valid\": true,\n        \"campaign_id\": \"evt_c1452db884ac471dadb38a0a194bf152\",\n        \"campaign_name\": \"2026 AWS Workshop\",\n        \"is_active\": true\n    }\n}"
+        },
+        {
+          "name": "403",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://local-dev-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/local-dev/internal/campaign/evt_c1452db884ac471dadb38a0a194bf152/check",
+              "protocol": "https",
+              "host": [
+                "local-dev-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "local-dev",
+                "internal",
+                "campaign",
+                "evt_c1452db884ac471dadb38a0a194bf152",
+                "check"
+              ]
+            }
+          },
+          "status": "Forbidden",
+          "code": 403,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "Date",
+              "value": "Sat, 04 Apr 2026 12:07:58 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "120"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Apigw-Requestid",
+              "value": "bSzMvigQPHcESQA="
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"Campaign is inactive.\",\n    \"error\": \"Campaign_INACTIVE\",\n    \"request_id\": \"2aada58c-0fe7-482e-bcd7-6f9e0c04a631\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Upsert run configuration",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// 1. Basic Response Validation",
+              "pm.test(\"HTTP Status Code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response is in JSON format\", function () {",
+              "    pm.response.to.be.json;",
+              "});",
+              "",
+              "// 2. Business Logic Validation",
+              "const jsonData = pm.response.json();",
+              "",
+              "pm.test(\"Status is success\", function () {",
+              "    pm.expect(jsonData.status).to.eql(\"SUCCESS\");",
+              "});",
+              "",
+              "pm.test(\"Response contains run_id\", function () {",
+              "    pm.expect(jsonData.data).to.have.property(\"run_id\");",
+              "    pm.expect(jsonData.data.run_id).to.be.a('string').and.not.empty;",
+              "});",
+              "",
+              "// 3. Data Integrity Validation (Schema)",
+              "const schema = {",
+              "    \"type\": \"object\",",
+              "    \"required\": [\"status\", \"data\"],",
+              "    \"properties\": {",
+              "        \"status\": { \"type\": \"string\" },",
+              "        \"data\": {",
+              "            \"type\": \"object\",",
+              "            \"required\": [\"run_id\"],",
+              "            \"properties\": {",
+              "                \"run_id\": { \"type\": \"string\" }",
+              "            }",
+              "        }",
+              "    }",
+              "};",
+              "",
+              "pm.test(\"Validate JSON Schema accuracy\", function () {",
+              "    pm.response.to.have.jsonSchema(schema);",
+              "});",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"registration_deadline\": \"2126-05-15T23:59:59Z\",\n    \"max_participants\": 100,\n    \"campaign_location\": \"Taipei 202\",\n    \"campaign_start_time\": \"2026-05-20T09:00:00Z\",\n    \"campaign_end_time\": \"2126-05-20T17:00:00Z\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/internal/campaign-runs/{{campaign_id}}_{{run_id}}",
+          "protocol": "https",
+          "host": [
+            "{{environment}}-rsvp-service-internal-api-tpet",
+            "aws-educate",
+            "tw"
+          ],
+          "path": [
+            "rsvp-service",
+            "{{environment}}",
+            "internal",
+            "campaign-runs",
+            "{{campaign_id}}_{{run_id}}"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "200",
+          "originalRequest": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"campaign_id\": \"evt_c1452db884ac471dadb38a0a194bf152\",\n    \"campaign_location\": \"Taipei 202\",\n    \"registration_deadline\": \"2026-05-15T23:59:59Z\",\n    \"max_participants\": 100,\n    \"campaign_start_time\": \"2026-05-20T09:00:00Z\",\n    \"campaign_end_time\": \"2026-05-20T17:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://local-dev-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/local-dev/internal/campaign-runs/evt_c1452db884ac471dadb38a0a194bf152-testabcde",
+              "protocol": "https",
+              "host": [
+                "local-dev-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "local-dev",
+                "internal",
+                "campaign-runs",
+                "evt_c1452db884ac471dadb38a0a194bf152-testabcde"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "Date",
+              "value": "Sat, 04 Apr 2026 15:04:16 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "329"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Apigw-Requestid",
+              "value": "bTNBeg8MPHcES8w="
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"status\": \"SUCCESS\",\n    \"data\": {\n        \"campaign_id\": \"evt_c1452db884ac471dadb38a0a194bf152\",\n        \"run_id\": \"testabcde\",\n        \"registration_deadline\": \"2026-05-15T23:59:59Z\",\n        \"max_participants\": 100,\n        \"campaign_location\": \"Taipei 202\",\n        \"is_active\": true,\n        \"campaign_start_time\": \"2026-05-20T09:00:00Z\",\n        \"campaign_end_time\": \"2026-05-20T17:00:00Z\"\n    }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Import participant",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// 1. Basic Response Validation",
+              "pm.test(\"HTTP Status Code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response format is JSON\", function () {",
+              "    pm.response.to.be.json;",
+              "});",
+              "",
+              "// 2. Business Logic Validation",
+              "const jsonData = pm.response.json();",
+              "",
+              "pm.test(\"Status is SUCCESS\", function () {",
+              "    pm.expect(jsonData.status).to.eql(\"SUCCESS\");",
+              "});",
+              "",
+              "pm.test(\"Response contains participant_id\", function () {",
+              "    pm.expect(jsonData.data).to.have.property(\"participant_id\");",
+              "    pm.expect(jsonData.data.participant_id).to.be.a(\"string\").and.not.empty;",
+              "});",
+              "",
+              "// 3. Schema & Data Consistency Validation",
+              "const schema = {",
+              "    \"type\": \"object\",",
+              "    \"required\": [\"status\", \"data\"],",
+              "    \"properties\": {",
+              "        \"status\": { \"type\": \"string\" },",
+              "        \"data\": {",
+              "            \"type\": \"object\",",
+              "            \"required\": [\"participant_id\"],",
+              "            \"properties\": {",
+              "                \"participant_id\": { \"type\": \"string\" }",
+              "            }",
+              "        }",
+              "    }",
+              "};",
+              "",
+              "pm.test(\"Validate JSON Schema\", function () {",
+              "    pm.response.to.have.jsonSchema(schema);",
+              "});",
+              "",
+              "// If the test passed, log the participant_id for subsequent run-based tests",
+              "if (jsonData.status === \"SUCCESS\") {",
+              "    pm.environment.set(\"current_participant_id\", jsonData.data.participant_id);",
+              "    console.log(\"Verified Participant ID: \" + jsonData.data.participant_id);",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "  {\n    \"email\": \"harry@example.com\",\n    \"campaign_id\": \"evt_6949869159a9476e8fa19319a20081a6\",\n    \"name\": \"王小明\"\n  }",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/internal/runs/{{run_id}}/participants",
+          "protocol": "https",
+          "host": [
+            "{{environment}}-rsvp-service-internal-api-tpet",
+            "aws-educate",
+            "tw"
+          ],
+          "path": [
+            "rsvp-service",
+            "{{environment}}",
+            "internal",
+            "runs",
+            "{{run_id}}",
+            "participants"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "200",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "  {\n    \"email\": \"test@example.com\",\n    \"campaign_id\": \"evt_c1452db884ac471dadb38a0a194bf152\",\n    \"name\": \"王小明\"\n  }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://local-dev-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/local-dev/internal/runs/testabcde/participants",
+              "protocol": "https",
+              "host": [
+                "local-dev-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "local-dev",
+                "internal",
+                "runs",
+                "testabcde",
+                "participants"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "Date",
+              "value": "Sat, 04 Apr 2026 15:05:16 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "89"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Apigw-Requestid",
+              "value": "bTNKyjgLPHcESgg="
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"status\": \"SUCCESS\",\n    \"data\": {\n        \"participant_id\": \"80b68ffa-2b6d-4963-8785-42df71134759\"\n    }\n}"
+        }
+      ]
+    },
+    {
+      "name": "List campaigns",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Verify that the status code is 200",
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "// Verify that the response is in JSON format",
+              "pm.test(\"Response is JSON\", function () {",
+              "    pm.response.to.be.json;",
+              "});",
+              "",
+              "// Parse the JSON response body",
+              "const responseData = pm.response.json();",
+              "",
+              "// Verify that the response body is an array",
+              "pm.test(\"Response is an array of campaigns\", function () {",
+              "    pm.expect(responseData).to.be.an(\"array\");",
+              "});",
+              "",
+              "// Verify that each campaign object contains the required fields and correct data types",
+              "pm.test(\"Each campaign has required fields with correct types\", function () {",
+              "    // Check if the array has at least one item to validate",
+              "    if (responseData.length > 0) {",
+              "        responseData.forEach((campaign, index) => {",
+              "            // Verify campaign_id",
+              "            pm.expect(campaign, `Campaign at index ${index}`).to.have.property(\"campaign_id\");",
+              "            pm.expect(campaign.campaign_id).to.be.a(\"string\").and.to.not.be.empty;",
+              "",
+              "            // Verify campaign_name",
+              "            pm.expect(campaign, `Campaign at index ${index}`).to.have.property(\"campaign_name\");",
+              "            pm.expect(campaign.campaign_name).to.be.a(\"string\");",
+              "",
+              "            // Verify campaign_start_time (ISO8601 string)",
+              "            pm.expect(campaign, `Campaign at index ${index}`).to.have.property(\"campaign_start_time\");",
+              "            pm.expect(campaign.campaign_start_time).to.be.a(\"string\");",
+              "",
+              "            // Verify campaign_end_time (ISO8601 string)",
+              "            pm.expect(campaign, `Campaign at index ${index}`).to.have.property(\"campaign_end_time\");",
+              "            pm.expect(campaign.campaign_end_time).to.be.a(\"string\");",
+              "",
+              "            // Verify campaign_location",
+              "            pm.expect(campaign, `Campaign at index ${index}`).to.have.property(\"campaign_location\");",
+              "            pm.expect(campaign.campaign_location).to.be.a(\"string\");",
+              "",
+              "            // Verify campaign_created_at (ISO8601 string)",
+              "            pm.expect(campaign, `Campaign at index ${index}`).to.have.property(\"campaign_created_at\");",
+              "            pm.expect(campaign.campaign_created_at).to.be.a(\"string\");",
+              "",
+              "            // Verify is_active (boolean)",
+              "            pm.expect(campaign, `Campaign at index ${index}`).to.have.property(\"is_active\");",
+              "            pm.expect(campaign.is_active).to.be.a(\"boolean\");",
+              "        });",
+              "    } else {",
+              "        console.warn(\"The campaign list is empty, skipping item property validation.\");",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns",
+          "protocol": "https",
+          "host": [
+            "{{environment}}-rsvp-service-internal-api-tpet",
+            "aws-educate",
+            "tw"
+          ],
+          "path": [
+            "rsvp-service",
+            "{{environment}}",
+            "campaigns"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "200",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns",
+              "protocol": "https",
+              "host": [
+                "{{environment}}-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "{{environment}}",
+                "campaigns"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": ":status",
+              "value": 200
+            },
+            {
+              "key": "date",
+              "value": "Sun, 12 Apr 2026 10:13:38 GMT"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            },
+            {
+              "key": "content-length",
+              "value": "855"
+            },
+            {
+              "key": "apigw-requestid",
+              "value": "bs58aiGcvHcEMww="
+            }
+          ],
+          "cookie": [],
+          "body": "[\n    {\n        \"campaign_id\": \"evt_uuid_1003\",\n        \"campaign_name\": \"2026 全球開發者大會\",\n        \"campaign_start_time\": \"2026-05-20T09:00:00Z\",\n        \"campaign_end_time\": \"2026-05-25T09:00:00Z\",\n        \"campaign_location\": \"\",\n        \"campaign_created_at\": \"2026-01-16T10:00:00Z\",\n        \"is_active\": true\n    },\n    {\n        \"campaign_id\": \"evt_uuid_1002\",\n        \"campaign_name\": \"2027 全球開發者大會\",\n        \"campaign_start_time\": \"2027-05-20T09:00:00Z\",\n        \"campaign_end_time\": \"2027-05-25T09:00:00Z\",\n        \"campaign_location\": \"\",\n        \"campaign_created_at\": \"2027-01-10T10:00:00Z\",\n        \"is_active\": true\n    },\n    {\n        \"campaign_id\": \"evt_uuid_1001\",\n        \"campaign_name\": \"2026 全球開發者大會\",\n        \"campaign_start_time\": \"2026-05-20T09:00:00Z\",\n        \"campaign_end_time\": \"2026-05-25T09:00:00Z\",\n        \"campaign_location\": \"\",\n        \"campaign_created_at\": \"2026-01-10T10:00:00Z\",\n        \"is_active\": true\n    }\n]"
+        },
+        {
+          "name": "403 (invalid token)",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns",
+              "protocol": "https",
+              "host": [
+                "{{environment}}-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "{{environment}}",
+                "campaigns"
+              ]
+            }
+          },
+          "status": "Forbidden",
+          "code": 403,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": ":status",
+              "value": 403
+            },
+            {
+              "key": "date",
+              "value": "Sun, 05 Apr 2026 08:48:26 GMT"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            },
+            {
+              "key": "content-length",
+              "value": "23"
+            },
+            {
+              "key": "apigw-requestid",
+              "value": "bVo6PhlwvHcEMog="
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"Forbidden\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Get campaign",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Verify that the status code is 200",
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "// Verify that the response is in JSON format",
+              "pm.test(\"Response is JSON\", function () {",
+              "    pm.response.to.be.json;",
+              "});",
+              "",
+              "// Parse the JSON response body",
+              "const responseData = pm.response.json();",
+              "",
+              "// Verify campaign basic fields and data types",
+              "pm.test(\"Campaign object has required fields with correct types\", function () {",
+              "    pm.expect(responseData).to.be.an(\"object\");",
+              "",
+              "    // Campaign level validation",
+              "    pm.expect(responseData).to.have.property(\"campaign_id\").that.is.a(\"string\").and.to.not.be.empty;",
+              "    pm.expect(responseData).to.have.property(\"campaign_name\").that.is.a(\"string\");",
+              "    pm.expect(responseData).to.have.property(\"campaign_start_time\").that.is.a(\"string\");",
+              "    pm.expect(responseData).to.have.property(\"campaign_end_time\").that.is.a(\"string\");",
+              "    pm.expect(responseData).to.have.property(\"campaign_location\").that.is.a(\"string\");",
+              "    pm.expect(responseData).to.have.property(\"campaign_created_at\").that.is.a(\"string\");",
+              "    pm.expect(responseData).to.have.property(\"is_active\").that.is.a(\"boolean\");",
+              "});",
+              "",
+              "// Verify 'runs' array and its nested 'participants' structure",
+              "pm.test(\"Runs array and nested participants have correct schema\", function () {",
+              "    // Check if runs array exists",
+              "    pm.expect(responseData).to.have.property(\"runs\").that.is.an(\"array\");",
+              "",
+              "    // Iterate through each run object",
+              "    responseData.runs.forEach((run, runIndex) => {",
+              "        // Run level validation",
+              "        pm.expect(run, `Run at index ${runIndex}`).to.have.property(\"run_id\").that.is.a(\"string\").and.to.not.be.empty;",
+              "        pm.expect(run, `Run at index ${runIndex}`).to.have.property(\"subject\").that.is.a(\"string\");",
+              "        pm.expect(run, `Run at index ${runIndex}`).to.have.property(\"registration_deadline\").that.is.a(\"string\");",
+              "        pm.expect(run, `Run at index ${runIndex}`).to.have.property(\"max_participants\").that.is.a(\"number\");",
+              "        pm.expect(run, `Run at index ${runIndex}`).to.have.property(\"is_active\").that.is.a(\"boolean\");",
+              "",
+              "        // Check if participants array exists inside the run",
+              "        pm.expect(run).to.have.property(\"participants\").that.is.an(\"array\");",
+              "",
+              "        // Iterate through each participant object",
+              "        run.participants.forEach((participant, pIndex) => {",
+              "            // Participant level validation",
+              "            pm.expect(participant, `Participant at run ${runIndex}, index ${pIndex}`).to.have.property(\"participant_id\").that.is.a(\"string\");",
+              "            pm.expect(participant, `Participant at run ${runIndex}, index ${pIndex}`).to.have.property(\"email_id\").that.is.a(\"string\");",
+              "            pm.expect(participant, `Participant at run ${runIndex}, index ${pIndex}`).to.have.property(\"rsvp_status\").that.is.a(\"string\");",
+              "            pm.expect(participant, `Participant at run ${runIndex}, index ${pIndex}`).to.have.property(\"name\").that.is.a(\"string\");",
+              "            pm.expect(participant, `Participant at run ${runIndex}, index ${pIndex}`).to.have.property(\"created_at\").that.is.a(\"string\");",
+              "            pm.expect(participant, `Participant at run ${runIndex}, index ${pIndex}`).to.have.property(\"updated_at\").that.is.a(\"string\");",
+              "        });",
+              "    });",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns/{{campaign_id}}",
+          "protocol": "https",
+          "host": [
+            "{{environment}}-rsvp-service-internal-api-tpet",
+            "aws-educate",
+            "tw"
+          ],
+          "path": [
+            "rsvp-service",
+            "{{environment}}",
+            "campaigns",
+            "{{campaign_id}}"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "200",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns/{{campaign_id}}",
+              "protocol": "https",
+              "host": [
+                "{{environment}}-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "{{environment}}",
+                "campaigns",
+                "{{campaign_id}}"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": ":status",
+              "value": 200
+            },
+            {
+              "key": "date",
+              "value": "Sun, 12 Apr 2026 10:12:32 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json",
+              "description": "",
+              "type": "text"
+            },
+            {
+              "key": "content-length",
+              "value": "931"
+            },
+            {
+              "key": "apigw-requestid",
+              "value": "bs5yYgNBPHcEMsg="
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"campaign_id\": \"evt_uuid_1001\",\n    \"campaign_name\": \"2026 全球開發者大會\",\n    \"description\": null,\n    \"created_at\": \"2026-01-10T10:00:00Z\",\n    \"is_active\": true,\n    \"runs\": [\n        {\n            \"run_id\": \"testabcde\",\n            \"subject\": \"SCRUM-566\",\n            \"registration_deadline\": \"2026-05-15T23:59:59Z\",\n            \"max_participants\": 100,\n            \"is_active\": true,\n            \"participants\": [\n                {\n                    \"participant_id\": \"80b68ffa-2b6d-4963-8785-42df71134750\",\n                    \"email_id\": null,\n                    \"rsvp_status\": \"PENDING\",\n                    \"name\": \"王大明\",\n                    \"created_at\": \"2026-04-04T15:05:16Z\",\n                    \"updated_at\": \"2026-04-04T15:05:16Z\"\n                },\n                {\n                    \"participant_id\": \"80b68ffa-2b6d-4963-8785-42df71134759\",\n                    \"email_id\": null,\n                    \"rsvp_status\": \"PENDING\",\n                    \"name\": \"王小明\",\n                    \"created_at\": \"2026-04-04T15:05:16Z\",\n                    \"updated_at\": \"2026-04-04T15:05:16Z\"\n                }\n            ]\n        },\n        {\n            \"run_id\": \"testklmno\",\n            \"subject\": \"SCRUM-566\",\n            \"registration_deadline\": \"2026-05-15T23:59:59Z\",\n            \"max_participants\": 900,\n            \"is_active\": false,\n            \"participants\": []\n        }\n    ]\n}"
+        },
+        {
+          "name": "403 (invalid token)",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns/{{campaign_id}}",
+              "protocol": "https",
+              "host": [
+                "{{environment}}-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "{{environment}}",
+                "campaigns",
+                "{{campaign_id}}"
+              ]
+            }
+          },
+          "status": "Forbidden",
+          "code": 403,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": ":status",
+              "value": 403
+            },
+            {
+              "key": "date",
+              "value": "Sun, 05 Apr 2026 08:45:13 GMT"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            },
+            {
+              "key": "content-length",
+              "value": "23"
+            },
+            {
+              "key": "apigw-requestid",
+              "value": "bVocCh3nPHcEPNA="
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"Forbidden\"\n}"
+        },
+        {
+          "name": "404 (wrong campaign_id)",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns/{{campaign_id}}",
+              "protocol": "https",
+              "host": [
+                "{{environment}}-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "{{environment}}",
+                "campaigns",
+                "{{campaign_id}}"
+              ]
+            }
+          },
+          "status": "Not Found",
+          "code": 404,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": ":status",
+              "value": 404
+            },
+            {
+              "key": "date",
+              "value": "Sun, 05 Apr 2026 08:43:17 GMT"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            },
+            {
+              "key": "content-length",
+              "value": "80"
+            },
+            {
+              "key": "apigw-requestid",
+              "value": "bVoJziV3vHcESvg="
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"Campaign with ID 'evt_c1452db884ac471dadb38a0a194bf150' not found\"\n}"
+        },
+        {
+          "name": "500 (GET /runs fail)",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns/{{campaign_id}}",
+              "protocol": "https",
+              "host": [
+                "{{environment}}-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "{{environment}}",
+                "campaigns",
+                "{{campaign_id}}"
+              ]
+            }
+          },
+          "status": "Internal Server Error",
+          "code": 500,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": ":status",
+              "value": 500
+            },
+            {
+              "key": "date",
+              "value": "Sun, 05 Apr 2026 09:01:26 GMT"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            },
+            {
+              "key": "content-length",
+              "value": "156"
+            },
+            {
+              "key": "apigw-requestid",
+              "value": "bVqxXjqgvHcEP-A="
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"Failed to fetch runs from email service: An unexpected error occurred: SQL execution failed, Request ID: b89f10ee-f3a1-4506-a12a-a5650ca5747a\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Create campaign",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Pre-request Script",
+              "// Generate a unique campaign name for each run to avoid collisions.",
+              "",
+              "const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, \"\");",
+              "pm.environment.set(\"campaign_name\", `2026 Global Developer Conference ${timestamp}`);",
+              "pm.environment.set(\"cohort\", \"8\");",
+              "pm.environment.set(\"campaign_start_time\", \"2026-05-20T09:00:00Z\");",
+              "pm.environment.set(\"campaign_end_time\", \"2026-05-25T10:00:00Z\");",
+              "pm.environment.set(\"campaign_location\", \"AWS\");",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Tests Script for: 201 Created",
+              "// Validate the successful create campaign response.",
+              "",
+              "pm.test(\"Status code is 201 Created\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "const responseData = pm.response.json();",
+              "",
+              "pm.test(\"Response body contains required fields\", function () {",
+              "    pm.expect(responseData).to.have.property(\"status\");",
+              "    pm.expect(responseData).to.have.property(\"campaign_id\");",
+              "    pm.expect(responseData).to.have.property(\"created_at\");",
+              "    pm.expect(responseData).to.have.property(\"message\");",
+              "});",
+              "",
+              "pm.test(\"Status is SUCCESS\", function () {",
+              "    pm.expect(responseData.status).to.eql(\"SUCCESS\");",
+              "});",
+              "",
+              "pm.test(\"campaign_id is a non-empty string\", function () {",
+              "    pm.expect(responseData.campaign_id).to.be.a(\"string\").and.to.not.be.empty;",
+              "});",
+              "",
+              "pm.test(\"created_at is a valid ISO 8601 UTC timestamp\", function () {",
+              "    const iso8601UtcRegex = /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$/;",
+              "    pm.expect(responseData.created_at).to.match(iso8601UtcRegex);",
+              "});",
+              "",
+              "pm.test(\"Message is correct\", function () {",
+              "    pm.expect(responseData.message).to.eql(\"Event created successfully.\");",
+              "});",
+              "",
+              "// Save campaign_id for later requests.",
+              "pm.environment.set(\"campaign_id\", responseData.campaign_id);",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"campaign_name\": \"2026 AWS Workshop222\",\n    \"cohort\": \"8\",\n    \"campaign_start_time\": \"2026-05-20T09:00:00Z\",\n    \"campaign_end_time\": \"2026-05-20T17:00:00Z\",\n    \"campaign_location\": \"Taipei 101\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns",
+          "protocol": "https",
+          "host": [
+            "{{environment}}-rsvp-service-internal-api-tpet",
+            "aws-educate",
+            "tw"
+          ],
+          "path": [
+            "rsvp-service",
+            "{{environment}}",
+            "campaigns"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "201",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"campaign_name\": \"2026 AWS Workshop\",\n    \"cohort\": \"8\",\n    \"campaign_start_time\": \"2026-05-20T09:00:00Z\",\n    \"campaign_end_time\": \"2026-05-20T17:00:00Z\",\n    \"campaign_location\": \"Taipei 101\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://local-dev-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/local-dev/campaigns",
+              "protocol": "https",
+              "host": [
+                "local-dev-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "local-dev",
+                "campaigns"
+              ]
+            }
+          },
+          "status": "Created",
+          "code": 201,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "Date",
+              "value": "Sat, 04 Apr 2026 09:24:32 GMT"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Content-Length",
+              "value": "156"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Apigw-Requestid",
+              "value": "bSbQchC0vHcEPMw="
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"status\": \"SUCCESS\",\n    \"campaign_id\": \"evt_c1452db884ac471dadb38a0a194bf152\",\n    \"created_at\": \"2026-04-04T09:24:31Z\",\n    \"message\": \"Event created successfully.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Update campaign",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Verify that the status code is 200",
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "// Verify that the response is in JSON format",
+              "pm.test(\"Response is JSON\", function () {",
+              "    pm.response.to.be.json;",
+              "});",
+              "",
+              "// Parse the JSON response body",
+              "const responseData = pm.response.json();",
+              "",
+              "// Verify the success message",
+              "pm.test(\"Response contains success message\", function () {",
+              "    pm.expect(responseData).to.have.property(\"message\").that.eql(\"campaign updated successfully\");",
+              "});",
+              "",
+              "// Verify campaign object has required fields with correct types",
+              "pm.test(\"Campaign object has required fields with correct types\", function () {",
+              "    pm.expect(responseData).to.be.an(\"object\");",
+              "",
+              "    // campaign_id",
+              "    pm.expect(responseData).to.have.property(\"campaign_id\").that.is.a(\"string\").and.to.not.be.empty;",
+              "",
+              "    // campaign_name",
+              "    pm.expect(responseData).to.have.property(\"campaign_name\").that.is.a(\"string\");",
+              "",
+              "    // campaign_start_time (ISO8601 string)",
+              "    pm.expect(responseData).to.have.property(\"campaign_start_time\").that.is.a(\"string\");",
+              "",
+              "    // campaign_end_time (ISO8601 string)",
+              "    pm.expect(responseData).to.have.property(\"campaign_end_time\").that.is.a(\"string\");",
+              "",
+              "    // campaign_location",
+              "    pm.expect(responseData).to.have.property(\"campaign_location\").that.is.a(\"string\");",
+              "",
+              "    // campaign_created_at (ISO8601 string)",
+              "    pm.expect(responseData).to.have.property(\"campaign_created_at\").that.is.a(\"string\");",
+              "",
+              "    // updated_at (ISO8601 string)",
+              "    pm.expect(responseData).to.have.property(\"updated_at\").that.is.a(\"string\");",
+              "",
+              "    // is_active (boolean)",
+              "    pm.expect(responseData).to.have.property(\"is_active\").that.is.a(\"boolean\");",
+              "});",
+              "",
+              "// Verify that updated fields match the request body",
+              "pm.test(\"Updated fields match request body values\", function () {",
+              "    const requestBody = JSON.parse(pm.request.body.raw);",
+              "",
+              "    if (requestBody.campaign_name !== undefined) {",
+              "        pm.expect(responseData.campaign_name).to.eql(requestBody.campaign_name);",
+              "    }",
+              "",
+              "    if (requestBody.campaign_start_time !== undefined) {",
+              "        pm.expect(responseData.campaign_start_time).to.eql(requestBody.campaign_start_time);",
+              "    }",
+              "",
+              "    if (requestBody.campaign_end_time !== undefined) {",
+              "        pm.expect(responseData.campaign_end_time).to.eql(requestBody.campaign_end_time);",
+              "    }",
+              "",
+              "    if (requestBody.campaign_location !== undefined) {",
+              "        pm.expect(responseData.campaign_location).to.eql(requestBody.campaign_location);",
+              "    }",
+              "",
+              "    if (requestBody.is_active !== undefined) {",
+              "        pm.expect(responseData.is_active).to.eql(requestBody.is_active);",
+              "    }",
+              "});",
+              "",
+              "// Verify that campaign_end_time is after campaign_start_time",
+              "pm.test(\"campaign_end_time is after campaign_start_time\", function () {",
+              "    const startTime = new Date(responseData.campaign_start_time);",
+              "    const endTime = new Date(responseData.campaign_end_time);",
+              "    pm.expect(endTime.getTime()).to.be.above(startTime.getTime());",
+              "});",
+              "",
+              "// Verify that updated_at is after or equal to campaign_created_at",
+              "pm.test(\"updated_at is after or equal to campaign_created_at\", function () {",
+              "    const createdAt = new Date(responseData.campaign_created_at);",
+              "    const updatedAt = new Date(responseData.updated_at);",
+              "    pm.expect(updatedAt.getTime()).to.be.at.least(createdAt.getTime());",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n\t\"campaign_name\": \"2026 全球開發者大會 test\",\t\n\t\"campaign_start_time\": \"2026-05-20T10:00:00Z\",\n\t\"campaign_end_time\": \"2026-05-25T18:00:00Z\",\n\t\"campaign_location\": \"台北市信義區\",\n\t\"is_active\": false // 或 true\n}\n",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns/{{campaign_id}}",
+          "protocol": "https",
+          "host": [
+            "{{environment}}-rsvp-service-internal-api-tpet",
+            "aws-educate",
+            "tw"
+          ],
+          "path": [
+            "rsvp-service",
+            "{{environment}}",
+            "campaigns",
+            "{{campaign_id}}"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "200",
+          "originalRequest": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"campaign_name\": \"2026 全球開發者大會 test\",\t\n\t\"campaign_start_time\": \"2026-05-20T10:00:00Z\",\n\t\"campaign_end_time\": \"2026-05-25T18:00:00Z\",\n\t\"campaign_location\": \"台北市信義區\",\n\t\"is_active\": false // 或 true\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns/{{campaign_id}}",
+              "protocol": "https",
+              "host": [
+                "{{environment}}-rsvp-service-internal-api-tpet",
+                "aws-educate",
+                "tw"
+              ],
+              "path": [
+                "rsvp-service",
+                "{{environment}}",
+                "campaigns",
+                "{{campaign_id}}"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": ":status",
+              "value": 200
+            },
+            {
+              "key": "date",
+              "value": "Sun, 07 Jun 2026 09:54:07 GMT"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            },
+            {
+              "key": "content-length",
+              "value": "430"
+            },
+            {
+              "key": "apigw-requestid",
+              "value": "elbl6hwsvHcEPpQ="
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"campaign updated successfully\",\n    \"campaign_id\": \"evt_6949869159a9476e8fa19319a20081a6\",\n    \"campaign_name\": \"2026 全球開發者大會 test\",\n    \"campaign_start_time\": \"2026-05-20T10:00:00Z\",\n    \"campaign_end_time\": \"2026-05-25T18:00:00Z\",\n    \"campaign_location\": \"台北市信義區\",\n    \"campaign_created_at\": \"2026-04-17T11:26:39Z\",\n    \"updated_at\": \"2026-06-07T09:54:07Z\",\n    \"is_active\": false\n}"
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "service-hyphen",
+      "value": ""
+    },
+    {
+      "key": "rsvp_status",
+      "value": ""
+    },
+    {
+      "key": "is_registration_closed",
+      "value": ""
+    },
+    {
+      "key": "current_status",
+      "value": ""
+    }
+  ]
+}

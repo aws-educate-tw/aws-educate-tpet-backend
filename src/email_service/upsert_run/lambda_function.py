@@ -12,6 +12,8 @@ from run_type_enum import RunType
 from sqs import get_sqs_message, send_message_to_queue
 from time_util import get_current_utc_time
 
+from rsvp_service import RSVPService
+
 # Set up logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -29,7 +31,6 @@ DEFAULT_DISPLAY_NAME = "AWS Educate 雲端大使"
 DEFAULT_REPLY_TO = "awseducate.cloudambassador@gmail.com"
 DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
 DEFAULT_RECIPIENT_SOURCE = RecipientSource.SPREADSHEET.value
-DEFAULT_RUN_TYPE = RunType.EMAIL.value
 EMAIL_PATTERN = r"[^@]+@[^@]+\.[^@]+"
 
 # Initialize repositories
@@ -153,8 +154,70 @@ def process_record(record: dict[str, Any], aws_request_id: str) -> None:
         current_user_info,
     )
 
+    # Remove template_variables from run_item before DB upsert.
+    #
+    # Background:
+    # - validate_input extracts template_variables from the email template file (e.g., ["Email", "Name", "Date"])
+    # - `template_variables` is included in sqs_message and gets spread into run_item via **common_data in prepare_run_data()
+    # - However, the `runs` table doesn't have a template_variables column, so we must remove it before DB insert
+    #
+    # Important:
+    # - We only remove it from run_item (used for DB)
+    # - The original sqs_message still contains template_variables
+    # - forward_message uses sqs_message, so create_email will receive template_variables
+    # - create_email needs template_variables to determine recipient_name mapping
+    run_item.pop("template_variables", None)
+
     if not run_repository.upsert_run(run_item):
         raise RuntimeError(f"Failed to save run: {run_item['run_id']}")
+
+    # For RSVP run type, call RSVP service to upsert run configuration
+    if run_type == RunType.RSVP.value:
+        registration_deadline = sqs_message.get("registration_deadline")
+        sqs_message["registration_deadline"] = registration_deadline
+        max_participants = sqs_message.get("expected_email_send_count", 0)
+
+        campaign_id = sqs_message.get("campaign_id")
+        if campaign_id and max_participants:
+            try:
+                rsvp_service = RSVPService()
+                response = rsvp_service.upsert_run_configuration(
+                    campaign_id=campaign_id,
+                    run_id=run_id,
+                    max_participants=max_participants,
+                    registration_deadline=registration_deadline,
+                    is_active=True,
+                )
+
+                # Persist the generated/normalized deadline into message for downstream create_email.
+                if isinstance(response, dict):
+                    response_data = (
+                        response.get("data")
+                        if isinstance(response.get("data"), dict)
+                        else response
+                    )
+                    resolved_deadline = response_data.get("registration_deadline")
+                    if resolved_deadline:
+                        sqs_message["registration_deadline"] = resolved_deadline
+
+                logger.info(
+                    "Successfully synchronized run configuration to RSVP service: campaign_id=%s, run_id=%s",
+                    campaign_id,
+                    run_id,
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to sync run configuration to RSVP service: %s (campaign_id=%s, run_id=%s)",
+                    e,
+                    campaign_id,
+                    run_id,
+                )
+        else:
+            logger.warning(
+                "Missing required RSVP fields for run configuration sync: campaign_id=%s, run_id=%s",
+                campaign_id,
+                run_id,
+            )
 
     # Forward the message to upsert_run SQS queue
     forward_message = {

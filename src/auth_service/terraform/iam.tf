@@ -21,10 +21,6 @@ resource "aws_iam_role" "refresh_service_accounts_token_scheduler_role" {
       }
     ]
   })
-
-  tags = {
-    Service = var.service_underscore
-  }
 }
 
 # Create specific IAM policy for invoking the refresh token lambda

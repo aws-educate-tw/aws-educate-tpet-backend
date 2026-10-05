@@ -85,12 +85,6 @@ module "health_check_lambda" {
     }
   }
 
-  tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-  }
-
 }
 
 module "health_check_docker_image" {
@@ -159,6 +153,7 @@ module "login_lambda" {
     "SERVICE"           = var.service_underscore
     "DYNAMODB_TABLE"    = var.dynamodb_table
     "COGNITO_CLIENT_ID" = data.aws_ssm_parameter.aws_educate_tpet_cognito_client_id.value
+    "DOMAIN_NAME"       = var.domain_name
   }
 
   allowed_triggers = {
@@ -169,10 +164,7 @@ module "login_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -275,11 +267,6 @@ module "change_password_lambda" {
     }
   }
 
-  tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-  }
   ######################
   # Additional policies
   ######################
@@ -381,11 +368,6 @@ module "get_user_lambda" {
     }
   }
 
-  tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-  }
   ######################
   # Additional policies
   ######################
@@ -487,10 +469,7 @@ module "get_me_lambda" {
   }
 
   tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-    "Prewarm"     = "true"
+    "Prewarm" = "true"
   }
   ######################
   # Additional policies
@@ -592,11 +571,6 @@ module "is_logged_in_lambda" {
     }
   }
 
-  tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-  }
   ######################
   # Additional policies
   ######################
@@ -699,11 +673,6 @@ module "refresh_service_accounts_token_lambda" {
     }
   }
 
-  tags = {
-    "Terraform"   = "true",
-    "Environment" = var.environment,
-    "Service"     = var.service_underscore
-  }
   ######################
   # Additional policies
   ######################

@@ -1,7 +1,9 @@
 import json
 import logging
+import os
 import uuid
 
+import boto3
 from botocore.exceptions import ClientError
 from recipient_source_enum import RecipientSource
 from run_repository import RunRepository
@@ -12,6 +14,23 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 run_repo = RunRepository()
+
+# Initialize auto_resume Lambda client
+lambda_client = boto3.client("lambda")
+AUTO_RESUME_AURORA_LAMBDA_NAME = os.getenv("AUTO_RESUME_AURORA_LAMBDA_NAME")
+
+
+def ensure_db_ready() -> None:
+    """Sync invoke auto_resume Lambda to ensure Aurora is awake before DB access."""
+    logger.info("Start invoke auto_resume Lambda to ensure Aurora is awake.")
+    response = lambda_client.invoke(
+        FunctionName=AUTO_RESUME_AURORA_LAMBDA_NAME,
+        InvocationType="RequestResponse",
+        Payload=b"{}",
+    )
+    if response["StatusCode"] != 200 or "FunctionError" in response:
+        logger.error("auto_resume invocation failed: %s", response)
+        raise RuntimeError("Database wake-up failed")
 
 
 def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
@@ -31,6 +50,8 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         return {"statusCode": 200, "body": "Successfully warmed up"}
 
     try:
+        ensure_db_ready()
+
         body = json.loads(event.get("body", "{}"))
         run_type = body.get("run_type")
         recipient_source = body.get("recipient_source", "DIRECT")
