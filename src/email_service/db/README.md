@@ -66,7 +66,7 @@ This ensures new environments get the complete schema while existing environment
 | local-dev | us-west-2 | https://local-dev-email-service-internal-api-tpet.aws-educate.tw/local-dev/email-service/health |
 | preview | us-west-1 | https://preview-email-service-internal-api-tpet.aws-educate.tw/preview/email-service/health |
 | dev | us-east-1 | https://dev-email-service-internal-api-tpet.aws-educate.tw/dev/email-service/health |
-| prod | ap-northeast-1 | https://email-service-internal-api-tpet.aws-educate.tw/prod/email-service/health |
+| prod | ap-northeast-1 | https://prod-email-service-internal-api-tpet.aws-educate.tw/prod/email-service/health |
 
 ---
 
