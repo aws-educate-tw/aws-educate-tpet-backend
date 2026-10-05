@@ -640,7 +640,7 @@ jobs:
         run: |
           # Set health check URL based on environment
           if [[ "${{ env.ENVIRONMENT }}" == "prod" ]]; then
-            HEALTH_CHECK_URL="https://email-service-internal-api-tpet.aws-educate.tw/prod/email-service/health"
+            HEALTH_CHECK_URL="https://prod-email-service-internal-api-tpet.aws-educate.tw/prod/email-service/health"
           else
             HEALTH_CHECK_URL="https://dev-email-service-internal-api-tpet.aws-educate.tw/dev/email-service/health"
           fi
