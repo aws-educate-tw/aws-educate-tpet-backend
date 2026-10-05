@@ -82,12 +82,13 @@ Revises:
 Create Date: 2026-02-02 00:10:00.204648
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '0ce5ac8342bb'
+revision = "0ce5ac8342bb"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -99,7 +100,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     pass
-
 ```
 
 Edit the `upgrade()` and `downgrade()` functions to add/remove the new column:
@@ -278,6 +278,7 @@ down_revision = "002"
 branch_labels = None
 depends_on = None
 
+
 def upgrade() -> None:
     """Create email_attachments table."""
     op.create_table(
@@ -303,6 +304,7 @@ def upgrade() -> None:
         "email_attachments",
         ["email_id"],
     )
+
 
 def downgrade() -> None:
     """Drop email_attachments table."""
@@ -354,6 +356,7 @@ def upgrade() -> None:
     op.add_column("emails", sa.Column("sender_company", sa.String(255), nullable=True))
     op.create_index("idx_emails_sender_company", "emails", ["sender_company"])
 
+
 def downgrade() -> None:
     op.drop_index("idx_emails_sender_company", "emails")
     op.drop_column("emails", "sender_company")
@@ -364,6 +367,7 @@ def downgrade() -> None:
 ```python
 def upgrade() -> None:
     op.alter_column("emails", "old_name", new_column_name="new_name")
+
 
 def downgrade() -> None:
     op.alter_column("emails", "new_name", new_column_name="old_name")
@@ -391,19 +395,24 @@ def upgrade() -> None:
         sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("email_id", "tag_id"),
         sa.ForeignKeyConstraint(
-            ["email_id"], ["emails.email_id"],
+            ["email_id"],
+            ["emails.email_id"],
             name="fk_email_tag_mappings_email_id",
             ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
-            ["tag_id"], ["email_tags.tag_id"],
+            ["tag_id"],
+            ["email_tags.tag_id"],
             name="fk_email_tag_mappings_tag_id",
             ondelete="CASCADE",
         ),
     )
 
-    op.create_index("idx_email_tag_mappings_email_id", "email_tag_mappings", ["email_id"])
+    op.create_index(
+        "idx_email_tag_mappings_email_id", "email_tag_mappings", ["email_id"]
+    )
     op.create_index("idx_email_tag_mappings_tag_id", "email_tag_mappings", ["tag_id"])
+
 
 def downgrade() -> None:
     op.drop_index("idx_email_tag_mappings_tag_id", "email_tag_mappings")
