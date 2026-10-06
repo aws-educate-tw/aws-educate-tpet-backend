@@ -1,0 +1,62 @@
+meta {
+  name: Create webhook
+  type: http
+  seq: 1
+}
+
+post {
+  url: https://{{environment}}-{{service_hyphen}}-internal-api-tpet.aws-educate.tw/{{environment}}/webhook
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+      "subject": "[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}",
+      "display_name": "GitHub Actions{{pull_request_number}} - API Regression Test",
+      "template_file_id": "{{$randomUUID}}",
+      "is_generate_certificate": false,
+      "reply_to": "{{$randomEmail}}",
+      "sender_local_part": "githubactions.pr{{pull_request_number}}.{{commit_sha}}",
+      "attachment_file_ids": [
+          "{{$randomUUID}}"
+      ],
+      "bcc": [
+          "{{$randomEmail}}",
+          "{{$randomEmail}}"
+      ],
+      "cc": [
+          "{{$randomEmail}}",
+          "{{$randomEmail}}"
+      ],
+      "surveycake_link": "https://www.surveycake.com/s/Nq06L",
+      "hash_key": "{{$randomUUID}}",
+      "iv_key": "{{$randomUUID}}",
+      "webhook_name": "githubactions.pr{{pull_request_number}}.{{commit_sha}}",
+      "webhook_type": "surveycake"
+  }
+}
+
+script:post-response {
+  // Check if the status code is 200
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  // Parse the JSON response body
+  const jsonData = res.getBody();
+
+  // Verify that the status is "SUCCESS"
+  test("Status is SUCCESS", function () {
+      expect(jsonData.status).to.eql("SUCCESS");
+  });
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}

@@ -1,0 +1,78 @@
+meta {
+  name: List campaigns
+  type: http
+  seq: 6
+}
+
+get {
+  url: https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+script:post-response {
+  // Verify that the status code is 200
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  // Verify that the response is in JSON format
+  test("Response is JSON", function () {
+      expect(res.getHeader('content-type')).to.include('application/json');
+  });
+
+  // Parse the JSON response body
+  const responseData = res.getBody();
+
+  // Verify that the response body is an array
+  test("Response is an array of campaigns", function () {
+      expect(responseData).to.be.an("array");
+  });
+
+  // Verify that each campaign object contains the required fields and correct data types
+  test("Each campaign has required fields with correct types", function () {
+      // Check if the array has at least one item to validate
+      if (responseData.length > 0) {
+          responseData.forEach((campaign, index) => {
+              // Verify campaign_id
+              expect(campaign, `Campaign at index ${index}`).to.have.property("campaign_id");
+              expect(campaign.campaign_id).to.be.a("string").and.to.not.be.empty;
+
+              // Verify campaign_name
+              expect(campaign, `Campaign at index ${index}`).to.have.property("campaign_name");
+              expect(campaign.campaign_name).to.be.a("string");
+
+              // Verify campaign_start_time (ISO8601 string)
+              expect(campaign, `Campaign at index ${index}`).to.have.property("campaign_start_time");
+              expect(campaign.campaign_start_time).to.be.a("string");
+
+              // Verify campaign_end_time (ISO8601 string)
+              expect(campaign, `Campaign at index ${index}`).to.have.property("campaign_end_time");
+              expect(campaign.campaign_end_time).to.be.a("string");
+
+              // Verify campaign_location
+              expect(campaign, `Campaign at index ${index}`).to.have.property("campaign_location");
+              expect(campaign.campaign_location).to.be.a("string");
+
+              // Verify campaign_created_at (ISO8601 string)
+              expect(campaign, `Campaign at index ${index}`).to.have.property("campaign_created_at");
+              expect(campaign.campaign_created_at).to.be.a("string");
+
+              // Verify is_active (boolean)
+              expect(campaign, `Campaign at index ${index}`).to.have.property("is_active");
+              expect(campaign.is_active).to.be.a("boolean");
+          });
+      } else {
+          console.warn("The campaign list is empty, skipping item property validation.");
+      }
+  });
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}
