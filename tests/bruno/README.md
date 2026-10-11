@@ -92,8 +92,21 @@ runtime:
   API access token.
 
 The workflow offers a manual selector for `auth`, `email`, `file`, `rsvp`,
-`webhook`, or `all`, plus a branch-scoped Auth trigger. The other collections
-are manual because they change Preview data. The RSVP job retrieves
+`webhook`, or `all`, and a reusable `workflow_call` entry point. Each service
+workflow calls Bruno for its own service after the Preview deployment, readiness
+check, and Newman run. The existing service path filters and PR triggers apply
+to both runners; pushes to `dev` or `main` deploy their target environment and do
+not run these Preview tests.
+
+Newman and Bruno run sequentially within the same service workflow to avoid
+simultaneous writes to shared Preview fixtures. Bruno still runs if Newman tests
+fail, provided the readiness check passed and the workflow was not cancelled.
+Deployment or readiness failures skip Bruno. Both runners retain their own test
+status and report artifacts. The Bruno workflow has no standalone push trigger.
+In manual `all` mode, Webhook waits for Email to succeed; selecting only Webhook
+runs it even though the Email job is skipped.
+
+The RSVP job retrieves
 `aws-educate-tpet/preview/jwt-hs256-secret` and signs a one-hour participant
 JWT for the existing Preview run and participant fixture. The workflow uploads
 JSON, JUnit, and HTML reports as artifacts and excludes request/response bodies
@@ -102,9 +115,9 @@ and the Authorization header from those reports.
 ## Validation boundary
 
 All five collections parse and their scripts pass JavaScript syntax checks.
-The original Newman service workflows still run independently. The new File,
-RSVP, and Webhook collections require a manual Preview CI run to establish live
-request and assertion parity. RSVP has response-dependent test branches, so its
-78 declared assertions are not a fixed per-run pass count. Its Preview fixture
+Newman remains in the service workflows during the migration, with Bruno
+running afterward as a separate job. Live CI validation of this integration
+requires a service PR or a manual Preview run. RSVP has response-dependent test
+branches, so its 78 declared assertions are not a fixed per-run pass count. Its Preview fixture
 must still exist and the CI AWS identity must be able to read the JWT signing
 secret.

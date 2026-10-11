@@ -1,12 +1,17 @@
 name: Bruno API Regression
 
 on:
-  push:
-    branches:
-      - SCRUM-692-Phase-1-Bruno-Proof-of-Concept
-    paths:
-      - .github/workflows/bruno_api_regression.yaml
-      - tests/bruno/**
+  workflow_call:
+    inputs:
+      service:
+        description: Collection to run against Preview
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
   workflow_dispatch:
     inputs:
       service:
@@ -32,7 +37,7 @@ env:
 
 jobs:
   auth:
-    if: github.event_name == 'push' || inputs.service == 'auth' || inputs.service == 'all'
+    if: inputs.service == 'auth' || inputs.service == 'all'
     name: Bruno API Regression - Auth Service
     runs-on: ubuntu-latest
     steps:
@@ -137,8 +142,8 @@ jobs:
           cd "$COLLECTION_DIR"
           ../../node_modules/.bin/bru run . -r --env preview \
             --env-var "access_token=$access_token" \
-            --env-var "pull_request_number=${{ github.run_id }}" \
-            --env-var "commit_sha=${{ github.sha }}" \
+            --env-var "pull_request_number=${{ github.event.pull_request.number || github.run_id }}" \
+            --env-var "commit_sha=${{ github.event.pull_request.head.sha || github.sha }}" \
             --reporter-json "$REPORT_PATH/report.json" \
             --reporter-junit "$REPORT_PATH/report.junit.xml" \
             --reporter-html "$REPORT_PATH/report.html" \
@@ -343,8 +348,8 @@ jobs:
           cd "$COLLECTION_DIR"
           ../../node_modules/.bin/bru run . -r --env preview \
             --env-var "access_token=$access_token" \
-            --env-var "pull_request_number=${{ github.run_id }}" \
-            --env-var "commit_sha=${{ github.sha }}" \
+            --env-var "pull_request_number=${{ github.event.pull_request.number || github.run_id }}" \
+            --env-var "commit_sha=${{ github.event.pull_request.head.sha || github.sha }}" \
             --reporter-json "$REPORT_PATH/report.json" \
             --reporter-junit "$REPORT_PATH/report.junit.xml" \
             --reporter-html "$REPORT_PATH/report.html" \
