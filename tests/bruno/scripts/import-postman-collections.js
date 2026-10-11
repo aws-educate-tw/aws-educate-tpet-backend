@@ -182,6 +182,11 @@ function updateEmailScripts(collection) {
   sanitiseEmailRequest(findRequest(collection.items, 'Send email (non-RSVP)'));
 
   const listEmails = findRequest(collection.items, 'List emails');
+  // The pre-request script already waits before every request, including retries.
+  listEmails.request.script.res = listEmails.request.script.res.replace(
+    /const waitUntil = Date\.now\(\) \+ retryDelayMs;\s+while \(Date\.now\(\) < waitUntil\) \{\}/,
+    '// The pre-request script waits 3 seconds before each retry.'
+  );
   listEmails.request.script.res = listEmails.request.script.res.replace(
     `test("Recipient name is 'harry鍾'", function () {
         const firstEmail = responseData.data[0];

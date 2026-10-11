@@ -56,8 +56,7 @@ script:post-response {
       const nextRetryCount = currentRetryCount + 1;
       bru.setEnvVar("list_emails_retry_count", String(nextRetryCount));
       console.log(`List emails returned no data yet. Retry ${nextRetryCount}/${maxRetryCount} after ${retryDelayMs}ms for run_id ${bru.getEnvVar("run_id_from_send_email_api")}`);
-      const waitUntil = Date.now() + retryDelayMs;
-      while (Date.now() < waitUntil) {}
+      // The pre-request script waits 3 seconds before each retry.
       bru.runner.setNextRequest("List emails");
   } else if (Array.isArray(responseData.data)) {
         bru.deleteEnvVar("list_emails_retry_count");
