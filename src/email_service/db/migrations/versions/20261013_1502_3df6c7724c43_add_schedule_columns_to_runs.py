@@ -17,10 +17,11 @@ depends_on = None
 
 
 def upgrade() -> None:
-    """
-      Add schedule columns and run-level status to RUNS table.
-      
-    - status: run state (SCHEDULED / CANCELED / SENDING / SENT / FAILED / ACTIVE)
+    """Add schedule columns and run-level status to RUNS table.
+
+    - status: run state (SCHEDULED / CANCELED / SENDING / SENT / FAILED / ACTIVE).
+      Nullable for now so existing writers that do not set it yet keep working;
+      it will be made NOT NULL in a follow-up migration.
     - scheduled_at: planned send time, NULL means send immediately
     - dispatched_at: time the run was actually picked up for sending
     - schedule_arn: EventBridge schedule ARN, NULL for immediate runs
@@ -46,10 +47,6 @@ def upgrade() -> None:
         END
         WHERE status IS NULL
         """
-    )
-
-    op.alter_column(
-        "runs", "status", existing_type=sa.String(length=50), nullable=False
     )
 
     op.create_index("idx_runs_status", "runs", ["status"])

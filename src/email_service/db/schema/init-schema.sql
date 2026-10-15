@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS RUNS (
     max_participants INTEGER DEFAULT NULL,              -- Maximum participant capacity
 
     -- Schedule Fields
-    status VARCHAR(50) NOT NULL,                        -- SCHEDULED / CANCELED / SENDING / SENT / FAILED / ACTIVE
+    status VARCHAR(50),                        -- SCHEDULED / CANCELED / SENDING / SENT / FAILED / ACTIVE
     scheduled_at TIMESTAMP WITH TIME ZONE,              -- Planned send time, NULL means send immediately
     dispatched_at TIMESTAMP WITH TIME ZONE,             -- Time the run was actually picked up for sending
     schedule_arn VARCHAR(255),                          -- EventBridge schedule ARN, NULL for immediate runs
