@@ -19,7 +19,11 @@ JSONB_COLUMNS = {
     "spreadsheet_file",
     "template_file",
 }
-TIMESTAMP_COLUMNS = {"created_at", "scheduled_at", "dispatched_at"}  # Added for consistency
+TIMESTAMP_COLUMNS = {
+    "created_at",
+    "scheduled_at",
+    "dispatched_at",
+}  # Added for consistency
 
 DATABASE_NAME = os.environ["DATABASE_NAME"]
 RDS_CLUSTER_ARN = os.environ["RDS_CLUSTER_ARN"]

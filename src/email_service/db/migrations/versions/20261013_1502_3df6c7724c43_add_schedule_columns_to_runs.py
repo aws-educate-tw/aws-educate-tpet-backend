@@ -5,13 +5,13 @@ Revises: fe26b49acd50
 Create Date: 2026-10-13 15:02:28.379227
 
 """
-from alembic import op
-import sqlalchemy as sa
 
+import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = '3df6c7724c43'
-down_revision = 'fe26b49acd50'
+revision = "3df6c7724c43"
+down_revision = "fe26b49acd50"
 branch_labels = None
 depends_on = None
 

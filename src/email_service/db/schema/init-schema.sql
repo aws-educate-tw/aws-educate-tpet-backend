@@ -109,7 +109,7 @@ CREATE INDEX IF NOT EXISTS idx_runs_sender_id ON RUNS(sender_id);
 -- Create index on created_year in RUNS table for faster filtering
 CREATE INDEX IF NOT EXISTS idx_runs_created_year ON RUNS(created_year);
 
--- Create index on status in RUNS table for faster filtering 
+-- Create index on status in RUNS table for faster filtering
 CREATE INDEX IF NOT EXISTS idx_runs_status ON RUNS(status);
 
 -- Create combined index on sender_id and created_year for common query pattern
