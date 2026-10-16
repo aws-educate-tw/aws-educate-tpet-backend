@@ -13,6 +13,12 @@ CREATE TABLE IF NOT EXISTS RUNS (
     participation_num INTEGER NOT NULL DEFAULT 0,       -- Total confirmed participants
     max_participants INTEGER DEFAULT NULL,              -- Maximum participant capacity
 
+    -- Schedule Fields
+    status VARCHAR(50),                        -- SCHEDULED / CANCELED / SENDING / SENT / FAILED / ACTIVE
+    scheduled_at TIMESTAMP WITH TIME ZONE,              -- Planned send time, NULL means send immediately
+    dispatched_at TIMESTAMP WITH TIME ZONE,             -- Time the run was actually picked up for sending
+    schedule_arn VARCHAR(255),                          -- EventBridge schedule ARN, NULL for immediate runs
+
     attachment_file_ids JSONB NOT NULL DEFAULT '[]',
     attachment_files JSONB NOT NULL DEFAULT '[]',
     bcc JSONB NOT NULL DEFAULT '[]',
@@ -102,6 +108,9 @@ CREATE INDEX IF NOT EXISTS idx_runs_sender_id ON RUNS(sender_id);
 
 -- Create index on created_year in RUNS table for faster filtering
 CREATE INDEX IF NOT EXISTS idx_runs_created_year ON RUNS(created_year);
+
+-- Create index on status in RUNS table for faster filtering
+CREATE INDEX IF NOT EXISTS idx_runs_status ON RUNS(status);
 
 -- Create combined index on sender_id and created_year for common query pattern
 CREATE INDEX IF NOT EXISTS idx_runs_sender_id_created_year ON RUNS(sender_id, created_year);
