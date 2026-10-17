@@ -1,0 +1,61 @@
+meta {
+  name: List runs
+  type: http
+  seq: 4
+}
+
+get {
+  url: https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/runs?sort_by=created_at&limit=5&page=1
+  body: json
+  auth: bearer
+}
+
+params:query {
+  @description('(Optional) 目前只能設定為 created_at')
+  sort_by: created_at
+  limit: 5
+  page: 1
+  @description('(Optional) {ASC / DESC}, Default=DESC')
+  ~sort_order: ASC
+  @description('(Optinoal) DIRECT / SPREADSHEET / WEBHOOK')
+  ~run_type: WEBHOOK
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+script:post-response {
+  test("Status code is 200 OK", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response body has correct structure", function () {
+      const responseBody = res.getBody();
+
+      expect(responseBody).to.have.property('data');
+      expect(responseBody).to.have.property('pagination');
+
+      expect(responseBody.data).to.be.an('array');
+
+      const pagination = responseBody.pagination;
+      expect(pagination).to.have.all.keys('page', 'limit', 'total_items', 'total_pages', 'has_next_page', 'has_previous_page');
+  });
+
+  test("Each item in 'data' array has required properties", function () {
+      const responseBody = res.getBody();
+      const dataArray = responseBody.data;
+
+      dataArray.forEach(item => {
+          expect(item).to.be.an('object');
+          expect(item).to.have.property('run_id').that.is.a('string');
+          expect(item).to.have.property('run_type').that.is.a('string');
+          expect(item).to.have.property('created_at').that.is.a('string');
+      });
+  });
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}

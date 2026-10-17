@@ -1,0 +1,15 @@
+{
+  "name": "tpet-bruno-api-regression",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Bruno API regression tests for TPET",
+  "scripts": {
+    "import:postman": "node scripts/import-postman-collections.js",
+    "test:auth": "cd collections/auth-service && bru run . -r --env preview",
+    "test:email": "cd collections/email-service && bru run . -r --env preview"
+  },
+  "devDependencies": {
+    "@usebruno/cli": "4.1.0",
+    "@usebruno/converters": "0.23.0"
+  }
+}
