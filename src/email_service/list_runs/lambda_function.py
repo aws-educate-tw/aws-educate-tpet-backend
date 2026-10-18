@@ -34,20 +34,22 @@ def ensure_db_ready() -> None:
 
 
 def validate_status(status: str) -> dict[str, any] | None:
-    """Validate a single status and return a distinct error for comma-separated values."""
+    """Collect errors for comma-separated and unsupported status values."""
     valid_run_statuses = [run_status.value for run_status in RunStatus]
-    error_message = None
+    error_message = ""
     if isinstance(status, str) and "," in status:
-        error_message = "Invalid status. Comma-separated values are not supported."
-    elif not isinstance(status, str) or status not in valid_run_statuses:
-        error_message = f"Invalid status. Allowed values are {valid_run_statuses}."
+        error_message += "Invalid status. Comma-separated values are not supported. "
+    if not isinstance(status, str) or any(
+        value not in valid_run_statuses for value in status.split(",")
+    ):
+        error_message += f"Invalid status. Allowed values are {valid_run_statuses}."
 
-    if error_message is None:
+    if not error_message:
         return None
 
     return {
         "statusCode": 400,
-        "body": json.dumps({"message": error_message}),
+        "body": json.dumps({"message": error_message.strip()}),
     }
 
 
