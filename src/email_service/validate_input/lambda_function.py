@@ -17,6 +17,7 @@ from error_code_enum import SystemErrorCode, ValidationErrorCode
 from recipient_source_enum import RecipientSource
 from requests.exceptions import RequestException
 from run_type_enum import RunType
+from schedule_validation import is_valid_iso8601_utc, validate_scheduled_at
 from sqs import send_message_to_queue
 from time_util import (
     format_time_to_iso8601,
@@ -398,13 +399,7 @@ def validate_certificate_requirements(
 
 def validate_iso8601(date_string: str) -> bool:
     """Validate if a string is a valid ISO 8601 datetime string."""
-    try:
-        if not re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", date_string):
-            return False
-        datetime.datetime.fromisoformat(date_string.replace("Z", "+00:00"))
-        return True
-    except ValueError:
-        return False
+    return is_valid_iso8601_utc(date_string)
 
 
 def validate_registration_deadline(
@@ -556,9 +551,16 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         sender_local_part = body.get("sender_local_part", DEFAULT_SENDER_LOCAL_PART)
         cc = body.get("cc", [])
         bcc = body.get("bcc", [])
+        scheduled_at = body.get("scheduled_at")
 
         # Initialize error collector
         error_collector = ValidationErrorCollector()
+        validate_scheduled_at(
+            scheduled_at=scheduled_at,
+            run_type=run_type,
+            registration_deadline=body.get("registration_deadline"),
+            error_collector=error_collector,
+        )
 
         # --- Webhook specific logic ---
         if run_type == RunType.WEBHOOK.value:
@@ -873,6 +875,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "success_email_count": 0,
             "expected_email_send_count": expected_email_send_count,
             "template_variables": template_variables,
+            "scheduled_at": scheduled_at,
         }
 
         # Add campaign_id for RSVP run type
