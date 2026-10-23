@@ -100,7 +100,6 @@ def enqueue_email_to_send_email_sqs_queue(email_item: dict) -> None:
         "sender_local_part": email_item.get("sender_local_part"),
         "cc": email_item.get("cc"),
         "bcc": email_item.get("bcc"),
-        "access_token": current_user_util.get_current_user_access_token(),
     }
 
     try:

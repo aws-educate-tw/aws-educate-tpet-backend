@@ -3,7 +3,6 @@ import logging
 import os
 import re
 
-from current_user_util import current_user_util
 from email_repository import EmailRepository
 from run_repository import RunRepository
 from s3 import read_html_template_file_from_s3
@@ -160,10 +159,6 @@ def lambda_handler(event, context):
     for record in event["Records"]:
         try:
             sqs_message = get_sqs_message(record)
-            access_token = sqs_message["access_token"]
-
-            # Set the current user information
-            current_user_util.set_current_user_by_access_token(access_token)
 
             # Process the email
             process_email(sqs_message)
