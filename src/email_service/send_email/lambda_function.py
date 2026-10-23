@@ -74,7 +74,7 @@ def process_email(email_data: dict) -> None:
         # so no user access token is needed (e.g. for scheduled runs)
         run_files = run_repository.get_run_files(run_id)
         if not run_files:
-            raise ValueError(f"Run not found: {run_id}")
+            raise ValueError(f"Run with ID {run_id} not found.")
 
         template_content = read_html_template_file_from_s3(
             bucket=BUCKET_NAME,
