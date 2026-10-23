@@ -271,6 +271,37 @@ class RunRepository:
                 "Error incrementing failed email count", sql, params, e
             ) from e
 
+    def finalize_run_status_if_complete(self, run_id: str) -> None:
+        """
+        Set a SENDING run to SENT, or FAILED if any email failed, once the
+        success and failed counts reach expected_email_send_count.
+
+        Runs in any other status (e.g. ACTIVE webhook runs, already finalized
+        runs) are left untouched, so this is safe to call after every email.
+
+        :param run_id: The run ID to update
+        """
+        try:
+            # status IS NULL: runs created before upsert_run starts writing
+            # status. Drop it once runs.status becomes NOT NULL.
+            sql = """
+                UPDATE runs
+                SET status = CASE WHEN failed_email_count > 0 THEN 'FAILED' ELSE 'SENT' END
+                WHERE run_id = :run_id
+                  AND (status = 'SENDING' OR (status IS NULL AND run_type <> 'WEBHOOK'))
+                  AND success_email_count + failed_email_count >= expected_email_send_count
+            """
+            params = [
+                {"name": "run_id", "value": {"stringValue": run_id}},
+            ]
+
+            self._execute(sql, params)
+        except Exception as e:
+            logger.error("Error finalizing run status: %s", e)
+            raise RunRepositoryError(
+                "Error finalizing run status", sql, params, e
+            ) from e
+
     def update_run(self, run_id: str, update_data: dict) -> bool:
         """
         Update specific fields of a run in the PostgreSQL database.

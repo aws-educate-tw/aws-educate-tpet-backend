@@ -66,6 +66,7 @@ def process_email(email_data: dict) -> None:
             run_id=run_id, email_id=email_id, status="FAILED"
         )
         run_repository.increment_failed_email_count(run_id)
+        run_repository.finalize_run_status_if_complete(run_id)
         return
 
     try:
@@ -139,7 +140,11 @@ def process_email(email_data: dict) -> None:
             )
             # Raise the repository error instead of the original error
             raise repo_error
+        run_repository.finalize_run_status_if_complete(run_id)
         raise
+
+    # Kept outside the try block so a failure here isn't recorded as a failed email
+    run_repository.finalize_run_status_if_complete(run_id)
 
 
 def lambda_handler(event, context):
