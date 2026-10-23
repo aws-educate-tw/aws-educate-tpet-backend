@@ -65,6 +65,7 @@ def process_email(email_data: dict) -> None:
         email_repository.update_email_status(
             run_id=run_id, email_id=email_id, status="FAILED"
         )
+        run_repository.increment_failed_email_count(run_id)
         return
 
     try:
