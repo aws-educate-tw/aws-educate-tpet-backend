@@ -136,6 +136,21 @@ class RunRepository:
             logger.error("Error getting run by ID: %s", e)
             return None
 
+    def get_run_files(self, run_id: str) -> dict | None:
+        """
+        Retrieve the template and attachment file info stored on a run by upsert_run.
+
+        :param run_id: The ID of the run
+        :return: Dict with template_file and attachment_files, or None if not found
+        """
+        sql = "SELECT template_file, attachment_files FROM runs WHERE run_id = :run_id"
+        params = [
+            {"name": "run_id", "value": {"stringValue": run_id}},
+        ]
+
+        results = self._execute(sql, params, fetch=True)
+        return results[0] if results else None
+
     def upsert_run(self, run: dict) -> str | None:
         """
         Insert or update a run in the PostgreSQL database.
