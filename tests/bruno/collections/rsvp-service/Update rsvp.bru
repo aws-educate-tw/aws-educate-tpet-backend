@@ -1,0 +1,201 @@
+meta {
+  name: Update rsvp
+  type: http
+  seq: 1
+}
+
+put {
+  url: https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/rsvp/{{run_id_participant_id}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "action": "ATTEND",
+    "clientTimestamp": 1705821234567
+  }
+}
+
+script:post-response {
+  // ============================================================
+  // Post-response Script: PUT /rsvp-service/rsvp/{run_id_participant_id}
+  // Covers all 6 response scenarios defined in the API spec
+  // ============================================================
+
+  const statusCode = res.getStatus();
+
+  // --- Performance baseline ---
+  test("Response time is within 3000ms", () => {
+      expect(res.getResponseTime()).to.be.below(3000);
+  });
+
+  // ============================================================
+  // Scenario 1: Happy Path (HTTP 200)
+  // ============================================================
+  if (statusCode === 200) {
+
+      test("[200] Content-Type is application/json", () => {
+          expect(res.getHeader("Content-Type")).to.include("application/json");
+      });
+
+      const json = res.getBody();
+
+      test("[200] data object exists", () => {
+          expect(json).to.have.property("data").that.is.an("object");
+      });
+
+      const data = json.data;
+
+      test("[200] currentStatus is a valid enum value", () => {
+          expect(["ATTEND", "NOT_ATTEND", "PENDING"]).to.include(data.currentStatus);
+      });
+
+      // --- Scenario 1 vs Scenario 3 distinction ---
+      // Scenario 1: status="SUCCESS" + currentStatus matches the action we sent
+      // Scenario 3: no status field (or omitted), currentStatus reflects DB value (stale request ignored)
+      const sentBody = req.getBody();
+      const sentAction = sentBody.action;
+
+      if (json.status === "SUCCESS") {
+          test("[Scenario 1] status field equals 'SUCCESS'", () => {
+              expect(json.status).to.equal("SUCCESS");
+          });
+
+          test("[Scenario 1] currentStatus matches the action sent in request", () => {
+              expect(data.currentStatus).to.equal(sentAction);
+          });
+
+          console.log(`[Scenario 1] Update accepted — currentStatus: ${data.currentStatus}`);
+
+      } else {
+          // Stale request: backend ignored the write, returned current DB value
+          test("[Scenario 3] Stale request — status field is absent or not 'SUCCESS'", () => {
+              expect(json.status).to.not.equal("SUCCESS");
+          });
+
+          test("[Scenario 3] currentStatus is a valid enum value (DB authoritative value)", () => {
+              expect(["ATTEND", "NOT_ATTEND", "PENDING"]).to.include(data.currentStatus);
+          });
+
+          console.warn(`[Scenario 3] Stale/out-of-order request detected — backend returned DB value: ${data.currentStatus}`);
+      }
+
+      // --- Persist latest status for downstream requests ---
+      bru.setCollectionVar("current_status", data.currentStatus);
+  }
+
+  // ============================================================
+  // Scenario 2: Registration Closed (HTTP 403)
+  // ============================================================
+  else if (statusCode === 403) {
+
+      test("[Scenario 2] Status is 403 Forbidden", () => {
+          expect(res.getStatus()).to.equal(403);
+      });
+
+      test("[Scenario 2] Response body is valid JSON", () => {
+          expect(res.getHeader('content-type')).to.include('application/json');
+      });
+
+      test("[Scenario 2] Error code is REGISTRATION_CLOSED", () => {
+          const json = res.getBody();
+          // Accept common error envelope shapes: { code }, { error: { code } }, { message }
+          const code = json.code || json.error?.code || json.message;
+          expect(code).to.include("REGISTRATION_CLOSED");
+      });
+
+      console.warn("[Scenario 2] Registration is closed — frontend should show modal and lock all buttons.");
+  }
+
+  // ============================================================
+  // Scenario 4: Invalid Token (HTTP 401)
+  // ============================================================
+  else if (statusCode === 401) {
+
+      test("[Scenario 4] Status is 401 Unauthorized", () => {
+          expect(res.getStatus()).to.equal(401);
+      });
+
+      test("[Scenario 4] Response body is valid JSON", () => {
+          expect(res.getHeader('content-type')).to.include('application/json');
+      });
+
+      test("[Scenario 4] Error code is INVALID_TOKEN", () => {
+          const json = res.getBody();
+          const code = json.code || json.error?.code || json.message;
+          expect(code).to.include("INVALID_TOKEN");
+      });
+
+      console.warn("[Scenario 4] Invalid token — frontend should redirect to error page or logout.");
+  }
+
+  // ============================================================
+  // Scenario 6: Concurrent Update / Race Condition (HTTP 409)
+  // ============================================================
+  else if (statusCode === 409) {
+
+      test("[Scenario 6] Status is 409 Conflict", () => {
+          expect(res.getStatus()).to.equal(409);
+      });
+
+      test("[Scenario 6] Response body is valid JSON", () => {
+          expect(res.getHeader('content-type')).to.include('application/json');
+      });
+
+      test("[Scenario 6] Error code is CONCURRENT_UPDATE", () => {
+          const json = res.getBody();
+          const code = json.code || json.error?.code || json.message;
+          expect(code).to.include("CONCURRENT_UPDATE");
+      });
+
+      // Track retry count to prevent infinite retry loop on the frontend side
+      let retryCount = parseInt(bru.getCollectionVar("retry_count") || "0");
+      retryCount++;
+      bru.setCollectionVar("retry_count", retryCount);
+
+      console.warn(`[Scenario 6] Concurrent conflict detected (retry #${retryCount}) — frontend should auto-retry.`);
+  }
+
+  // ============================================================
+  // Scenario 5: Internal Server Error (HTTP 500)
+  // ============================================================
+  else if (statusCode === 500) {
+
+      test("[Scenario 5] Status is 500 Internal Server Error", () => {
+          expect(res.getStatus()).to.equal(500);
+      });
+
+      test("[Scenario 5] Response body is valid JSON", () => {
+          expect(res.getHeader('content-type')).to.include('application/json');
+      });
+
+      test("[Scenario 5] Error code is INTERNAL_ERROR", () => {
+          const json = res.getBody();
+          const code = json.code || json.error?.code || json.message;
+          expect(code).to.include("INTERNAL_ERROR");
+      });
+
+      console.error("[Scenario 5] Server error — frontend should display 'System busy' message.");
+  }
+
+  // ============================================================
+  // Catch-all: Unexpected status code
+  // ============================================================
+  else {
+      test(`Unexpected status code received: ${statusCode}`, () => {
+          expect([200, 401, 403, 409, 500]).to.include(statusCode);
+      });
+
+      console.error(`[Unexpected] Undocumented status code: ${statusCode}`);
+  }
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}

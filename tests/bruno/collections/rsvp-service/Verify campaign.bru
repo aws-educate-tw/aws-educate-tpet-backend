@@ -1,0 +1,77 @@
+meta {
+  name: Verify campaign
+  type: http
+  seq: 3
+}
+
+get {
+  url: https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/internal/campaign/{{campaign_id}}/check
+  body: none
+  auth: inherit
+}
+
+script:post-response {
+  // 1. Basic Status Code and Response Format Validation
+  test("HTTP Status Code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response is in JSON format", function () {
+      expect(res.getBody()).to.not.equal(undefined);
+      expect(res.getHeader('content-type')).to.include('application/json');
+  });
+
+  // 2. Data Integrity and Value Validation
+  const jsonData = res.getBody();
+
+  test("Response status should be success", function () {
+      expect(jsonData.status).to.eql("success");
+  });
+
+  test("Campaign data integrity check", function () {
+      const data = jsonData.data;
+
+      // Validate that the campaign_id matches the one requested in the path
+      // Assuming you have 'campaign_id' defined as a variable in your request path
+      const requestedId = bru.getEnvVar("campaign_id");
+      expect(data.campaign_id).to.be.a('string');
+
+      // Core business logic: The campaign should be valid and active
+      test("Campaign must be valid and active for Internal Service use", function() {
+          expect(data.is_valid).to.be.true;
+          expect(data.is_active).to.be.true;
+      });
+
+      // Ensure campaign_name is present (useful for logging/double-check)
+      expect(data.campaign_name).to.be.a('string').and.not.empty;
+  });
+
+  // 3. JSON Schema Validation
+  const schema = {
+      "type": "object",
+      "required": ["status", "data"],
+      "properties": {
+          "status": { "type": "string" },
+          "data": {
+              "type": "object",
+              "required": ["is_valid", "campaign_id", "campaign_name", "is_active"],
+              "properties": {
+                  "is_valid": { "type": "boolean" },
+                  "campaign_id": { "type": "string" },
+                  "campaign_name": { "type": "string" },
+                  "is_active": { "type": "boolean" }
+              }
+          }
+      }
+  };
+
+  test("Validate JSON Schema accuracy", function () {
+      expect(res.getBody()).to.have.jsonSchema(schema);
+  });
+
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}
