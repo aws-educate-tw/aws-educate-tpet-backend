@@ -6,7 +6,6 @@ from decimal import Decimal  # Added import
 import boto3
 import time_util
 from run_status_enum import RunStatus
-from run_type_enum import RunType
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -284,13 +283,11 @@ class RunRepository:
         :param run_id: The run ID to update
         """
         try:
-            # status IS NULL: runs created before upsert_run starts writing
-            # status. Drop it once runs.status becomes NOT NULL.
             sql = """
                 UPDATE runs
                 SET status = CASE WHEN failed_email_count > 0 THEN :failed_status ELSE :sent_status END
                 WHERE run_id = :run_id
-                  AND (status = :sending_status OR (status IS NULL AND run_type <> :webhook_run_type))
+                  AND status = :sending_status
                   AND success_email_count + failed_email_count >= expected_email_send_count
             """
             params = [
@@ -298,7 +295,6 @@ class RunRepository:
                 self._create_param("sending_status", RunStatus.SENDING.value),
                 self._create_param("sent_status", RunStatus.SENT.value),
                 self._create_param("failed_status", RunStatus.FAILED.value),
-                self._create_param("webhook_run_type", RunType.WEBHOOK.value),
             ]
 
             self._execute(sql, params)
