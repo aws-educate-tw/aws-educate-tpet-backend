@@ -8,6 +8,7 @@ from data_util import convert_float_to_decimal
 from recipient_source_enum import RecipientSource
 from requests.exceptions import RequestException
 from run_repository import RunRepository
+from run_status_enum import RunStatus
 from run_type_enum import RunType
 from sqs import get_sqs_message, send_message_to_queue
 from time_util import get_current_utc_time
@@ -82,6 +83,15 @@ def prepare_run_data(
         "sender": current_user_info,
     }
     return cast(dict[str, Any], convert_float_to_decimal(run_item))
+
+
+def get_initial_run_status(run_type: str, scheduled_at: str | None) -> str:
+    """Return the initial status for a run entering the send pipeline."""
+    if run_type == RunType.WEBHOOK.value:
+        return RunStatus.ACTIVE.value
+    if scheduled_at is not None:
+        return RunStatus.SCHEDULED.value
+    return RunStatus.SENDING.value
 
 
 def forward_message_to_target_queue(
@@ -167,6 +177,10 @@ def process_record(record: dict[str, Any], aws_request_id: str) -> None:
     # - forward_message uses sqs_message, so create_email will receive template_variables
     # - create_email needs template_variables to determine recipient_name mapping
     run_item.pop("template_variables", None)
+    run_item["status"] = get_initial_run_status(
+        run_type=run_type,
+        scheduled_at=sqs_message.get("scheduled_at"),
+    )
 
     if not run_repository.upsert_run(run_item):
         raise RuntimeError(f"Failed to save run: {run_item['run_id']}")

@@ -19,6 +19,11 @@ JSONB_COLUMNS = {
     "spreadsheet_file",
     "template_file",
 }
+TIMESTAMP_COLUMNS = {
+    "created_at",
+    "registration_deadline",
+    "scheduled_at",
+}
 
 DATABASE_NAME = os.environ["DATABASE_NAME"]
 RDS_CLUSTER_ARN = os.environ["RDS_CLUSTER_ARN"]
@@ -412,10 +417,7 @@ class RunRepository:
                 "typeHint": "JSON",
             }
         # Add specific handling for timestamp columns
-        elif key in (
-            "created_at",
-            "registration_deadline",
-        ) and isinstance(value, str):
+        elif key in TIMESTAMP_COLUMNS and isinstance(value, str):
             dt_obj = time_util.parse_iso8601_to_datetime(value)
             formatted_ts = time_util.format_datetime_for_rds(dt_obj)
             return {
