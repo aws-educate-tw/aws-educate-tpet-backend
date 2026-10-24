@@ -32,7 +32,7 @@ def send_email(
     display_name: str,
     reply_to: str,
     sender_local_part: str,
-    attachment_file_ids: list[str] = None,
+    attachment_files: list[dict] = None,
     is_generate_certificate: bool = False,
     run_id: str = None,
     cc: list[str] = None,
@@ -62,7 +62,7 @@ def send_email(
             sender_local_part,
         )
 
-        attach_files_to_message(msg, attachment_file_ids)
+        attach_files_to_message(msg, attachment_files)
         logger.info("Will generate certificate: %s", str(is_generate_certificate))
         certificate_path = None
 

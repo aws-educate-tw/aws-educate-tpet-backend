@@ -5,6 +5,7 @@ from decimal import Decimal  # Added import
 
 import boto3
 import time_util
+from run_status_enum import RunStatus
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -136,6 +137,21 @@ class RunRepository:
             logger.error("Error getting run by ID: %s", e)
             return None
 
+    def get_run_files(self, run_id: str) -> dict | None:
+        """
+        Retrieve the template and attachment file info stored on a run by upsert_run.
+
+        :param run_id: The ID of the run
+        :return: Dict with template_file and attachment_files, or None if not found
+        """
+        sql = "SELECT template_file, attachment_files FROM runs WHERE run_id = :run_id"
+        params = [
+            {"name": "run_id", "value": {"stringValue": run_id}},
+        ]
+
+        results = self._execute(sql, params, fetch=True)
+        return results[0] if results else None
+
     def upsert_run(self, run: dict) -> str | None:
         """
         Insert or update a run in the PostgreSQL database.
@@ -254,6 +270,38 @@ class RunRepository:
             logger.error("Error updating failed_email_count: %s", e)
             raise RunRepositoryError(
                 "Error incrementing failed email count", sql, params, e
+            ) from e
+
+    def finalize_run_status_if_complete(self, run_id: str) -> None:
+        """
+        Set a SENDING run to SENT, or FAILED if any email failed, once the
+        success and failed counts reach expected_email_send_count.
+
+        Runs in any other status (e.g. ACTIVE webhook runs, already finalized
+        runs) are left untouched, so this is safe to call after every email.
+
+        :param run_id: The run ID to update
+        """
+        try:
+            sql = """
+                UPDATE runs
+                SET status = CASE WHEN failed_email_count > 0 THEN :failed_status ELSE :sent_status END
+                WHERE run_id = :run_id
+                  AND status = :sending_status
+                  AND success_email_count + failed_email_count >= expected_email_send_count
+            """
+            params = [
+                self._create_param("run_id", run_id),
+                self._create_param("sending_status", RunStatus.SENDING.value),
+                self._create_param("sent_status", RunStatus.SENT.value),
+                self._create_param("failed_status", RunStatus.FAILED.value),
+            ]
+
+            self._execute(sql, params)
+        except Exception as e:
+            logger.error("Error finalizing run status: %s", e)
+            raise RunRepositoryError(
+                "Error finalizing run status", sql, params, e
             ) from e
 
     def update_run(self, run_id: str, update_data: dict) -> bool:

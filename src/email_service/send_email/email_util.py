@@ -1,24 +1,20 @@
 import logging
+import os
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
 
-from current_user_util import current_user_util
-from file_util import download_file_content
-
-from file_service import FileService
+from s3 import read_file_from_s3
 
 # Initialize logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Initialize FileService
-file_service = FileService()
-
 # Constants
 SENDER_EMAIL_DOMAIN = "aws-educate.tw"
 CHARSET = "utf-8"
+BUCKET_NAME = os.getenv("BUCKET_NAME")
 
 
 def create_email_message(
@@ -74,31 +70,28 @@ def create_email_message(
     return msg
 
 
-def attach_files_to_message(msg, file_ids):
+def attach_files_to_message(msg, attachment_files):
     """
     Attach files to the email message.
 
     :param msg: The email message to attach files to.
-    :param file_ids: List of file IDs to be attached.
+    :param attachment_files: List of file info dicts stored in RUNS.attachment_files.
     """
-    if not file_ids:
+    if not attachment_files:
         return
 
     logger.info("Processing file attachments.")
-    for file_id in file_ids:
+    for file_info in attachment_files:
         try:
-            file_info = file_service.get_file_info(
-                file_id, current_user_util.get_current_user_access_token()
-            )
-            file_url = file_info.get("file_url")
+            s3_object_key = file_info.get("s3_object_key")
             file_name = file_info.get("file_name")
             file_size = file_info.get("file_size")
 
             logger.info("Processing file: %s", file_name)
 
-            if file_url and file_name:
-                # Download the file and attach it
-                file_content = download_file_content(file_url)
+            if s3_object_key and file_name:
+                # Read the file from S3 and attach it
+                file_content = read_file_from_s3(BUCKET_NAME, s3_object_key)
                 attachment = MIMEApplication(file_content)
                 attachment.add_header(
                     "Content-Disposition", "attachment", filename=file_name
@@ -108,7 +101,7 @@ def attach_files_to_message(msg, file_ids):
                 msg.attach(attachment)
                 logger.info("Attached file: %s", file_name)
             else:
-                logger.warning("File info incomplete for file_id: %s", file_id)
+                logger.warning("File info incomplete: %s", file_info)
         except Exception as e:
-            logger.error("Error processing file attachment %s: %s", file_id, e)
+            logger.error("Error processing file attachment %s: %s", file_info, e)
             # Continue to the next file rather than failing the entire email

@@ -3,14 +3,11 @@ import logging
 import os
 import re
 
-from current_user_util import current_user_util
 from email_repository import EmailRepository
 from run_repository import RunRepository
 from s3 import read_html_template_file_from_s3
 from ses import send_email
 from sqs import delete_sqs_message, get_sqs_message
-
-from file_service import FileService
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -23,7 +20,6 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT")
 DOMAIN_NAME = os.getenv("DOMAIN_NAME")
 
 # Initialize clients and services
-file_service = FileService()
 email_repository = EmailRepository()
 run_repository = RunRepository()
 
@@ -69,27 +65,25 @@ def process_email(email_data: dict) -> None:
         email_repository.update_email_status(
             run_id=run_id, email_id=email_id, status="FAILED"
         )
+        run_repository.increment_failed_email_count(run_id)
+        run_repository.finalize_run_status_if_complete(run_id)
         return
 
     try:
-        # Get template file information and content
-        template_file_info = file_service.get_file_info(
-            email_data.get("template_file_id"),
-            current_user_util.get_current_user_access_token(),
-        )
-        template_file_s3_object_key = template_file_info["s3_object_key"]
+        # Get template and attachment files stored on the run by upsert_run,
+        # so no user access token is needed (e.g. for scheduled runs)
+        run_files = run_repository.get_run_files(run_id)
+        if not run_files:
+            raise ValueError(f"Run with ID {run_id} not found.")
+
         template_content = read_html_template_file_from_s3(
-            bucket=BUCKET_NAME, template_file_s3_key=template_file_s3_object_key
+            bucket=BUCKET_NAME,
+            template_file_s3_key=run_files["template_file"]["s3_object_key"],
         )
 
         # Parse JSON string fields from SQS message
         row_data = _parse_json_field(
             email_data.get("row_data"), default_value={}, field_name="row_data"
-        )
-        attachment_file_ids = _parse_json_field(
-            email_data.get("attachment_file_ids"),
-            default_value=[],
-            field_name="attachment_file_ids",
         )
         cc_list = _parse_json_field(
             email_data.get("cc"), default_value=[], field_name="cc"
@@ -106,7 +100,7 @@ def process_email(email_data: dict) -> None:
             display_name=email_data.get("display_name"),
             reply_to=email_data.get("reply_to"),
             sender_local_part=email_data.get("sender_local_part"),
-            attachment_file_ids=attachment_file_ids,  # Use parsed attachment_file_ids
+            attachment_files=run_files["attachment_files"],
             is_generate_certificate=email_data.get("is_generate_certificate"),
             run_id=run_id,
             cc=cc_list,  # Use parsed cc_list
@@ -146,7 +140,11 @@ def process_email(email_data: dict) -> None:
             )
             # Raise the repository error instead of the original error
             raise repo_error
+        run_repository.finalize_run_status_if_complete(run_id)
         raise
+
+    # Kept outside the try block so a failure here isn't recorded as a failed email
+    run_repository.finalize_run_status_if_complete(run_id)
 
 
 def lambda_handler(event, context):
@@ -167,10 +165,6 @@ def lambda_handler(event, context):
     for record in event["Records"]:
         try:
             sqs_message = get_sqs_message(record)
-            access_token = sqs_message["access_token"]
-
-            # Set the current user information
-            current_user_util.set_current_user_by_access_token(access_token)
 
             # Process the email
             process_email(sqs_message)
