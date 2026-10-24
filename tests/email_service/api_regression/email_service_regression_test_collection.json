@@ -9,6 +9,78 @@
 	},
 	"item": [
 		{
+			"name": "Upload regression recipients",
+			"description": "Upload the checked-in RSVP recipient fixture instead of reusing a historical contact spreadsheet.",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.environment.unset(\"regression_spreadsheet_file_id\");"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Recipient spreadsheet uploaded\", function () {",
+							"    pm.response.to.have.status(200);",
+							"    const files = pm.response.json().files;",
+							"    pm.expect(files).to.have.lengthOf(1);",
+							"    pm.expect(files[0].file_id).to.be.a(\"string\").and.not.empty;",
+							"    pm.environment.set(\"regression_spreadsheet_file_id\", files[0].file_id);",
+							"});",
+							"",
+							"if (!pm.environment.get(\"regression_spreadsheet_file_id\")) {",
+							"    pm.execution.setNextRequest(null);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{access_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "./tests/email_service/api_regression/test_recipients.xlsx"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://{{environment}}-file-service-internal-api-tpet.aws-educate.tw/{{environment}}/upload-multiple-file",
+					"protocol": "https",
+					"host": [
+						"{{environment}}-file-service-internal-api-tpet",
+						"aws-educate",
+						"tw"
+					],
+					"path": [
+						"{{environment}}",
+						"upload-multiple-file"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Send email (RSVP)",
 			"event": [
 				{
@@ -159,7 +231,7 @@
 				"header": [],
 				"body": {
 				"mode": "raw",
-				"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_type\": \"RSVP\",\n    \"campaign_id\" : \"{{campaign_id}}\", \n    \"campaign_start_time\" : \"2099-04-20T09:00:00Z\", \n    \"registration_deadline\" : \"2099-04-20T07:00:00Z\",\n    \"subject\": \"[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}\",\n    \"display_name\": \"GitHub Actions - PR{{pull_request_number}} - API Regression Test\",\n    \"template_file_id\": \"{{template_file_id}}\",\n    \"spreadsheet_file_id\": \"a9dcc4dc8d4847f68d53ccb1b3e8473b\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\", \n    \"sender_local_part\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"harry鍾\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"{{template_file_id}}\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\",\n        \"dev@aws-educate.tw\"\n    ]\n}",
+				"raw": "{\n    \"recipient_source\": \"SPREADSHEET\",\n    \"run_type\": \"RSVP\",\n    \"campaign_id\": \"{{campaign_id}}\",\n    \"campaign_start_time\": \"2099-04-20T09:00:00Z\",\n    \"registration_deadline\": \"2099-04-20T07:00:00Z\",\n    \"subject\": \"[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}\",\n    \"display_name\": \"GitHub Actions - PR{{pull_request_number}} - API Regression Test\",\n    \"template_file_id\": \"{{template_file_id}}\",\n    \"spreadsheet_file_id\": \"{{regression_spreadsheet_file_id}}\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"attachment_file_ids\": [\n        \"{{template_file_id}}\"\n    ],\n    \"bcc\": [],\n    \"cc\": [\n        \"dev@aws-educate.tw\"\n    ]\n}\n",
 				"options": {
 					"raw": {
 					"language": "json"
@@ -479,7 +551,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"recipient_source\": \"DIRECT\",\n    \"subject\": \"[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}\",\n    \"display_name\": \"GitHub Actions - PR{{pull_request_number}} - API Regression Test\",\n    \"template_file_id\": \"{{template_file_id}}\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"recipients\": [\n        {\n            \"email\": \"h830519h@yahoo.com.tw\",\n            \"template_variables\": {\n                \"Name\": \"harry鍾\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"{{template_file_id}}\"\n    ],\n    \"bcc\": [\n        \"rich.liu627@gmail.com\",\n        \"harryup2000@gmail.com\"\n    ],\n    \"cc\": [\n        \"ptqwe20020413@gmail.com\",\n        \"h830519h@yahoo.com.tw\",\n        \"dev@aws-educate.tw\"\n    ]\n}",
+					"raw": "{\n    \"recipient_source\": \"DIRECT\",\n    \"subject\": \"[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}\",\n    \"display_name\": \"GitHub Actions - PR{{pull_request_number}} - API Regression Test\",\n    \"template_file_id\": \"{{template_file_id}}\",\n    \"is_generate_certificate\": true,\n    \"reply_to\": \"postman+{{commit_sha}}@{{domain}}\",\n    \"sender_local_part\": \"githubactions.pr{{pull_request_number}}.{{commit_sha}}\",\n    \"recipients\": [\n        {\n            \"email\": \"ptqwe20020413@gmail.com\",\n            \"template_variables\": {\n                \"Name\": \"Shiun\",\n                \"Certificate Text\": \"in recognition of your participation in the AWS Educate Program - Certification Training on July 5, 2024 at AWS Educate Program.\"\n            }\n        }\n    ],\n    \"attachment_file_ids\": [\n        \"{{template_file_id}}\"\n    ],\n    \"bcc\": [],\n    \"cc\": [\n        \"dev@aws-educate.tw\"\n    ]\n}\n",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -1391,9 +1463,9 @@
 							"        pm.expect(firstEmail).to.have.property(\"recipient_name\");",
 							"    });",
 							"",
-							"    pm.test(\"Recipient name is 'harry鍾'\", function () {",
+							"    pm.test(\"Recipient name is 'Shiun'\", function () {",
 							"        const firstEmail = responseData.data[0];",
-							"        pm.expect(firstEmail.recipient_name).to.eql(\"harry鍾\");",
+							"        pm.expect(firstEmail.recipient_name).to.eql(\"Shiun\");",
 							"    });",
 							"",
 							"    // Optional: Check all emails have recipient_name field",
