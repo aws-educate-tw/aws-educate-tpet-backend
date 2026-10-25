@@ -110,7 +110,6 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
     try:
         run_item = run_repo.get_run_by_id(run_id)
-        run_item = dict(run_item)  # Create a mutable copy of run_item
 
         if not run_item:
             logger.warning(
@@ -120,6 +119,8 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
                 "statusCode": 404,
                 "body": json.dumps({"message": f"Run with ID '{run_id}' not found"}),
             }
+
+        run_item = dict(run_item)  # Create a mutable copy of run_item
 
         # Ensure failed_email_count is present and is an integer, defaulting to 0 if not.
         # The runs table should ideally store this value directly.

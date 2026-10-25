@@ -6,6 +6,7 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 from run_repository import RunRepository
+from run_status_enum import RunStatus
 from run_type_enum import RunType
 
 # Removed unused time_util import
@@ -32,6 +33,24 @@ def ensure_db_ready() -> None:
         raise RuntimeError("Database wake-up failed")
 
 
+def validate_status(status: str) -> dict[str, any] | None:
+    """Collect errors for comma-separated and unsupported status values."""
+    valid_run_statuses = [run_status.value for run_status in RunStatus]
+    error_message = ""
+    if not isinstance(status, str) or any(
+        value not in valid_run_statuses for value in status.split(",")
+    ):
+        error_message += f"Invalid status. Allowed values are {valid_run_statuses}."
+
+    if not error_message:
+        return None
+
+    return {
+        "statusCode": 400,
+        "body": json.dumps({"message": error_message}),
+    }
+
+
 def extract_query_params(event: dict[str, any]) -> dict[str, any]:
     """Extract and validate query parameters from the API Gateway event."""
     params = (
@@ -39,7 +58,6 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
         if event.get("queryStringParameters") is not None
         else {}
     )
-
     try:
         page: int = int(params.get("page", 1))
         limit: int = int(
@@ -52,6 +70,12 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
         # Add any other filter parameters the user might send, e.g. sender_id
         sender_id: str | None = params.get("sender_id", None)
         campaign_id: str | None = params.get("campaign_id", None)
+        status: str | None = params.get("status", None)
+
+        if "status" in params:
+            validation_error = validate_status(status)
+            if validation_error:
+                return validation_error
 
         if sort_order not in ["ASC", "DESC"]:
             logger.warning(
@@ -91,7 +115,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
 
     # Log the extracted parameters
     logger.info(
-        "Extracted parameters - page: %d, limit: %d, sort_by: %s, sort_order: %s, run_type: %s, created_year: %s, sender_id: %s, campaign_id: %s",
+        "Extracted parameters - page: %d, limit: %d, sort_by: %s, sort_order: %s, run_type: %s, created_year: %s, sender_id: %s, campaign_id: %s, status: %s",
         page,
         limit,
         sort_by,
@@ -100,6 +124,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
         created_year,
         sender_id,
         campaign_id,
+        status,
     )
 
     return {
@@ -111,6 +136,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
         "created_year": created_year,
         "sender_id": sender_id,  # Include sender_id if it's a filter
         "campaign_id": campaign_id,
+        "status": status.split(",") if status is not None else None,
     }
 
 
@@ -149,6 +175,8 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
             filters["sender_id"] = query_params_result["sender_id"]
         if query_params_result.get("campaign_id"):
             filters["campaign_id"] = query_params_result["campaign_id"]
+        if query_params_result.get("status"):
+            filters["status"] = query_params_result["status"]
 
         # Get access token from headers (user_id might be needed for filtering by sender_id if not passed directly)
         # For now, assuming sender_id can be an optional filter from query params.
