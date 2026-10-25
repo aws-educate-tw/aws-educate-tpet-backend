@@ -351,8 +351,16 @@ class RunRepository:
         # Build WHERE clause
         for key, value in filters.items():
             if value is not None:
-                sql += f" AND {key} = :{key}"
-                params.append(self._create_param(key, value))
+                if key == "status" and isinstance(value, list):
+                    placeholders = []
+                    for index, status in enumerate(value):
+                        param_name = f"status_{index}"
+                        placeholders.append(f":{param_name}")
+                        params.append(self._create_param(param_name, status))
+                    sql += f" AND status IN ({', '.join(placeholders)})"
+                else:
+                    sql += f" AND {key} = :{key}"
+                    params.append(self._create_param(key, value))
 
         return sql, params
 

@@ -136,7 +136,7 @@ def extract_query_params(event: dict[str, any]) -> dict[str, any]:
         "created_year": created_year,
         "sender_id": sender_id,  # Include sender_id if it's a filter
         "campaign_id": campaign_id,
-        "status": status,
+        "status": status.split(",") if status is not None else None,
     }
 
 
