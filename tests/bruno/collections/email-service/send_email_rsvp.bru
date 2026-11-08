@@ -1,0 +1,146 @@
+meta {
+  name: Send email (RSVP)
+  type: http
+  seq: 1
+}
+
+post {
+  url: https://{{environment}}-email-service-internal-api-tpet.aws-educate.tw/{{environment}}/send-email
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "recipient_source": "SPREADSHEET",
+    "run_type": "RSVP",
+    "campaign_id": "{{campaign_id}}",
+    "campaign_start_time": "2099-04-20T09:00:00Z",
+    "registration_deadline": "2099-04-20T07:00:00Z",
+    "subject": "[PR {{pull_request_number}} - {{commit_sha}} Regression Test] {{$randomWords}}",
+    "display_name": "GitHub Actions - PR{{pull_request_number}} - API Regression Test",
+    "template_file_id": "{{template_file_id}}",
+    "spreadsheet_file_id": "a9dcc4dc8d4847f68d53ccb1b3e8473b",
+    "is_generate_certificate": true,
+    "reply_to": "postman+{{commit_sha}}@{{domain}}",
+    "sender_local_part": "githubactions.pr{{pull_request_number}}.{{commit_sha}}",
+    "recipients": [
+      {
+        "email": "awseducate.cloudambassador@gmail.com",
+        "template_variables": {
+          "Name": "API Regression User",
+          "Certificate Text": "TPET API regression test certificate."
+        }
+      }
+    ],
+    "attachment_file_ids": [
+      "{{template_file_id}}"
+    ],
+    "bcc": [],
+    "cc": []
+  }
+
+}
+
+script:pre-request {
+  const environment = bru.getEnvVar('environment');
+  const accessToken = bru.getEnvVar('access_token');
+
+  const fileResponse = await bru.sendRequest({
+    method: 'GET',
+    url: `https://${environment}-file-service-internal-api-tpet.aws-educate.tw/${environment}/files?file_extension=html&limit=1`,
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+
+  const file = fileResponse.data?.data?.[0];
+  if (!file) {
+    throw new Error('No HTML file found in the file service.');
+  }
+
+  bru.setEnvVar('template_file_id', file.file_id);
+  bru.setEnvVar('template_file_name', file.file_name);
+  bru.setEnvVar('template_file_url', file.file_url);
+
+  const campaignResponse = await bru.sendRequest({
+    method: 'POST',
+    url: `https://${environment}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/${environment}/campaigns`,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    data: {
+      campaign_name: 'Campaign Created for regression test',
+      cohort: '8',
+      campaign_start_time: '2099-04-20T09:00:00Z',
+      campaign_end_time: '2099-05-20T17:00:00Z',
+      campaign_location: 'Taipei 101'
+    }
+  });
+
+  const campaignId = campaignResponse.data?.campaign_id;
+  if (!campaignId) {
+    throw new Error('Failed to retrieve campaign_id from create_campaign API.');
+  }
+
+  bru.setEnvVar('campaign_id', campaignId);
+}
+
+script:post-response {
+  test("Status code is 202", function () {
+      expect(res.getStatus()).to.equal(202);
+  });
+
+  const responseData = res.getBody();
+
+  test("Response contains all required fields", function () {
+      expect(responseData).to.have.property("status");
+      expect(responseData).to.have.property("message");
+      expect(responseData).to.have.property("recipient_source");
+      expect(responseData).to.have.property("run_id");
+      expect(responseData).to.have.property("template_file_id");
+      expect(responseData).to.have.property("subject");
+      expect(responseData).to.have.property("display_name");
+      expect(responseData).to.have.property("attachment_file_ids");
+      expect(responseData).to.have.property("is_generate_certificate");
+      expect(responseData).to.have.property("sender_id");
+      expect(responseData).to.have.property("reply_to");
+      expect(responseData).to.have.property("sender_local_part");
+      expect(responseData).to.have.property("cc");
+      expect(responseData).to.have.property("bcc");
+      expect(responseData).to.have.property("recipients");
+      expect(responseData).to.have.property("success_email_count");
+      expect(responseData).to.have.property("expected_email_send_count");
+      expect(responseData).to.have.property("run_type");
+      expect(responseData).to.have.property("campaign_id");
+  });
+
+  test("Status is SUCCESS", function () {
+      expect(responseData.status).to.eql("SUCCESS");
+  });
+
+  test("Run ID is present", function () {
+      expect(responseData.run_id).to.not.be.null;
+  });
+
+  test("run_type is RSVP", function () {
+      expect(responseData.run_type).to.eql("RSVP");
+  });
+
+  test("campaign_id matches", function () {
+      expect(responseData.campaign_id).to.eql(bru.getEnvVar("campaign_id"));
+  });
+
+  if (responseData.run_id) {
+      bru.setEnvVar("run_id_from_send_rsvp_email_api", responseData.run_id);
+      console.log("Saved run_id to environment: " + responseData.run_id);
+  }
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}

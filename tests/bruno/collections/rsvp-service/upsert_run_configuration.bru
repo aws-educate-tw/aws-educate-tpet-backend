@@ -1,0 +1,70 @@
+meta {
+  name: Upsert run configuration
+  type: http
+  seq: 4
+}
+
+put {
+  url: https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/internal/campaign-runs/{{campaign_id}}_{{run_id}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "registration_deadline": "2126-05-15T23:59:59Z",
+      "max_participants": 100,
+      "campaign_location": "Taipei 202",
+      "campaign_start_time": "2026-05-20T09:00:00Z",
+      "campaign_end_time": "2126-05-20T17:00:00Z"
+  }
+}
+
+script:post-response {
+  // 1. Basic Response Validation
+  test("HTTP Status Code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response is in JSON format", function () {
+      expect(res.getHeader('content-type')).to.include('application/json');
+  });
+
+  // 2. Business Logic Validation
+  const jsonData = res.getBody();
+
+  test("Status is success", function () {
+      expect(jsonData.status).to.eql("SUCCESS");
+  });
+
+  test("Response contains run_id", function () {
+      expect(jsonData.data).to.have.property("run_id");
+      expect(jsonData.data.run_id).to.be.a('string').and.not.empty;
+  });
+
+  // 3. Data Integrity Validation (Schema)
+  const schema = {
+      "type": "object",
+      "required": ["status", "data"],
+      "properties": {
+          "status": { "type": "string" },
+          "data": {
+              "type": "object",
+              "required": ["run_id"],
+              "properties": {
+                  "run_id": { "type": "string" }
+              }
+          }
+      }
+  };
+
+  test("Validate JSON Schema accuracy", function () {
+      expect(res.getBody()).to.have.jsonSchema(schema);
+  });
+
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}

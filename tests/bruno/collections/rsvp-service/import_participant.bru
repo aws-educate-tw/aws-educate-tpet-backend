@@ -1,0 +1,73 @@
+meta {
+  name: Import participant
+  type: http
+  seq: 5
+}
+
+post {
+  url: https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/internal/runs/{{run_id}}/participants
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "email": "api-regression+{{run_id}}@example.com",
+    "campaign_id": "{{campaign_id}}",
+    "name": "API Regression User"
+  }
+}
+
+script:post-response {
+  // 1. Basic Response Validation
+  test("HTTP Status Code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response format is JSON", function () {
+      expect(res.getHeader('content-type')).to.include('application/json');
+  });
+
+  // 2. Business Logic Validation
+  const jsonData = res.getBody();
+
+  test("Status is SUCCESS", function () {
+      expect(jsonData.status).to.eql("SUCCESS");
+  });
+
+  test("Response contains participant_id", function () {
+      expect(jsonData.data).to.have.property("participant_id");
+      expect(jsonData.data.participant_id).to.be.a("string").and.not.empty;
+  });
+
+  // 3. Schema & Data Consistency Validation
+  const schema = {
+      "type": "object",
+      "required": ["status", "data"],
+      "properties": {
+          "status": { "type": "string" },
+          "data": {
+              "type": "object",
+              "required": ["participant_id"],
+              "properties": {
+                  "participant_id": { "type": "string" }
+              }
+          }
+      }
+  };
+
+  test("Validate JSON Schema", function () {
+      expect(res.getBody()).to.have.jsonSchema(schema);
+  });
+
+  // If the test passed, log the participant_id for subsequent run-based tests
+  if (jsonData.status === "SUCCESS") {
+      bru.setEnvVar("current_participant_id", jsonData.data.participant_id);
+      console.log("Verified Participant ID: " + jsonData.data.participant_id);
+  }
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}

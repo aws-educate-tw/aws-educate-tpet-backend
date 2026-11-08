@@ -1,0 +1,115 @@
+meta {
+  name: Update campaign
+  type: http
+  seq: 9
+}
+
+patch {
+  url: https://{{environment}}-rsvp-service-internal-api-tpet.aws-educate.tw/rsvp-service/{{environment}}/campaigns/{{campaign_id}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "campaign_name": "2026 全球開發者大會 test",
+    "campaign_start_time": "2026-05-20T10:00:00Z",
+    "campaign_end_time": "2026-05-25T18:00:00Z",
+    "campaign_location": "台北市信義區",
+    "is_active": false
+  }
+
+}
+
+script:post-response {
+  // Verify that the status code is 200
+  test("Status code is 200", function () {
+      expect(res.getStatus()).to.equal(200);
+  });
+
+  // Verify that the response is in JSON format
+  test("Response is JSON", function () {
+      expect(res.getHeader('content-type')).to.include('application/json');
+  });
+
+  // Parse the JSON response body
+  const responseData = res.getBody();
+
+  // Verify the success message
+  test("Response contains success message", function () {
+      expect(responseData).to.have.property("message").that.eql("campaign updated successfully");
+  });
+
+  // Verify campaign object has required fields with correct types
+  test("Campaign object has required fields with correct types", function () {
+      expect(responseData).to.be.an("object");
+
+      // campaign_id
+      expect(responseData).to.have.property("campaign_id").that.is.a("string").and.to.not.be.empty;
+
+      // campaign_name
+      expect(responseData).to.have.property("campaign_name").that.is.a("string");
+
+      // campaign_start_time (ISO8601 string)
+      expect(responseData).to.have.property("campaign_start_time").that.is.a("string");
+
+      // campaign_end_time (ISO8601 string)
+      expect(responseData).to.have.property("campaign_end_time").that.is.a("string");
+
+      // campaign_location
+      expect(responseData).to.have.property("campaign_location").that.is.a("string");
+
+      // campaign_created_at (ISO8601 string)
+      expect(responseData).to.have.property("campaign_created_at").that.is.a("string");
+
+      // updated_at (ISO8601 string)
+      expect(responseData).to.have.property("updated_at").that.is.a("string");
+
+      // is_active (boolean)
+      expect(responseData).to.have.property("is_active").that.is.a("boolean");
+  });
+
+  // Verify that updated fields match the request body
+  test("Updated fields match request body values", function () {
+      const requestBody = req.getBody();
+
+      if (requestBody.campaign_name !== undefined) {
+          expect(responseData.campaign_name).to.eql(requestBody.campaign_name);
+      }
+
+      if (requestBody.campaign_start_time !== undefined) {
+          expect(responseData.campaign_start_time).to.eql(requestBody.campaign_start_time);
+      }
+
+      if (requestBody.campaign_end_time !== undefined) {
+          expect(responseData.campaign_end_time).to.eql(requestBody.campaign_end_time);
+      }
+
+      if (requestBody.campaign_location !== undefined) {
+          expect(responseData.campaign_location).to.eql(requestBody.campaign_location);
+      }
+
+      if (requestBody.is_active !== undefined) {
+          expect(responseData.is_active).to.eql(requestBody.is_active);
+      }
+  });
+
+  // Verify that campaign_end_time is after campaign_start_time
+  test("campaign_end_time is after campaign_start_time", function () {
+      const startTime = new Date(responseData.campaign_start_time);
+      const endTime = new Date(responseData.campaign_end_time);
+      expect(endTime.getTime()).to.be.above(startTime.getTime());
+  });
+
+  // Verify that updated_at is after or equal to campaign_created_at
+  test("updated_at is after or equal to campaign_created_at", function () {
+      const createdAt = new Date(responseData.campaign_created_at);
+      const updatedAt = new Date(responseData.updated_at);
+      expect(updatedAt.getTime()).to.be.at.least(createdAt.getTime());
+  });
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}
