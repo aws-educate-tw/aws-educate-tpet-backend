@@ -285,10 +285,15 @@ function createEnvironment(convertedEnvironment, service) {
   };
 }
 
+function requestFilename(name) {
+  const stem = name === 'Upload Multiple file' ? 'Upload multiple files' : name;
+  return `${stem.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')}.bru`;
+}
+
 async function writeCollectionItems(items, destination) {
   for (const item of items || []) {
     if (item.type !== 'http-request') continue;
-    const filename = `${item.name.replaceAll('/', '-')}.bru`;
+    const filename = requestFilename(item.name);
     await fs.writeFile(
       path.join(destination, filename),
       normaliseBru(stringifyRequest(item, { format: 'bru' }))

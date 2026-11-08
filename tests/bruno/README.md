@@ -34,6 +34,9 @@ migration changes. It performs the following transformations:
 - converts Postman v2.1 collections and preview environments with the official
   `@usebruno/converters` package;
 - retains all 17 requests and their test scripts;
+- writes request filenames in lowercase `snake_case` (for example, `get_me.bru`
+  and `send_email_non_rsvp.bru`), while preserving display names and name-based
+  request chaining;
 - rewrites the unsupported `pm.response.to.be.json` assertion;
 - rewrites `pm.sendRequest` callback flows using awaited `bru.sendRequest`;
 - replaces the ineffective List Emails timeout with `await bru.sleep(3000)`;
