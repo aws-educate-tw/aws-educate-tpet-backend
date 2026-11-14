@@ -10,8 +10,10 @@ from current_user_util import current_user_util
 from data_util import convert_float_to_decimal
 from email_repository import EmailRepository
 from jwt_util import generate_rsvp_token
+from run_repository import RunRepository
 from run_type_enum import RunType
 from s3 import read_sheet_data_from_s3
+from scheduler import create_run_schedule
 from sqs import delete_sqs_message, get_sqs_message, send_message_to_queue
 from template_variable_db_column_mapping_util import map_recipient_name
 
@@ -35,6 +37,7 @@ DEFAULT_RUN_TYPE = "EMAIL"
 # Initialize services
 file_service = FileService()
 email_repository = EmailRepository()
+run_repository = RunRepository()
 rsvp_service = RSVPService()
 
 
@@ -64,7 +67,7 @@ def prepare_email_item(run_id: str, email_data: dict, row_data: dict) -> dict:
         "template_file_id": email_data["template_file_id"],
         "spreadsheet_file_id": email_data.get("spreadsheet_file_id"),
         "attachment_file_ids": email_data.get("attachment_file_ids", []),
-        "status": "PENDING",
+        "status": "SCHEDULED" if email_data.get("scheduled_at") else "PENDING",
         "recipient_email": row_data.get("Email"),
         "recipient_name": recipient_name,
         "row_data": row_data,
@@ -151,19 +154,31 @@ def upsert_emails_and_enqueue_emails_to_send_email_sqs_queue(
     sqs_message: dict,
 ) -> None:
     """
-    Processes recipients from the SQS message and creates corresponding email items.
+    Save emails, then schedule the run or enqueue immediate emails for sending.
 
     :param sqs_message: The SQS message containing run and recipient data.
     """
     recipients_data = build_recipient_list_from_sqs_message(sqs_message)
+    scheduled_at = sqs_message.get("scheduled_at")
 
-    for row_data in recipients_data:
+    for row_index, row_data in enumerate(recipients_data):
         # Create and save email item
         email_item = prepare_email_item(sqs_message["run_id"], sqs_message, row_data)
-        email_repository.upsert_email(email_item)
+        if scheduled_at and not row_data.get("email_id"):
+            # Reuse IDs on retry after a partially completed scheduled run.
+            email_item["email_id"] = uuid.uuid5(
+                uuid.NAMESPACE_URL,
+                f"scheduled-email:{sqs_message['run_id']}:{row_index}",
+            ).hex
+        if not email_repository.upsert_email(email_item):
+            raise RuntimeError(f"Failed to save email: {email_item['email_id']}")
 
-        # Enqueue the email for sending
-        enqueue_email_to_send_email_sqs_queue(email_item)
+        if not scheduled_at:
+            enqueue_email_to_send_email_sqs_queue(email_item)
+
+    if scheduled_at:
+        schedule_arn = create_run_schedule(sqs_message["run_id"], scheduled_at)
+        run_repository.update_schedule_arn(sqs_message["run_id"], schedule_arn)
 
     logger.info(
         "Successfully processed all recipients for run_id: %s",
@@ -334,7 +349,26 @@ def lambda_handler(event, context):
             # Set the current user information
             current_user_util.set_current_user_by_access_token(access_token)
 
-            if run_type == RunType.WEBHOOK.value:
+            if sqs_message.get("scheduled_at"):
+                if run_repository.get_schedule_arn(sqs_message["run_id"]):
+                    logger.info(
+                        "Schedule already exists for run_id: %s. Skipping creation.",
+                        sqs_message["run_id"],
+                    )
+                else:
+                    # A previous attempt may have saved only some emails, or
+                    # saved them all before schedule creation/ARN persistence failed.
+                    if (
+                        run_type == RunType.RSVP.value
+                        and not email_repository.list_emails(
+                            {"run_id": sqs_message["run_id"], "limit": 1}
+                        )
+                    ):
+                        process_rsvp_emails_and_update_spreadsheet(sqs_message)
+                    upsert_emails_and_enqueue_emails_to_send_email_sqs_queue(
+                        sqs_message
+                    )
+            elif run_type == RunType.WEBHOOK.value:
                 # For WEBHOOK, append emails without checking for existence.
                 # The SQS message from validate_input contains only the new recipients.
                 logger.info(
@@ -367,7 +401,7 @@ def lambda_handler(event, context):
         except Exception as e:
             logger.error("Error processing message: %s", e)
             raise
-        finally:
+        else:
             if sqs_message and CREATE_EMAIL_SQS_QUEUE_URL:
                 try:
                     delete_sqs_message(
