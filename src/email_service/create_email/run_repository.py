@@ -26,7 +26,7 @@ class RunRepository:
         response = self._execute(
             """
             UPDATE runs
-            SET schedule_arn = :schedule_arn, updated_at = CURRENT_TIMESTAMP
+            SET schedule_arn = :schedule_arn
             WHERE run_id = :run_id
             """,
             [
