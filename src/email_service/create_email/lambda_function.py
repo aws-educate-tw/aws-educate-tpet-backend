@@ -9,6 +9,7 @@ import time_util
 from current_user_util import current_user_util
 from data_util import convert_float_to_decimal
 from email_repository import EmailRepository
+from email_status_enum import EmailStatus
 from jwt_util import generate_rsvp_token
 from run_repository import RunRepository
 from run_type_enum import RunType
@@ -67,7 +68,11 @@ def prepare_email_item(run_id: str, email_data: dict, row_data: dict) -> dict:
         "template_file_id": email_data["template_file_id"],
         "spreadsheet_file_id": email_data.get("spreadsheet_file_id"),
         "attachment_file_ids": email_data.get("attachment_file_ids", []),
-        "status": "SCHEDULED" if email_data.get("scheduled_at") else "PENDING",
+        "status": (
+            EmailStatus.SCHEDULED.value
+            if email_data.get("scheduled_at")
+            else EmailStatus.PENDING.value
+        ),
         "recipient_email": row_data.get("Email"),
         "recipient_name": recipient_name,
         "row_data": row_data,
@@ -115,7 +120,7 @@ def enqueue_email_to_send_email_sqs_queue(email_item: dict) -> None:
         email_repository.update_email_status(
             run_id=email_item["run_id"],
             email_id=email_item["email_id"],
-            status="FAILED",
+            status=EmailStatus.FAILED.value,
         )
         raise
 
