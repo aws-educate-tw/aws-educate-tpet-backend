@@ -164,6 +164,27 @@ def extract_template_variables(template_content: str) -> list[str]:
         raise
 
 
+def validate_attachment_file_ids(
+    attachment_file_ids: Any, error_collector: ValidationErrorCollector
+) -> None:
+    """Validate attachment IDs without changing the provided values."""
+    if not isinstance(attachment_file_ids, list):
+        error_collector.add_error(
+            message="attachment_file_ids must be an array",
+            error_code=ValidationErrorCode.INVALID_ATTACHMENT_FILE_IDS,
+            details={"field": "attachment_file_ids"},
+        )
+        return
+
+    for index, file_id in enumerate(attachment_file_ids):
+        if not isinstance(file_id, str) or not file_id.strip():
+            error_collector.add_error(
+                message=f"attachment_file_ids[{index}] must be a non-blank string",
+                error_code=ValidationErrorCode.INVALID_ATTACHMENT_FILE_IDS,
+                details={"field": "attachment_file_ids", "index": index},
+            )
+
+
 def validate_run_type(run_type: str, error_collector: ValidationErrorCollector) -> None:
     """Validate run_type."""
     if not RunType.has_value(run_type):
@@ -632,6 +653,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Initialize error collector
         error_collector = ValidationErrorCollector()
+        validate_attachment_file_ids(attachment_file_ids, error_collector)
         validate_scheduled_at(
             scheduled_at=scheduled_at,
             run_type=run_type,
