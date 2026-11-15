@@ -109,6 +109,11 @@ status and report artifacts. The Bruno workflow has no standalone push trigger.
 In manual `all` mode, Webhook waits for Email to succeed; selecting only Webhook
 runs it even though the Email job is skipped.
 
+Automatic Webhook regression tests are off by default. Set the repository Actions
+variable `ENABLE_WEBHOOK_PREVIEW_REGRESSION` to `true` to re-enable both Newman
+and Bruno in Webhook PRs. The Preview deployment and API readiness check still
+run, and this variable does not affect manual Bruno runs.
+
 The RSVP job retrieves
 `aws-educate-tpet/preview/jwt-hs256-secret` and signs a one-hour participant
 JWT for the existing Preview run and participant fixture. The workflow uploads
