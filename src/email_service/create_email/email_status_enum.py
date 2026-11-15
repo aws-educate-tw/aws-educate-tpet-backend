@@ -2,10 +2,8 @@ from enum import StrEnum
 
 
 class EmailStatus(StrEnum):
+    PENDING = "PENDING"
     SCHEDULED = "SCHEDULED"
     CANCELED = "CANCELED"
-    SENDING = "SENDING"
-    SENT = "SENT"
+    SUCCESS = "SUCCESS"
     FAILED = "FAILED"
-    ACTIVE = "ACTIVE"
-    PENDING = "PENDING"

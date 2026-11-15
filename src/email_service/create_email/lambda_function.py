@@ -406,7 +406,7 @@ def lambda_handler(event, context):
         except Exception as e:
             logger.error("Error processing message: %s", e)
             raise
-        else:
+        finally:
             if sqs_message and CREATE_EMAIL_SQS_QUEUE_URL:
                 try:
                     delete_sqs_message(
