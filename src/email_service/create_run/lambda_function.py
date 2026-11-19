@@ -134,7 +134,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
 
         try:
             # Create the run in the database using upsert_run
-            run_id = run_repo.upsert_run(run_data)            
+            run_id = run_repo.upsert_run(run_data)
             if not run_id:
                 logger.error("Failed to create run. Request ID: %s", aws_request_id)
                 return {
