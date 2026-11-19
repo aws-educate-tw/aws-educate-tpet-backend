@@ -5,15 +5,16 @@ Revises: 3df6c7724c43
 Create Date: 2026-11-18 13:51:15.386555
 
 """
-from alembic import op
-import sqlalchemy as sa
 
+import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = '04f500e37e18'
-down_revision = '3df6c7724c43'
+revision = "04f500e37e18"
+down_revision = "3df6c7724c43"
 branch_labels = None
 depends_on = None
+
 
 def upgrade() -> None:
     """Backfill RUNS.status for rows still NULL, then make it NOT NULL.
@@ -41,6 +42,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Make RUNS.status nullable again (backfilled values are kept)."""
-    op.alter_column(
-        "runs", "status", existing_type=sa.String(length=50), nullable=True
-    )
+    op.alter_column("runs", "status", existing_type=sa.String(length=50), nullable=True)
