@@ -103,14 +103,48 @@ jobs:
           echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Check for Existing Approval Issue
+      - name: Resolve Authorized Migration Approvers
         if: steps.check-migrations.outputs.has_migration_changes == 'true'
-        id: check-existing-issue
+        id: migration-approvers
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const { getAuthorizedApprovers } = require('./.github/scripts/migration-approval');
+
+            const collaborators = await github.paginate(
+              github.rest.repos.listCollaborators,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                affiliation: 'all',
+                per_page: 100,
+              },
+            );
+            const approvers = getAuthorizedApprovers(collaborators);
+
+            if (approvers.length === 0) {
+              core.setFailed(
+                'No repository collaborators with write, maintain, or admin access are available to approve this migration.',
+              );
+              return;
+            }
+
+            console.log(`Migration approvers: ${approvers.join(', ')}`);
+            core.setOutput('logins', approvers.join(','));
+
+      - name: Check for Existing Approval Issue
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        id: check-existing-issue
+        uses: actions/github-script@v6
+        env:
+          AUTHORIZED_APPROVERS: ${{ steps.migration-approvers.outputs.logins }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { hasAuthorizedApproval } = require('./.github/scripts/migration-approval');
             const issueTitle = `🔐 [${{ env.SERVICE_NAME }}] Database Migration Approval Required - Preview - PR #${{ env.PULL_REQUEST_NUMBER }}`;
+            const authorizedApprovers = process.env.AUTHORIZED_APPROVERS.split(',').filter(Boolean);
 
             // Search for ALL issues (open or closed) with the same title
             const { data: issues } = await github.rest.issues.listForRepo({
@@ -129,15 +163,14 @@ jobs:
               core.setOutput('issue_number', existingIssue.number);
 
               // Check if already approved (issue closed)
-              const { data: comments } = await github.rest.issues.listComments({
+              const comments = await github.paginate(github.rest.issues.listComments, {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: existingIssue.number
+                issue_number: existingIssue.number,
+                per_page: 100,
               });
 
-              const approved = comments.some(c =>
-                c.body.toLowerCase().match(/^(approved|approve|lgtm|yes)$/m)
-              );
+              const approved = hasAuthorizedApproval(comments, authorizedApprovers);
               core.setOutput('already_approved', approved ? 'true' : 'false');
             } else {
               console.log('No existing approval issue found');
@@ -150,9 +183,10 @@ jobs:
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.TOKEN }}
-          approvers: ${{ github.event.pull_request.user.login || github.actor }}
+          approvers: ${{ steps.migration-approvers.outputs.logins }}
           minimum-approvals: 1
           issue-title: "🔐 [${{ env.SERVICE_NAME }}] Database Migration Approval Required - Preview - PR #${{ env.PULL_REQUEST_NUMBER }}"
+          issue-labels: "${{ env.SERVICE_LABEL }},env/preview,kind/db-migration"
           issue-body: |
             ## Database Migration Approval Required
 
@@ -183,7 +217,7 @@ jobs:
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.TOKEN }}
-          approvers: ${{ github.event.pull_request.user.login || github.actor }}
+          approvers: ${{ steps.migration-approvers.outputs.logins }}
           minimum-approvals: 1
           issue-title: "🔐 [${{ env.SERVICE_NAME }}] Database Migration Approval Required - Preview - PR #${{ env.PULL_REQUEST_NUMBER }}"
           issue-body: "Waiting for existing approval..."
@@ -579,12 +613,42 @@ jobs:
           echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: Resolve Authorized Migration Approvers
+        if: steps.check-migrations.outputs.has_migration_changes == 'true'
+        id: migration-approvers
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { getAuthorizedApprovers } = require('./.github/scripts/migration-approval');
+
+            const collaborators = await github.paginate(
+              github.rest.repos.listCollaborators,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                affiliation: 'all',
+                per_page: 100,
+              },
+            );
+            const approvers = getAuthorizedApprovers(collaborators);
+
+            if (approvers.length === 0) {
+              core.setFailed(
+                'No repository collaborators with write, maintain, or admin access are available to approve this migration.',
+              );
+              return;
+            }
+
+            console.log(`Migration approvers: ${approvers.join(', ')}`);
+            core.setOutput('logins', approvers.join(','));
+
       - name: Request Migration Approval
         if: steps.check-migrations.outputs.has_migration_changes == 'true'
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.TOKEN }}
-          approvers: ${{ github.event.pull_request.user.login || github.actor }}
+          approvers: ${{ steps.migration-approvers.outputs.logins }}
           minimum-approvals: 1
           issue-title: "🔐 [${{ env.SERVICE_NAME }}] Database Migration Approval Required - ${{ env.ENVIRONMENT }} - ${{ github.ref_name }}"
           issue-body: |
