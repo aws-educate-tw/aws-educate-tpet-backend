@@ -110,6 +110,7 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         run_data = {
             "run_id": str(uuid.uuid4()),
             "run_type": run_type,
+            "status": "ACTIVE" if run_type == "WEBHOOK" else "SENDING",
             "recipient_source": recipient_source,
             "expected_email_send_count": 0,
             "success_email_count": 0,
@@ -134,7 +135,6 @@ def lambda_handler(event: dict[str, any], context: object) -> dict[str, any]:
         try:
             # Create the run in the database using upsert_run
             run_id = run_repo.upsert_run(run_data)
-
             if not run_id:
                 logger.error("Failed to create run. Request ID: %s", aws_request_id)
                 return {
