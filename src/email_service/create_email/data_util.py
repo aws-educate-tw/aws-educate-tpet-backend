@@ -12,3 +12,15 @@ def convert_float_to_decimal(data):
             return None
         return Decimal(str(data))
     return data
+
+
+def map_recipient_name(row_data: dict) -> str | None:
+    """Read the first nonblank name from the recipient's direct input or sheet row."""
+    for column in ("Name", "姓名"):
+        # Empty Excel cells can still be NaN when importing RSVP participants.
+        value = convert_float_to_decimal(row_data.get(column))
+        if value is not None:
+            name = str(value).strip()
+            if name:
+                return name
+    return None
