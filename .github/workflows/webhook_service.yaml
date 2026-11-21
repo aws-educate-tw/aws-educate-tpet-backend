@@ -90,6 +90,7 @@ jobs:
         working-directory: ${{ env.TF_DIR }}
 
       - name: Configure AWS credentials
+        if: vars.ENABLE_WEBHOOK_PREVIEW_REGRESSION == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -98,6 +99,7 @@ jobs:
 
       # Enhanced security for token handling
       - name: Get Postman Service Account Token
+        if: vars.ENABLE_WEBHOOK_PREVIEW_REGRESSION == 'true'
         id: get-token
         run: |
           # Mask all outputs
@@ -124,11 +126,13 @@ jobs:
           fi
 
       - name: Setup Node.js
+        if: vars.ENABLE_WEBHOOK_PREVIEW_REGRESSION == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
       - name: Install Newman
+        if: vars.ENABLE_WEBHOOK_PREVIEW_REGRESSION == 'true'
         run: npm install -g newman newman-reporter-htmlextra
 
       - name: Wait for API Gateway Deployment
@@ -160,6 +164,7 @@ jobs:
 
       # Enhanced security for Newman tests
       - name: Run API Tests
+        if: vars.ENABLE_WEBHOOK_PREVIEW_REGRESSION == 'true'
         id: newman
         run: |
           # Create report directory with meaningful name
@@ -192,7 +197,7 @@ jobs:
         continue-on-error: true
 
       - name: Check Newman Test Results
-        if: always()
+        if: ${{ !cancelled() && vars.ENABLE_WEBHOOK_PREVIEW_REGRESSION == 'true' && steps.newman.outcome != 'skipped' }}
         run: |
           if [[ ${{ steps.newman.outcome }} != "success" ]]; then
             echo "❌ Newman tests failed."
@@ -202,14 +207,14 @@ jobs:
           fi
 
       - name: Upload Test Results
-        if: always()
+        if: ${{ !cancelled() && vars.ENABLE_WEBHOOK_PREVIEW_REGRESSION == 'true' && steps.newman.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: newman-test-results_pr${{ env.PULL_REQUEST_NUMBER }}_${{ env.COMMIT_SHA }}_${{ env.TIMESTAMP }}
           path: newman/
 
       - name: Get Artifact URL
-        if: always()
+        if: ${{ !cancelled() && vars.ENABLE_WEBHOOK_PREVIEW_REGRESSION == 'true' && steps.newman.outcome != 'skipped' }}
         id: get-artifact-url
         run: |
 
@@ -242,7 +247,7 @@ jobs:
             });
 
             const tfExitCode = '${{ steps.apply.outcome }}' === 'success' ? 0 : 1;
-            const testExitCode = '${{ steps.newman.outcome }}' === 'success' ? 0 : 1;
+            const newmanOutcome = '${{ steps.newman.outcome }}';
 
             // Get short SHA
             const shortSHA = '${{ env.COMMIT_SHA }}'.substring(0, 6);
@@ -262,7 +267,9 @@ jobs:
             output += `\n### Test Results\n\n`;
             output += `| Test Suite | Status | Report |\n`;
             output += `|:-----------|:-------|:--------|\n`;
-            output += `| API Tests | ${testExitCode === 0 ? '✅' : '❌'} | [Download Report](${artifactUrl}) |\n`;
+            const testStatus = newmanOutcome === 'skipped' ? 'Skipped' : newmanOutcome === 'success' ? '✅' : '❌';
+            const report = process.env.ARTIFACT_ID ? `[Download Report](${artifactUrl})` : '—';
+            output += `| Newman API Tests | ${testStatus} | ${report} |\n`;
 
             output += `\n---\n`;
             output += `🔍 **Details**\n`;
@@ -302,7 +309,7 @@ jobs:
     name: Bruno API Regression
     needs: preview
     # Run after Newman even if its tests fail, but only when Preview was ready.
-    if: ${{ !cancelled() && needs.preview.outputs.api_ready == 'true' }}
+    if: ${{ !cancelled() && vars.ENABLE_WEBHOOK_PREVIEW_REGRESSION == 'true' && needs.preview.outputs.api_ready == 'true' }}
     permissions:
       contents: read
     uses: ./.github/workflows/bruno_api_regression.yaml
