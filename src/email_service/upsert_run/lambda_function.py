@@ -164,18 +164,7 @@ def process_record(record: dict[str, Any], aws_request_id: str) -> None:
         current_user_info,
     )
 
-    # Remove template_variables from run_item before DB upsert.
-    #
-    # Background:
-    # - validate_input extracts template_variables from the email template file (e.g., ["Email", "Name", "Date"])
-    # - `template_variables` is included in sqs_message and gets spread into run_item via **common_data in prepare_run_data()
-    # - However, the `runs` table doesn't have a template_variables column, so we must remove it before DB insert
-    #
-    # Important:
-    # - We only remove it from run_item (used for DB)
-    # - The original sqs_message still contains template_variables
-    # - forward_message uses sqs_message, so create_email will receive template_variables
-    # - create_email needs template_variables to determine recipient_name mapping
+    # Template variables are forwarded to create_email for webhooks, but have no runs column.
     run_item.pop("template_variables", None)
     run_item["status"] = get_initial_run_status(
         run_type=run_type,

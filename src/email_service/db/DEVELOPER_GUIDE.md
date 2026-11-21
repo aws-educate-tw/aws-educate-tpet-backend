@@ -108,8 +108,9 @@ Edit the `upgrade()` and `downgrade()` functions to add/remove the new column:
 def upgrade() -> None:
     """Add recipient_name column to EMAILS table.
 
-    This column stores a snapshot of the recipient's name at email creation time,
-    extracted from template variables ({{Name}} or {{姓名}}).
+    Email and RSVP runs store the first nonblank value from the recipient's
+    Name or 姓名 field, in that order, regardless of the template content.
+    If neither field has a name, recipient_name is NULL.
     """
     op.add_column(
         "emails", sa.Column("recipient_name", sa.String(length=255), nullable=True)

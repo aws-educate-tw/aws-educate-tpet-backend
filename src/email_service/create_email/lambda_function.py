@@ -7,7 +7,7 @@ import boto3
 import pandas as pd
 import time_util
 from current_user_util import current_user_util
-from data_util import convert_float_to_decimal
+from data_util import convert_float_to_decimal, map_recipient_name
 from email_repository import EmailRepository
 from email_status_enum import EmailStatus
 from jwt_util import generate_rsvp_token
@@ -16,7 +16,6 @@ from run_type_enum import RunType
 from s3 import read_sheet_data_from_s3
 from scheduler import create_run_schedule
 from sqs import delete_sqs_message, get_sqs_message, send_message_to_queue
-from template_variable_db_column_mapping_util import map_recipient_name
 
 from file_service import FileService
 from rsvp_service import RSVPService
@@ -47,7 +46,7 @@ def prepare_email_item(run_id: str, email_data: dict, row_data: dict) -> dict:
     Prepare an email item with the necessary data.
 
     :param run_id: The run ID for tracking the email operation
-    :param email_data: Dictionary containing email metadata (including template_variables)
+    :param email_data: Dictionary containing email metadata
     :param row_data: Dictionary containing recipient data and template variables
     :return: Created email item dictionary
     """
@@ -56,9 +55,12 @@ def prepare_email_item(run_id: str, email_data: dict, row_data: dict) -> dict:
     row_data = convert_float_to_decimal(row_data)
     created_at = time_util.get_current_utc_time()
 
-    # Map template variables to recipient_name column
-    template_variables = email_data.get("template_variables", [])
-    recipient_name = map_recipient_name(template_variables, row_data)
+    name_source = row_data
+    if email_data.get("run_type") == RunType.WEBHOOK.value:
+        # Webhooks only map variables referenced by their template.
+        name_source = {
+            key: row_data.get(key) for key in email_data.get("template_variables", [])
+        }
 
     return {
         "run_id": run_id,
@@ -74,7 +76,7 @@ def prepare_email_item(run_id: str, email_data: dict, row_data: dict) -> dict:
             else EmailStatus.PENDING.value
         ),
         "recipient_email": row_data.get("Email"),
-        "recipient_name": recipient_name,
+        "recipient_name": map_recipient_name(name_source),
         "row_data": row_data,
         "created_at": created_at,
         "is_generate_certificate": email_data.get("is_generate_certificate", False),
@@ -148,7 +150,7 @@ def build_recipient_list_from_sqs_message(sqs_message: dict) -> list[dict]:
         for recipient in sqs_message["recipients"]:
             recipient_data = {
                 "Email": recipient["email"],
-                **recipient["template_variables"],
+                **recipient.get("template_variables", {}),
             }
             sheet_data.append(recipient_data)
         logger.info("Processed direct recipients data: %s", sheet_data)
@@ -224,9 +226,7 @@ def process_rsvp_emails_and_update_spreadsheet(sqs_message: dict) -> list[dict]:
     updated_sheet_data = []
     for row_data in sheet_data:
         email = row_data.get("Email")
-        name = row_data.get(
-            "Name", row_data.get("姓名", email)
-        )  # Fallback to email if no name
+        name = map_recipient_name(row_data) or email
 
         email_id = str(uuid.uuid4().hex)
 

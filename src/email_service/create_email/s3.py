@@ -28,7 +28,13 @@ def read_sheet_data_from_s3(spreadsheet_file_s3_key):
         s3 = boto3.client("s3")
         request = s3.get_object(Bucket=BUCKET_NAME, Key=spreadsheet_file_s3_key)
         xlsx_content = request["Body"].read()
-        excel_data = pd.read_excel(io.BytesIO(xlsx_content), engine="openpyxl")
+        excel_data = pd.read_excel(
+            io.BytesIO(xlsx_content),
+            engine="openpyxl",
+            dtype={"Name": object, "姓名": object},
+            keep_default_na=False,  # "NA" can be a recipient's name.
+            na_values=[""],
+        )
         rows = excel_data.to_dict(orient="records")
         if excel_data.empty:
             return [], 0
