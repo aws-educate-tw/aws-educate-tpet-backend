@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import uuid
+from collections.abc import Iterable
 from typing import Any, cast
 
 import boto3
@@ -12,7 +13,7 @@ import pandas as pd
 import requests
 from botocore.exceptions import ClientError
 from current_user_util import current_user_util
-from data_util import convert_float_to_decimal
+from data_util import convert_float_to_decimal, map_recipient_name
 from error_code_enum import SystemErrorCode, ValidationErrorCode
 from recipient_source_enum import RecipientSource
 from requests.exceptions import RequestException
@@ -44,6 +45,7 @@ DEFAULT_SENDER_LOCAL_PART = "cloudambassador"
 DEFAULT_RECIPIENT_SOURCE = RecipientSource.SPREADSHEET.value
 DEFAULT_RUN_TYPE = RunType.EMAIL.value
 EMAIL_PATTERN = r"[^@]+@[^@]+\.[^@]+"
+MAX_RECIPIENT_NAME_LENGTH = 255  # emails.recipient_name is VARCHAR(255).
 ISO8601_UTC_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 MINIMUM_SCHEDULE_LEAD_MINUTES = 10
 MINIMUM_SCHEDULE_LEAD_TIME = datetime.timedelta(minutes=MINIMUM_SCHEDULE_LEAD_MINUTES)
@@ -137,7 +139,13 @@ def read_sheet_data_from_s3(
         s3 = boto3.client("s3")
         request = s3.get_object(Bucket=BUCKET_NAME, Key=spreadsheet_file_s3_key)
         xlsx_content = request["Body"].read()
-        excel_data = pd.read_excel(io.BytesIO(xlsx_content), engine="openpyxl")
+        excel_data = pd.read_excel(
+            io.BytesIO(xlsx_content),
+            engine="openpyxl",
+            dtype={"Name": object, "姓名": object},
+            keep_default_na=False,  # "NA" can be a recipient's name.
+            na_values=[""],
+        )
         rows = cast(list[dict[str, Any]], excel_data.to_dict(orient="records"))
         if excel_data.empty:
             return [], []
@@ -238,6 +246,27 @@ def validate_template_variables(
             )
 
 
+def validate_recipient_names(
+    rows: Iterable[dict], error_collector: ValidationErrorCollector, *, first_row: int
+) -> None:
+    invalid_rows = []
+    for index, row in enumerate(rows, start=first_row):
+        name = map_recipient_name(row)
+        if name is not None and len(name) > MAX_RECIPIENT_NAME_LENGTH:
+            invalid_rows.append(index)
+
+    if invalid_rows:
+        error_collector.add_error(
+            message=f"Recipient names must be at most {MAX_RECIPIENT_NAME_LENGTH} characters.",
+            error_code=ValidationErrorCode.RECIPIENT_NAME_TOO_LONG,
+            details={
+                "max_length": MAX_RECIPIENT_NAME_LENGTH,
+                "invalid_count": len(invalid_rows),
+                "rows": invalid_rows[:10],
+            },
+        )
+
+
 def validate_spreadsheet_mode(
     spreadsheet_file_id: str,
     access_token: str,
@@ -285,6 +314,9 @@ def validate_spreadsheet_mode(
             message="Spreadsheet has no headers. Please add column headers (at least 'Email').",
             error_code=ValidationErrorCode.MISSING_SPREADSHEET_HEADERS,
         )
+
+    # The first worksheet row contains the column headers.
+    validate_recipient_names(rows, error_collector, first_row=2)
 
     # Validate email format
     invalid_emails = []
@@ -888,6 +920,11 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             else:  # DIRECT mode
                 expected_email_send_count = validate_direct_mode(
                     recipients, error_collector
+                )
+                validate_recipient_names(
+                    (r.get("template_variables", {}) for r in recipients or []),
+                    error_collector,
+                    first_row=1,
                 )
                 if template_content:
                     validate_template_variables(
