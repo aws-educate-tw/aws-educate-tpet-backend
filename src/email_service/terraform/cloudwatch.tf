@@ -1,5 +1,10 @@
 data "aws_region" "current" {}
 
+locals {
+  email_service_dlq_message_count_gte_1_alarm_name = "[P2][Email-Service] - DLQ Message Count >= 1"
+  auto_resumer_log_group_name                      = "/aws/lambda/${local.auto_resume_aurora_function_name_and_ecr_repo_name}"
+}
+
 #########################################################
 #########################################################
 #########################################################
@@ -9,14 +14,14 @@ data "aws_region" "current" {}
 #########################################################
 resource "aws_cloudwatch_metric_alarm" "email_service_dlq_message_count_gte_1" {
   # Title: [Severity][Service] - {condition}
-  alarm_name          = "[P2][Email-Service] - DLQ Message Count >= 1"
+  alarm_name = local.email_service_dlq_message_count_gte_1_alarm_name
 
   # Description format: Simplified to single line per field
-  alarm_description   = <<EOT
+  alarm_description = <<EOT
 Level: P2
 Condition: ApproximateNumberOfMessagesVisible >= 1 and over 1 minute
 Runbook: https://www.notion.so/aws-educate-tw/SRE-Email-Service-Auto-resumer-DLQ-Message-Count-0-2db6bfee6817802aac4ee7bd0783c3bf
-Observability Links: Dashboard: https://console.aws.amazon.com/cloudwatch/home?region=${data.aws_region.current.name}#dashboards:name=Email-Service | Logs: https://console.aws.amazon.com/cloudwatch/home?region=${data.aws_region.current.name}#logsV2:log-groups/log-group/${urlencode("/aws/lambda/email-service-auto-resumer")}
+Observability Links: CloudWatch Alarm: https://console.aws.amazon.com/cloudwatch/home?region=${data.aws_region.current.name}#alarmsV2:alarm/${replace(urlencode(local.email_service_dlq_message_count_gte_1_alarm_name), "+", "%20")} | Logs: https://console.aws.amazon.com/cloudwatch/home?region=${data.aws_region.current.name}#logsV2:log-groups/log-group/${urlencode(local.auto_resumer_log_group_name)}
 PIC: Kiki Huang
 EOT
 
